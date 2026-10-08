@@ -2999,11 +2999,11 @@ app.post("/api/v1/litle/attest", (req, res) => {
 app.post("/api/v1/litle/verify", (req, res) => {
   try {
     const body = req.body ?? {};
-    if (!body.certificate || !body.secret) {
-      res.status(400).json({ success: false, error: "certificate y secret son requeridos" });
+    if (!body.certificate) {
+      res.status(400).json({ success: false, error: "certificate es requerido" });
       return;
     }
-    const certificateValid = verifyCertificate(body.certificate, String(body.secret));
+    const certificateValid = verifyCertificate(body.certificate, bookPiSecret());
     const evidenceValid = body.evidenceChain ? verifyEvidenceChain(body.evidenceChain) : null;
     const id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
     res.json({ success: true, certificateValid, evidenceValid, id });
