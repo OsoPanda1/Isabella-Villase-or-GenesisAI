@@ -5,6 +5,9 @@ import { InMemoryTelemetry, type TelemetrySink } from "../observability/telemetr
 import { IKESEngine } from "../memory/ikes";
 import { ToolRegistry, type ToolAuthorization, type ToolReceipt } from "../tools/registry";
 import { SkillRegistry } from "../skills/registry";
+import { GovernedInferenceRouter } from "../inference/router";
+import type { GenerationRequest, GenerationResult } from "../inference/types";
+import { DeterministicVerifier } from "../veritas/verifier";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -30,6 +33,8 @@ export class IsabellaGenesisRuntime {
   readonly tools = new ToolRegistry();
   readonly skills = new SkillRegistry();
   readonly telemetry: TelemetrySink;
+  readonly inference = new GovernedInferenceRouter();
+  readonly verifier = new DeterministicVerifier();
 
   constructor(telemetry: TelemetrySink = new InMemoryTelemetry()) {
     this.telemetry = telemetry;
@@ -59,6 +64,26 @@ export class IsabellaGenesisRuntime {
     });
 
     return { crown, aegis, plan, memory, admitted };
+  }
+
+  async generate(request: GenerationRequest): Promise<GenerationResult> {
+    const started = Date.now();
+    const result = await this.inference.generate(request);
+    this.telemetry.metric({
+      name: "request_latency_ms",
+      value: Date.now() - started,
+      at: new Date().toISOString(),
+      attributes: { stage: "inference", modelId: result.modelId },
+    });
+    if (result.outputTokens > 0) {
+      this.telemetry.metric({
+        name: "tokens_per_second",
+        value: result.outputTokens / Math.max(0.001, result.latencyMs / 1000),
+        at: new Date().toISOString(),
+        attributes: { modelId: result.modelId },
+      });
+    }
+    return result;
   }
 
   async executeTool(
