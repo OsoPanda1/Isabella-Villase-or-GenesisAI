@@ -21,6 +21,8 @@ import { synthesize, type CognitiveSynthesis, type CognitiveTask, type ExpertRes
 import { createSource, validateClaim, type ProvenanceClaim, type ProvenanceSource } from "../memory/provenance";
 import type { AtlasPersistencePort, CreateUserInput, RecordEconomyEntryInput, RecordProtocolExecutionInput } from "../atlas";
 import { IsabellaEngine, type IsabellaEngineConfig, type IsabellaProfile } from "../isabella";
+import { PennyLaneBridge, type PennyLaneBridgeConfig, type PennyLaneExecutionRequest, type PennyLaneExecutionResult } from "../quantum";
+import { ProtocolRegistry } from "../protocols";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -52,16 +54,51 @@ export class IsabellaGenesisRuntime {
   readonly consent: ConsentRegistry = new InMemoryConsentRegistry();
   readonly persistence?: AtlasPersistencePort;
   readonly isabella: IsabellaEngine;
+  readonly quantum: PennyLaneBridge;
+  readonly protocols = new ProtocolRegistry();
 
   constructor(
     telemetry: TelemetrySink = new InMemoryTelemetry(),
     persistence?: AtlasPersistencePort,
     isabellaConfig?: IsabellaEngineConfig,
+    quantumConfig?: PennyLaneBridgeConfig,
   ) {
     this.telemetry = telemetry;
     this.persistence = persistence;
     this.isabella = new IsabellaEngine(isabellaConfig);
+    this.quantum = new PennyLaneBridge(quantumConfig);
+    this.registerCanonicalProtocols();
   }
+
+  private registerCanonicalProtocols(): void {
+    this.protocols.register({
+      id: "isabella.quantum.pennylane.execute",
+      version: "1.0.0",
+      description: "Ejecuta un circuito cuántico mediante el puente gobernado Isabella → PennyLane.",
+      execute: async (context) => this.executePennyLane(context.input as PennyLaneExecutionRequest),
+    });
+  }
+
+  async executePennyLane(request: PennyLaneExecutionRequest): Promise<PennyLaneExecutionResult> {
+    const started = Date.now();
+    const result = await this.quantum.execute(request);
+    this.telemetry.metric({
+      name: "request_latency_ms",
+      value: Date.now() - started,
+      at: new Date().toISOString(),
+      attributes: {
+        stage: "quantum-pennylane",
+        backend: result.backend,
+        status: result.status,
+      },
+    });
+    return result;
+  }
+
+  async quantumHealth() {
+    return this.quantum.health();
+  }
+
 
   async initPersistence(): Promise<void> {
     if (this.persistence && "init" in this.persistence && typeof this.persistence.init === "function") {
