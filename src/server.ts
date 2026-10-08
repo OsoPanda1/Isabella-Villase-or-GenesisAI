@@ -1,4 +1,5 @@
 import express from "express";
+import { randomUUID } from "node:crypto";
 import fs from "fs";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -290,6 +291,14 @@ runtime.skills.register({
 // Setup default Capability Gate
 const defaultGate = createCapabilityGate([
   {
+    methodId: "A.COGNITION.E19_CAPABILITY.invoke_hsf.v1.0.0.MEDIUM.INSTITUTIONAL",
+    owner: "isabella-hsf",
+    allowedRoles: ["operator", "admin"],
+    riskTier: "MEDIUM",
+    governanceTier: "INSTITUTIONAL",
+    humanApprovalRequired: false,
+  },
+  {
     methodId: "Q.QUANTUM.E20_EXECUTION.execute_pennylane.v1.0.0.MEDIUM.INSTITUTIONAL",
     owner: "isabella-quantum",
     allowedRoles: ["operator", "admin"],
@@ -442,6 +451,10 @@ app.get("/api/v1/status", (_req, res) => {
       pdp: "ACTIVE",
       litleTrustFabric: "ACTIVE",
       quantumPennyLane: runtime.quantum.describe(),
+    hyperSkillFabric: {
+      contract: "isabella.hsf.v1",
+      capabilities: runtime.capabilities.list(),
+    },
       geminiEngine: apiKey ? "CONNECTED" : "SOVEREIGN_FALLBACK",
     },
     experts: {
@@ -810,6 +823,68 @@ app.get("/api/v1/isabella/status", (_req, res) => {
     latency: runtime.isabellaLatencySnapshot(),
     timestamp: new Date().toISOString(),
   });
+});
+
+// Hyper Skill Fabric — every capability remains behind Genesis governance.
+app.get("/api/v1/hsf/status", async (_req, res) => {
+  res.json({
+    success: true,
+    contract: "isabella.hsf.v1",
+    capabilities: runtime.capabilities.list(),
+    health: await runtime.capabilities.health(),
+    tasks: runtime.executionFabric.list(),
+    knowledgeArtifacts: runtime.knowledgeFabric.list().length,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.post("/api/v1/hsf/invoke", async (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const capabilityId = typeof body.capabilityId === "string" ? body.capabilityId : "";
+    const input = body.input;
+    const requestId = typeof body.requestId === "string" ? body.requestId : randomUUID();
+    const traceId = typeof body.traceId === "string" ? body.traceId : requestId;
+    const principal = createPrincipal({
+      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
+      kind: body.principalKind === "machine" ? "machine" : "human",
+      roles: Array.isArray(body.roles)
+        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
+        : ["operator"],
+    });
+    assertBalancedAuthority(principal);
+    const serialized = JSON.stringify({ capabilityId, input });
+    const governance = runtime.evaluate({
+      input: serialized,
+      methodId: "A.COGNITION.E19_CAPABILITY.invoke_hsf.v1.0.0.MEDIUM.INSTITUTIONAL",
+      principal,
+      gate: defaultGate,
+      action: "hsf:invoke",
+      resource: capabilityId || "unknown",
+      riskTier: "MEDIUM",
+      inputTokens: Math.max(1, Math.ceil(serialized.length / 4)),
+      expectedOutputTokens: 2048,
+      pressure: 0,
+      requiresTools: true,
+      requiresMemory: false,
+    });
+    if (!governance.admitted) {
+      res.status(403).json({ success: false, error: "HSF invocation denied by Genesis governance", governance });
+      return;
+    }
+    const result = await runtime.capabilityGateway.invoke(capabilityId, input, {
+      requestId,
+      traceId,
+      principalId: principal.id,
+      role: principal.roles[0] ?? "operator",
+      policyVersion: "genesis-hsf-v1",
+      metadata: { source: "api" },
+    });
+    res.status(result.status === "executed" ? 200 : result.status === "rejected" ? 403 : result.status === "unavailable" ? 503 : 500)
+      .json({ success: result.status === "executed", ...result, timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
 });
 
 // Quantum bridge — all PennyLane execution remains behind Genesis governance.
