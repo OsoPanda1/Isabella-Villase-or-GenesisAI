@@ -32,7 +32,7 @@ describe("crown/capability", () => {
   const operator = createPrincipal({ id: "h1", kind: "human", roles: ["operator"] });
 
   it("permite una capacidad registrada no privilegiada", () => {
-    const v = callGate(gate(), MEMORIA, { principal: operator });
+    const v = callGate(gate(), MEMORIA, { principal: operator, action: "memory:recall", resource: "memory" });
     expect(v.granted).toBe(true);
   });
 
@@ -52,10 +52,10 @@ describe("crown/capability", () => {
 
     const approving = issueHumanApproval(
       createPrincipal({ id: "adm", kind: "human", roles: ["admin"] }),
-      { methodId: COURIER, action: "transfer_asset" },
+      { methodId: COURIER, action: "transfer_asset", resource: "asset:123", principalId: operator.id },
       "ALLOW",
     );
-    const conAprobacion = callGate(gate(), COURIER, { principal: operator, approval: approving });
+    const conAprobacion = callGate(gate(), COURIER, { principal: operator, approval: approving, action: "transfer_asset", resource: "asset:123" });
     expect(conAprobacion.granted).toBe(true);
     expect(conAprobacion.evidenceRef).toBe(approving.evidenceId);
   });
@@ -66,7 +66,7 @@ describe("crown/capability", () => {
       { methodId: "OTRO", action: "x" },
       "ALLOW",
     );
-    expect(callGate(gate(), COURIER, { principal: operator, approval: approving }).granted).toBe(false);
+    expect(callGate(gate(), COURIER, { principal: operator, approval: approving, action: "transfer_asset", resource: "asset:123" }).granted).toBe(false);
   });
 
   it("marca aprobación requerida por riesgo", () => {
