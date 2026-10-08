@@ -1,4 +1,6 @@
+export * from "./authority/method-id";
 export * from "./core";
+export * from "./ingress";
 export * from "./identity";
 export * from "./crown";
 export * from "./evolution";
