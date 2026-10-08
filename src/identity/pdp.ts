@@ -1,5 +1,5 @@
 /** PDP — Policy Decision Point. Fail-closed RBAC + ABAC + tenant + consent. */
-import { verifyHumanApproval, type ApprovalRef } from "./approval";
+import { verifyHumanApproval, type ApprovalRef, type ApprovalTarget } from "./approval";
 import type { ConsentRegistryLike, ConsentRequirement } from "./consent";
 import { requireConsent } from "./consent";
 import type { Principal } from "./principal";
@@ -58,10 +58,23 @@ export function decidePdp(deps: PdpDeps, req: PdpRequest): PdpDecision {
   return { effect, reason: effects.join("; "), admitted: effect === "ALLOW" };
 }
 
-export function overrideWithHumanApproval(decision: PdpDecision, approval?: ApprovalRef): PdpDecision {
+/** A FLAG may only be overridden by an approval bound to the exact live request. */
+export function overrideWithHumanApproval(
+  decision: PdpDecision,
+  approval: ApprovalRef | undefined,
+  target: ApprovalTarget,
+): PdpDecision {
   if (decision.effect !== "FLAG") return decision;
-  if (!approval || approval.decision !== "ALLOW" || !verifyHumanApproval(approval, { methodId: approval.methodId, action: approval.action, resource: approval.resource, principalId: approval.principalId, contextHash: approval.contextHash, policyVersion: approval.policyVersion })) return { ...decision, admitted: false, evidenceRef: approval?.evidenceId };
-  return { ...decision, effect: "ALLOW", admitted: true, evidenceRef: approval.evidenceId, reason: `${decision.reason}; human-approval:${approval.approver}` };
+  if (!approval || approval.decision !== "ALLOW" || !verifyHumanApproval(approval, target)) {
+    return { ...decision, admitted: false, evidenceRef: approval?.evidenceId };
+  }
+  return {
+    ...decision,
+    effect: "ALLOW",
+    admitted: true,
+    evidenceRef: approval.evidenceId,
+    reason: `${decision.reason}; human-approval:${approval.approver}`,
+  };
 }
 
 export function isPrivileged(action: string): boolean {
