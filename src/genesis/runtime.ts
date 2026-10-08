@@ -19,6 +19,7 @@ import { InMemoryConsentRegistry, type ConsentRegistry } from "../cognition/cons
 import { planExperts as planCognitiveExperts } from "../cognition/experts";
 import { synthesize, type CognitiveSynthesis, type CognitiveTask, type ExpertResult } from "../cognition/orchestrator";
 import { createSource, validateClaim, type ProvenanceClaim, type ProvenanceSource } from "../memory/provenance";
+import type { AtlasPersistencePort, CreateUserInput, RecordEconomyEntryInput, RecordProtocolExecutionInput } from "../atlas";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -48,9 +49,45 @@ export class IsabellaGenesisRuntime {
   readonly verifier = new DeterministicVerifier();
   readonly escalation: HumanEscalationQueue = new InMemoryHumanEscalationQueue();
   readonly consent: ConsentRegistry = new InMemoryConsentRegistry();
+  readonly persistence?: AtlasPersistencePort;
 
-  constructor(telemetry: TelemetrySink = new InMemoryTelemetry()) {
+  constructor(
+    telemetry: TelemetrySink = new InMemoryTelemetry(),
+    persistence?: AtlasPersistencePort,
+  ) {
     this.telemetry = telemetry;
+    this.persistence = persistence;
+  }
+
+  async initPersistence(): Promise<void> {
+    if (this.persistence && "init" in this.persistence && typeof this.persistence.init === "function") {
+      await this.persistence.init();
+    }
+  }
+
+  async persistUser(input: CreateUserInput) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.createUser(input);
+  }
+
+  async persistProtocolExecution(input: RecordProtocolExecutionInput) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.recordProtocolExecution(input);
+  }
+
+  async persistEconomyEntry(input: RecordEconomyEntryInput) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.recordEconomyEntry(input);
+  }
+
+  async publishAtlasXrEvent(eventType: string, payload: unknown) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.publishXrEvent(eventType, payload);
+  }
+
+  async createAtlasSignal(input: Parameters<AtlasPersistencePort["createSignal"]>[0]) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.createSignal(input);
   }
 
   evaluate(input: GenesisRuntimeInput): GenesisRuntimeDecision {
