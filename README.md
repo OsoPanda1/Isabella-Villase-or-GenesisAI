@@ -21,7 +21,7 @@ El repositorio implementa el **plano de control y runtime gobernado** que rodea 
 
 La visión documental del ecosistema Isabella/TAMV añade soberanía tecnológica, operación federada, memoria territorial, BookPI, YUN y TINA. Esas especificaciones sirven como arquitectura objetivo; este README describe exclusivamente el estado que puede atribuirse al código de este repositorio.
 
-La especificación técnica de Isabella plantea una arquitectura modular, interoperable, resiliente y con capacidades cognitivas, sensoriales, de seguridad y gobernanza. cite_source_placeholder
+La especificación técnica de Isabella plantea una arquitectura modular, interoperable, resiliente y con capacidades cognitivas, sensoriales, de seguridad y gobernanza.
 
 ---
 
@@ -479,7 +479,7 @@ La especificación documental define:
 - trazabilidad;
 - reparto de derechos.
 
-La documentación técnica propone incluso un modelo con chunks de 64 KiB y Merkle proofs O(log N). cite_source_placeholder
+La documentación técnica propone incluso un modelo con chunks de 64 KiB y Merkle proofs O(log N).
 
 En este repositorio existe una implementación de BookPI orientada a eventos y canonical event core, con controles de integridad y persistencia PostgreSQL.
 
@@ -512,7 +512,7 @@ Sus reglas estructurales incluyen:
 - resiliencia degradable;
 - gobernanza formal.
 
-Estas reglas están definidas como constitución arquitectónica en la documentación proporcionada. cite_source_placeholder
+Estas reglas están definidas como constitución arquitectónica en la documentación proporcionada.
 
 Para Isabella, YUN es principalmente una **arquitectura de coordinación y datos**, no un reemplazo del runtime cognitivo.
 
@@ -989,7 +989,7 @@ Las reglas fundamentales son:
 
 Isabella forma parte del ecosistema arquitectónico TAMV.
 
-La documentación del ecosistema describe TAMV como infraestructura digital federada, auditable y orientada a soberanía, mientras YUN define reglas de datos, operación, eventos y gobernanza. cite_source_placeholder
+La documentación del ecosistema describe TAMV como infraestructura digital federada, auditable y orientada a soberanía, mientras YUN define reglas de datos, operación, eventos y gobernanza.
 
 En esta implementación:
 
@@ -1021,7 +1021,7 @@ La relación conceptual no implica que todos esos servicios externos estén desp
 
 # 28. Evidencia y honestidad técnica
 
-La documentación canónica establece explícitamente que las afirmaciones técnicas deben ser proporcionales a la evidencia disponible y que el proyecto no debe presentarse como certificación de seguridad, opinión jurídica vinculante o prueba automática de capacidades avanzadas. cite_source_placeholder
+La documentación canónica establece explícitamente que las afirmaciones técnicas deben ser proporcionales a la evidencia disponible y que el proyecto no debe presentarse como certificación de seguridad, opinión jurídica vinculante o prueba automática de capacidades avanzadas.
 
 Este README adopta esa misma regla.
 
