@@ -1127,3 +1127,132 @@ La regla sigue siendo:
 `CAPABILITY -> CONSENT/AUTHORITY -> SECURITY -> EVIDENCE -> EXECUTION -> VERITAS -> AUDIT`
 
 Estas piezas son infraestructura de gobierno y runtime. No constituyen por sí mismas entrenamiento de un modelo fundacional, aprendizaje autónomo, serving GPU ni despliegue distribuido.
+
+
+---
+
+# PID Reconciliation — Canonical Identity Layer
+
+GenesisAI incorpora un reconciliador operativo para identificadores persistentes (PIDs) como parte de su plano de identidad y procedencia. Su función es **normalizar, validar, detectar duplicados y producir una huella determinista** de los identificadores configurados; no inventa identidad ni considera que dos identificadores pertenecen a la misma persona sólo por existir.
+
+## Arquitectura
+
+```text
+Environment / Secret Manager
+          │
+          ▼
+     src/config.ts
+          │
+          ▼
+   src/pidReconciler.ts
+          │
+     ┌────┼─────────────┐
+     │    │             │
+   ORCID DOI           ISNI
+     │    │             │
+     └────┼─────────────┘
+          ▼
+   Canonical records
+          │
+          ├── checksum / format validation
+          ├── duplicate detection
+          └── deterministic SHA-256 fingerprint
+          │
+          ▼
+ ReconciliationReport
+          │
+          ▼
+ src/cli/reconcilePids.ts
+```
+
+## Identificadores soportados
+
+- **ORCID**: normalización y validación de checksum.
+- **DOI**: normalización desde URI/`doi:` y validación estructural.
+- **ISNI**: normalización y validación de checksum.
+- **DataCite DOI**: tratado como DOI con procedencia de configuración independiente.
+
+La reconciliación es deliberadamente conservadora: **formato válido no equivale a identidad confirmada**. La pertenencia de un PID a una entidad concreta requiere evidencia externa o institucional.
+
+## Ejecución
+
+```bash
+npm run reconcile:pids
+```
+
+La salida es JSON estructurado y utiliza códigos de proceso estables:
+
+```text
+0 = SUCCESS
+1 = VALIDATION_FAILED
+2 = RUNTIME_ERROR
+```
+
+Ejemplo de configuración:
+
+```bash
+GENESIS_PID_STRICT=true
+GENESIS_PID_ORCID=0000-0002-1825-0097
+GENESIS_PID_ZENODO_DOI=10.5281/zenodo.20606361
+GENESIS_PID_ISNI=0000000090000000
+GENESIS_PID_DATACITE_DOI=10.xxxx/example
+GENESIS_PID_NAMESPACE=tamv/genesis
+GENESIS_PID_PERSON_NAME="..."
+GENESIS_PID_GEOGRAPHIC_ORIGIN="..."
+```
+
+Las variables de entorno son opcionales para el modo no estricto, pero en operación gobernada se recomienda configurar explícitamente los PIDs canónicos. **No se deben introducir secretos en estos campos.**
+
+## Integración con GenesisAI
+
+El reconciliador no crea un subsistema de identidad paralelo. Se integra con:
+
+```text
+Identity
+   │
+   ├── Principal
+   ├── Authority
+   ├── Canonical Registry
+   │      └── did_isni_triangulate
+   │
+   └── PID Reconciliation
+          ├── normalization
+          ├── checksum validation
+          ├── uniqueness
+          └── fingerprint
+```
+
+La herramienta existente `did_isni_triangulate` continúa siendo una capability del Tool Registry. El nuevo reconciliador aporta la validación determinista y reutilizable que esa capability puede consumir posteriormente.
+
+## Garantías y límites
+
+El reconciliador garantiza:
+
+- entradas normalizadas;
+- validación checksum donde el estándar lo permite;
+- detección de duplicados canónicos;
+- fingerprint determinista;
+- modo estricto fail-closed;
+- códigos de salida adecuados para automatización;
+- logs estructurados;
+- errores normalizados.
+
+No garantiza:
+
+- que un PID pertenezca realmente a una persona;
+- resolución federada contra ORCID/ISNI/DataCite;
+- prueba de propiedad;
+- firma institucional;
+- verificación criptográfica de un registro remoto.
+
+Esas operaciones requieren conectores o fuentes autoritativas externas y deben incorporarse como evidencia, no como inferencia.
+
+## Pruebas
+
+Se añadió `test/pidReconciler.test.ts` para cubrir:
+
+1. ORCID válido + DOI válido.
+2. Normalización de DOI.
+3. rechazo de ORCID inválido.
+4. modo estricto sin identificadores.
+5. generación del reporte y fingerprint.
