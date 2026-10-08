@@ -48,14 +48,8 @@ export function evaluateCrown(opts: CrownEvaluationInput): CrownVerdict {
 
   const intentRisk = riskFromDestructive(intent);
   const tierRisk = riskLevelForRiskTier(riskTier);
-  const riskLevel: RiskLevel =
-    intentRisk === "critical" || tierRisk === "critical"
-      ? "critical"
-      : intentRisk === "high" || tierRisk === "high"
-        ? "high"
-        : intentRisk === "low"
-          ? "low"
-          : tierRisk;
+  const riskRank: Record<RiskLevel, number> = { minimal: 0, low: 1, medium: 2, high: 3, critical: 4 };
+  const riskLevel = riskRank[intentRisk] >= riskRank[tierRisk] ? intentRisk : tierRisk;
 
   const registered = opts.gate.descriptors.has(opts.methodId);
   const gateVerdict = callGate(opts.gate, opts.methodId, {
