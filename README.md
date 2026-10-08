@@ -9,6 +9,36 @@
 
 ---
 
+## DIRECTIVA ARQUITECTÓNICA CANÓNICA
+
+**Isabella Villaseñor GenesisAI es el proyecto principal y el único runtime soberano del ecosistema.**
+
+Los repositorios externos y proyectos relacionados no se consideran runtimes paralelos. Se integran bajo Genesis como:
+
+- módulos;
+- skills;
+- protocolos;
+- adaptadores;
+- proveedores especializados;
+- persistencia;
+- evidencia;
+- infraestructura.
+
+La relación con Atlas, LITLE, BookPI y los componentes derivados queda subordinada a Genesis Runtime.
+
+### Puente de Open Science Quantum
+
+GenesisAI incorpora un puente gobernado hacia el ecosistema **PennyLaneAI**:
+
+- PennyLane — computación cuántica, QML y química cuántica.
+- PennyLane-Lightning — simulación de alto rendimiento.
+- Catalyst — compilación JIT de workflows híbridos.
+- PennyLane-Qiskit — interoperabilidad con Qiskit/IBM.
+
+El puente no copia ni reemplaza esos proyectos. Isabella conserva identidad, autoridad, CROWN, AEGIS, evidencia, IKES, VERITAS, LITLE, BookPI y observabilidad; PennyLane proporciona capacidades cuánticas especializadas.
+
+Documentación: `docs/ISABELLA_PENNYLANE_BRIDGE.md`.
+
 ## 1. ¿Qué es Isabella Genesis TINA?
 
 Isabella Genesis TINA es una arquitectura de software para construir y operar sistemas de inteligencia artificial bajo una separación estricta entre:
