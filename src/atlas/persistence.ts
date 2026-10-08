@@ -90,6 +90,7 @@ async function supabaseRequest<T>(
 }
 
 export interface AtlasPersistencePort {
+  init?(): Promise<void>;
   createUser(input: CreateUserInput): Promise<AtlasUser>;
   listUsers(): Promise<AtlasUser[]>;
   recordProtocolExecution(input: RecordProtocolExecutionInput): Promise<AtlasProtocolExecution>;
@@ -98,6 +99,22 @@ export interface AtlasPersistencePort {
   onXrEvent(listener: XrEventListener): () => void;
   createSignal(input: CreateSignalInput): Promise<AtlasSignalRow>;
   onSignal(listener: SignalListener): () => void;
+}
+
+export function createAtlasStoreFromEnv(env: NodeJS.ProcessEnv = process.env): AtlasStore {
+  const supabaseUrl = env.SUPABASE_URL?.trim();
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const rawTimeout = env.ATLAS_STORE_TIMEOUT_MS?.trim();
+  const requestTimeoutMs = rawTimeout ? Number(rawTimeout) : undefined;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("AtlasStore requiere SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY");
+  }
+  if (rawTimeout && (!Number.isFinite(requestTimeoutMs) || requestTimeoutMs <= 0)) {
+    throw new Error("ATLAS_STORE_TIMEOUT_MS debe ser un número mayor que cero");
+  }
+
+  return new AtlasStore({ supabaseUrl, supabaseServiceRoleKey: serviceRoleKey, requestTimeoutMs });
 }
 
 export class AtlasStore implements AtlasPersistencePort {
