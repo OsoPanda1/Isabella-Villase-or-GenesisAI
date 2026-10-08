@@ -16,7 +16,9 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "tsc --noEmit",
     "reconcile:pids": "tsx src/cli/reconcilePids.ts",
-    "quantum:bridge": "python services/pennylane_bridge.py"
+    "quantum:bridge": "python services/pennylane_bridge.py",
+    "validate": "npm run typecheck && npm test && npm run build",
+    "ingest:atlas": "tsx scripts/atlas-ingest.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
