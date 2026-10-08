@@ -277,8 +277,26 @@ runtime.skills.register({
   },
 });
 
+// Canonical Quantum skill: Isabella → PennyLane.
+runtime.skills.register({
+  id: "pennylane_quantum_execution",
+  version: "1.0.0",
+  methodId: "Q.QUANTUM.E20_EXECUTION.execute_pennylane.v1.0.0.MEDIUM.INSTITUTIONAL",
+  riskTier: "MEDIUM",
+  requiresEvidence: false,
+  handler: async (ctx) => runtime.executePennyLane(ctx.input as import("./quantum").PennyLaneExecutionRequest),
+});
+
 // Setup default Capability Gate
 const defaultGate = createCapabilityGate([
+  {
+    methodId: "Q.QUANTUM.E20_EXECUTION.execute_pennylane.v1.0.0.MEDIUM.INSTITUTIONAL",
+    owner: "isabella-quantum",
+    allowedRoles: ["operator", "admin"],
+    riskTier: "MEDIUM",
+    governanceTier: "INSTITUTIONAL",
+    humanApprovalRequired: false,
+  },
   {
     methodId: "A.COGNITION.E14_COGNITIVE_SAFETY.mediate_isabella.v2.0.0.LOW.CONSTITUTIONAL",
     owner: "isabella-sovereign",
@@ -423,6 +441,7 @@ app.get("/api/v1/status", (_req, res) => {
       bookpi: "ACTIVE",
       pdp: "ACTIVE",
       litleTrustFabric: "ACTIVE",
+      quantumPennyLane: runtime.quantum.describe(),
       geminiEngine: apiKey ? "CONNECTED" : "SOVEREIGN_FALLBACK",
     },
     experts: {
@@ -789,6 +808,71 @@ app.get("/api/v1/isabella/status", (_req, res) => {
     latency: runtime.isabellaLatencySnapshot(),
     timestamp: new Date().toISOString(),
   });
+});
+
+// Quantum bridge — all PennyLane execution remains behind Genesis governance.
+app.get("/api/v1/quantum/pennylane/status", async (_req, res) => {
+  const health = await runtime.quantumHealth();
+  res.json({
+    success: true,
+    bridge: runtime.quantum.describe(),
+    health,
+    modules: runtime.modules.list().filter((module) => module.domain === "quantum"),
+    protocols: runtime.protocols.list().filter((protocol) => protocol.id.includes("pennylane")),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.post("/api/v1/quantum/pennylane/execute", async (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const circuit = body.circuit;
+    const input = JSON.stringify({ circuit, backend: body.backend, shots: body.shots });
+    const principal = createPrincipal({
+      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
+      kind: body.principalKind === "machine" ? "machine" : "human",
+      roles: Array.isArray(body.roles)
+        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
+        : ["operator"],
+    });
+    assertBalancedAuthority(principal);
+
+    const governance = runtime.evaluate({
+      input,
+      methodId: "Q.QUANTUM.E20_EXECUTION.execute_pennylane.v1.0.0.MEDIUM.INSTITUTIONAL",
+      principal,
+      gate: defaultGate,
+      action: "quantum:execute",
+      resource: "pennylane",
+      riskTier: "MEDIUM",
+      inputTokens: Math.max(1, Math.ceil(input.length / 4)),
+      expectedOutputTokens: 1024,
+      pressure: 0,
+      requiresTools: false,
+      requiresMemory: false,
+    });
+
+    if (!governance.admitted) {
+      res.status(403).json({ success: false, error: "Quantum execution denied by Genesis governance", governance });
+      return;
+    }
+
+    const result = await runtime.executePennyLane({
+      circuit,
+      backend: body.backend,
+      shots: body.shots ?? null,
+      seed: body.seed,
+      metadata: body.metadata,
+    });
+    res.status(result.status === "executed" ? 200 : result.status === "rejected" ? 400 : 503).json({
+      success: result.status === "executed",
+      governance,
+      result,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
 });
 
 // Triple Blockade Security Scanner
