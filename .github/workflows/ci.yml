@@ -1,0 +1,25 @@
+name: Isabella Genesis CI
+
+on:
+  push:
+    branches: ["main", "genesis-v6-sovereign-evolution"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --version
+      - run: npm --version
+      - run: npm install --global pnpm@10.22.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

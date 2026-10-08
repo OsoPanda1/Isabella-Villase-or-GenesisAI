@@ -27,6 +27,10 @@ export interface CrownEvaluationInput {
   principal: Principal;
   gate: CapabilityGate;
   approval?: ApprovalRef;
+  action: string;
+  resource: string;
+  contextHash?: string;
+  policyVersion?: string;
   governanceInvariantPreserved?: boolean;
 }
 
@@ -48,19 +52,17 @@ export function evaluateCrown(opts: CrownEvaluationInput): CrownVerdict {
 
   const intentRisk = riskFromDestructive(intent);
   const tierRisk = riskLevelForRiskTier(riskTier);
-  const riskLevel: RiskLevel =
-    intentRisk === "critical" || tierRisk === "critical"
-      ? "critical"
-      : intentRisk === "high" || tierRisk === "high"
-        ? "high"
-        : intentRisk === "low"
-          ? "low"
-          : tierRisk;
+  const riskRank: Record<RiskLevel, number> = { minimal: 0, low: 1, medium: 2, high: 3, critical: 4 };
+  const riskLevel = riskRank[intentRisk] >= riskRank[tierRisk] ? intentRisk : tierRisk;
 
   const registered = opts.gate.descriptors.has(opts.methodId);
   const gateVerdict = callGate(opts.gate, opts.methodId, {
     principal: opts.principal,
     approval: opts.approval,
+    action: opts.action,
+    resource: opts.resource,
+    contextHash: opts.contextHash,
+    policyVersion: opts.policyVersion,
   });
 
   const verification = verifyMethod({

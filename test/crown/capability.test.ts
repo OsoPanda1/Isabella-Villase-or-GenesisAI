@@ -32,12 +32,12 @@ describe("crown/capability", () => {
   const operator = createPrincipal({ id: "h1", kind: "human", roles: ["operator"] });
 
   it("permite una capacidad registrada no privilegiada", () => {
-    const v = callGate(gate(), MEMORIA, { principal: operator });
+    const v = callGate(gate(), MEMORIA, { principal: operator, action: "memory:recall", resource: "memory" });
     expect(v.granted).toBe(true);
   });
 
   it("deniega capacidades sin registro (fail-closed)", () => {
-    const v = callGate(gate(), "T.TWINS.E00_X.no_op.v1.0.0.LOW.AUTONOMOUS", { principal: operator });
+    const v = callGate(gate(), "T.TWINS.E00_X.no_op.v1.0.0.LOW.AUTONOMOUS", { principal: operator, action: "memory:recall", resource: "memory" });
     expect(v.granted).toBe(false);
   });
 
@@ -52,12 +52,26 @@ describe("crown/capability", () => {
 
     const approving = issueHumanApproval(
       createPrincipal({ id: "adm", kind: "human", roles: ["admin"] }),
-      { methodId: COURIER, action: "transfer_asset" },
+      { methodId: COURIER, action: "transfer_asset", resource: "asset:123", principalId: operator.id },
       "ALLOW",
     );
-    const conAprobacion = callGate(gate(), COURIER, { principal: operator, approval: approving });
+    const conAprobacion = callGate(gate(), COURIER, { principal: operator, approval: approving, action: "transfer_asset", resource: "asset:123" });
     expect(conAprobacion.granted).toBe(true);
     expect(conAprobacion.evidenceRef).toBe(approving.evidenceId);
+  });
+
+  it("no acepta una aprobación para otra acción o recurso aunque el método coincida", () => {
+    const approving = issueHumanApproval(
+      createPrincipal({ id: "adm", kind: "human", roles: ["admin"] }),
+      { methodId: COURIER, action: "transfer_asset", resource: "asset:123", principalId: operator.id },
+      "ALLOW",
+    );
+    expect(callGate(gate(), COURIER, {
+      principal: operator,
+      approval: approving,
+      action: "transfer_asset",
+      resource: "asset:999",
+    }).granted).toBe(false);
   });
 
   it("no acepta una aprobación para otro método", () => {
@@ -66,7 +80,7 @@ describe("crown/capability", () => {
       { methodId: "OTRO", action: "x" },
       "ALLOW",
     );
-    expect(callGate(gate(), COURIER, { principal: operator, approval: approving }).granted).toBe(false);
+    expect(callGate(gate(), COURIER, { principal: operator, approval: approving, action: "transfer_asset", resource: "asset:123" }).granted).toBe(false);
   });
 
   it("marca aprobación requerida por riesgo", () => {

@@ -1,5 +1,4 @@
-/** IDENTITY & AUTHORITY — PrincipalContext (quién pregunta). */
-
+/** IDENTITY & AUTHORITY — PrincipalContext (who asks). */
 export type PrincipalKind = "human" | "machine" | "service";
 
 export interface Principal {
@@ -9,6 +8,7 @@ export interface Principal {
   tenantId?: string;
   roles: readonly string[];
   attributes: Readonly<Record<string, string | number | boolean>>;
+  approvalKeyId?: string;
 }
 
 export interface PrincipalContext {
@@ -24,23 +24,15 @@ export function createPrincipal(partial: Omit<Principal, "roles" | "attributes">
   attributes?: Record<string, string | number | boolean>;
 }): Principal {
   return {
-    id: partial.id,
-    kind: partial.kind,
-    displayName: partial.displayName,
-    tenantId: partial.tenantId,
-    roles: partial.roles ?? [],
-    attributes: partial.attributes ?? {},
+    id: partial.id, kind: partial.kind, displayName: partial.displayName, tenantId: partial.tenantId,
+    roles: partial.roles ?? [], attributes: partial.attributes ?? {}, approvalKeyId: partial.approvalKeyId,
   };
 }
 
-export function isHuman(p: Principal): boolean {
-  return p.kind === "human";
-}
+export function isHuman(p: Principal): boolean { return p.kind === "human"; }
 
 export function assertBalancedAuthority(p: Principal): void {
   if (p.kind !== "human" && p.roles.includes("admin")) {
-    throw new Error(
-      "IDENTITY: una máquina no puede ostentar rol 'admin' sin delegación humana explícita (Invariante Operativo).",
-    );
+    throw new Error("IDENTITY: non-human principals cannot hold admin without explicit human delegation.");
   }
 }

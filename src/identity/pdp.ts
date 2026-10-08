@@ -1,79 +1,52 @@
-/** PDP — Policy Decision Point (IDENTITY & AUTHORITY — authorization). */
-
-import type { ApprovalRef } from "./approval";
+/** PDP — Policy Decision Point. Fail-closed RBAC + ABAC + tenant + consent. */
+import { verifyHumanApproval, type ApprovalRef, type ApprovalTarget } from "./approval";
 import type { ConsentRegistryLike, ConsentRequirement } from "./consent";
 import { requireConsent } from "./consent";
 import type { Principal } from "./principal";
-import { hasPermission, principalPermissions, type RbacPolicy } from "./rbac";
+import { hasPermission, type RbacPolicy } from "./rbac";
 import { isolatedAccess, tenantIsActive, type TenantCatalog } from "./tenant";
 
 export type PdpEffect = "ALLOW" | "FLAG" | "DENY";
-
-export interface PdpDecision {
-  effect: PdpEffect;
-  reason: string;
-  admitted: boolean;
-  evidenceRef?: string;
-}
-
+export interface PdpDecision { effect: PdpEffect; reason: string; admitted: boolean; evidenceRef?: string; }
 export interface PdpRequest {
-  principal: Principal;
-  action: string;
-  resource: string;
-  methodId: string;
-  tenantId?: string;
+  principal: Principal; action: string; resource: string; methodId: string; tenantId?: string;
   consent?: ConsentRequirement;
   attributeContext?: Readonly<Record<string, string | number | boolean>>;
 }
-
 export interface AttributeCondition {
   name: string;
   allowed: (ctx: Readonly<Record<string, string | number | boolean>>) => boolean;
 }
-
 export interface PdpDeps {
-  rbac: RbacPolicy;
-  tenants?: TenantCatalog;
-  consent?: ConsentRegistryLike;
+  rbac: RbacPolicy; tenants?: TenantCatalog; consent?: ConsentRegistryLike;
   attributeConditions?: readonly AttributeCondition[];
 }
-
-function normalizeEffect(input: unknown): PdpEffect {
-  if (input === "ALLOW" || input === "FLAG" || input === "DENY") {
-    return input;
-  }
-  return "DENY";
-}
+function deny(reason: string): PdpDecision { return { effect: "DENY", reason, admitted: false }; }
 
 export function decidePdp(deps: PdpDeps, req: PdpRequest): PdpDecision {
   const effects: string[] = [];
-
   if (deps.tenants) {
-    if (!tenantIsActive(deps.tenants, req.tenantId ?? req.principal.tenantId ?? "")) {
-      return deny(`arrendatario inactivo o inexistente`);
-    }
-    if (req.tenantId && !isolatedAccess(deps.tenants, req.principal.tenantId, req.tenantId)) {
-      return deny(`aislamiento de arrendatario denegado`);
-    }
+    const tenant = req.tenantId ?? req.principal.tenantId ?? "";
+    if (!tenantIsActive(deps.tenants, tenant)) return deny("arrendatario inactivo o inexistente");
+    if (req.tenantId && !isolatedAccess(deps.tenants, req.principal.tenantId, req.tenantId)) return deny("aislamiento de arrendatario denegado");
     effects.push("tenant-ok");
   }
-
   if (deps.consent && req.consent) {
-    const granted = requireConsent(deps.consent, req.principal.id, req.consent);
-    if (!granted) {
-      return deny(`falta consentimiento para ${req.consent.purpose}:${req.consent.scope}`);
-    }
+    if (!requireConsent(deps.consent, req.principal.id, req.consent)) return deny(`falta consentimiento para ${req.consent.purpose}:${req.consent.scope}`);
     effects.push("consent-ok");
   }
-
-  const base =
-    hasPermission(deps.rbac, req.principal, req.action) ? "ALLOW" : "DENY";
-  let effect = normalizeEffect(base);
+  const base: PdpEffect = hasPermission(deps.rbac, req.principal, req.action) ? "ALLOW" : "DENY";
+  let effect = base;
   effects.push(`rbac:${base}`);
 
-  if (req.attributeContext) {
-    for (const condition of deps.attributeConditions ?? []) {
-      effects.push(`attr:${condition.name}`);
+  const attrs = { ...req.principal.attributes, ...(req.attributeContext ?? {}) };
+  for (const condition of deps.attributeConditions ?? []) {
+    try {
+      const passed = condition.allowed(attrs);
+      effects.push(`abac:${condition.name}:${passed ? "ALLOW" : "DENY"}`);
+      if (!passed) return deny(effects.join("; "));
+    } catch {
+      return deny(`abac:${condition.name}:evaluation-error`);
     }
   }
 
@@ -81,22 +54,18 @@ export function decidePdp(deps: PdpDeps, req: PdpRequest): PdpDecision {
     effect = "FLAG";
     effects.push("machine+privileged→FLAG");
   }
-
-  if (effect === "DENY") {
-    return deny(effects.join("; "));
-  }
-
+  if (effect === "DENY") return deny(effects.join("; "));
   return { effect, reason: effects.join("; "), admitted: effect === "ALLOW" };
 }
 
+/** A FLAG may only be overridden by an approval bound to the exact live request. */
 export function overrideWithHumanApproval(
   decision: PdpDecision,
-  approval?: ApprovalRef,
+  approval: ApprovalRef | undefined,
+  target: ApprovalTarget,
 ): PdpDecision {
-  if (decision.effect !== "FLAG") {
-    return decision;
-  }
-  if (!approval || approval.decision !== "ALLOW") {
+  if (decision.effect !== "FLAG") return decision;
+  if (!approval || approval.decision !== "ALLOW" || !verifyHumanApproval(approval, target)) {
     return { ...decision, admitted: false, evidenceRef: approval?.evidenceId };
   }
   return {
@@ -108,12 +77,6 @@ export function overrideWithHumanApproval(
   };
 }
 
-function isPrivileged(action: string): boolean {
+export function isPrivileged(action: string): boolean {
   return /^(delete|modify|approve|escalate|admin|impersonate|reveal|transfer)/i.test(action);
 }
-
-function deny(reason: string): PdpDecision {
-  return { effect: "DENY", reason, admitted: false };
-}
-
-export { isPrivileged };
