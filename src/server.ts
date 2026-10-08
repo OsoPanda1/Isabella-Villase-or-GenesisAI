@@ -407,6 +407,7 @@ app.get("/api/v1/status", (_req, res) => {
       veritas: "ACTIVE",
       bookpi: "ACTIVE",
       pdp: "ACTIVE",
+      litleTrustFabric: "ACTIVE",
       geminiEngine: apiKey ? "CONNECTED" : "SOVEREIGN_FALLBACK",
     },
     experts: {
@@ -417,6 +418,7 @@ app.get("/api/v1/status", (_req, res) => {
     toolsCount: 2,
     skillsCount: 6,
     invariant: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
+    trust: { litle: "L-512.v1", evidence: "SHA3-512", certificates: "HMAC-SHA256" },
   });
 });
 
