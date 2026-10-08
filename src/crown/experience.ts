@@ -95,11 +95,9 @@ function moduleForIntent(intent: CrownVerdict["intent"]): CognitiveModule {
 
   switch (intent.category) {
     case "knowledge":
-      return "SOPHIA";
-    case "memory":
-      return "MNEMOSYNE";
-    case "territory":
-      return "TELLUS";
+      return /memoria|memory|recuerda|recordar|historia|patrimonio/i.test(intent.signals.join(" "))
+        ? "MNEMOSYNE"
+        : "SOPHIA";
     case "creative":
       return "ISA";
     case "coding":
