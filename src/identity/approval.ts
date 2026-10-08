@@ -75,8 +75,17 @@ function hashTarget(value: string): string {
   return Buffer.from(value, "utf8").toString("base64url");
 }
 
+export function approvalSignerFromEnvironment(): ApprovalSigner {
+  const privateKeyPem = process.env.ISABELLA_APPROVAL_PRIVATE_KEY_PEM;
+  const keyId = process.env.ISABELLA_APPROVAL_KEY_ID;
+  if (!privateKeyPem || !keyId) throw new Error("APPROVAL: configure ISABELLA_APPROVAL_PRIVATE_KEY_PEM and ISABELLA_APPROVAL_KEY_ID.");
+  const publicKeyPem = createPublicKey(createPrivateKey(privateKeyPem)).export({ format: "pem", type: "spki" }).toString();
+  return { keyId, privateKeyPem, publicKeyPem };
+}
+
 function signerFor(approver: Principal, signer?: ApprovalSigner): ApprovalSigner {
   if (signer) return signer;
+  if (process.env.ISABELLA_APPROVAL_PRIVATE_KEY_PEM && process.env.ISABELLA_APPROVAL_KEY_ID) return approvalSignerFromEnvironment();
   if (process.env.VITEST === "true" || process.env.NODE_ENV === "test") {
     const pair = generateKeyPairSync("ed25519");
     return {
