@@ -64,6 +64,8 @@ describe("crown/facade", () => {
       methodId: "NO.VALIDO",
       principal: human,
       gate,
+      action: "x",
+      resource: "x",
     });
     expect(v.responseMode).toBe("refuse");
   });
