@@ -743,6 +743,7 @@ app.get("/api/v1/isabella/status", (_req, res) => {
   res.json({
     success: true,
     engine: runtime.isabella.snapshot(),
+    latency: runtime.isabellaLatencySnapshot(),
     timestamp: new Date().toISOString(),
   });
 });
