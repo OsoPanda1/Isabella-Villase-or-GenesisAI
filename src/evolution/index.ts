@@ -5,4 +5,6 @@ export { buildManifest, evolutionReport, controlsForDomain, FABRIC_VERSION } fro
 export { createEngine, applyControlState, allowTransition, type WiringRegistry, type EngineResult } from "./engine";
 export { evolveControlState, stateRank, CONTROL_STATE_ORDER } from "./state-machine";
 export { validateProposal, controlsForProposalDomain, type EvolutionProposal, type ChangeBlock } from "./proposals";
+export { createEvidence, canPromoteToVerified, nextEvidenceState, type ControlEvidence } from "./evidence";
+export { allowLifecycleTransition, assertLifecycleTransition, type ControlLifecycle, type LifecycleTransition } from "./lifecycle";
 export type { EvolutionControl, EvolutionManifest } from "../core/types";
