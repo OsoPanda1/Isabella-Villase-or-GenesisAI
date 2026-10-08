@@ -9,7 +9,7 @@ import { GENESIS_EXPERTS, EXPERT_REGISTRY } from "./cognition/experts";
 import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
 import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
-import { LitleTrustFabric, parseAny, verifyEvidenceChain } from "./litle";
+import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
 import { bookPiSecret } from "./security/secrets";
 
 const app = express();
@@ -3001,7 +3001,6 @@ app.post("/api/v1/litle/verify", (req, res) => {
       res.status(400).json({ success: false, error: "certificate y secret son requeridos" });
       return;
     }
-    const { verifyCertificate } = await import("./litle/certificate");
     const certificateValid = verifyCertificate(body.certificate, String(body.secret));
     const evidenceValid = body.evidenceChain ? verifyEvidenceChain(body.evidenceChain) : null;
     const id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
