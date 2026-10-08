@@ -442,6 +442,7 @@ app.get("/api/v1/status", (_req, res) => {
       pdp: "ACTIVE",
       litleTrustFabric: "ACTIVE",
       quantumPennyLane: runtime.quantum.describe(),
+      quantumHealth: runtime.quantumHealth(),
       geminiEngine: apiKey ? "CONNECTED" : "SOVEREIGN_FALLBACK",
     },
     experts: {
@@ -450,7 +451,9 @@ app.get("/api/v1/status", (_req, res) => {
     },
     crownNodesCount: CROWN_NODES.length,
     toolsCount: 2,
-    skillsCount: 6,
+    skillsCount: runtime.skills.list().length,
+    modulesCount: runtime.modules.list().length,
+    protocolsCount: runtime.protocols.list().length,
     invariant: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
     trust: { litle: "L-512.v1", evidence: "SHA3-512", certificates: "HMAC-SHA256" },
   });
