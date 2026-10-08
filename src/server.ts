@@ -714,10 +714,45 @@ app.post("/api/v1/isabella/mediate", (req, res) => {
     }
 
     const started = Date.now();
+    const principal = createPrincipal({
+      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
+      kind: body.principalKind === "machine" ? "machine" : "human",
+      roles: Array.isArray(body.roles)
+        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
+        : ["operator"],
+    });
+    assertBalancedAuthority(principal);
+
+    const governance = runtime.evaluate({
+      input,
+      methodId: "A.COGNITION.E14_COGNITIVE_SAFETY.mediate_isabella.v2.0.0.LOW.CONSTITUTIONAL",
+      principal,
+      gate: defaultGate,
+      action: "cognition:mediate",
+      resource: "isabella",
+      riskTier: "LOW",
+      inputTokens: Math.max(1, Math.ceil(input.length / 4)),
+      expectedOutputTokens: 256,
+      pressure: 0,
+      requiresTools: false,
+      requiresMemory: false,
+    });
+
+    if (!governance.admitted) {
+      res.status(403).json({
+        success: false,
+        error: "Isabella mediation denied by Genesis governance",
+        governance,
+        latencyMs: Date.now() - started,
+      });
+      return;
+    }
+
     const mediation = runtime.mediateIsabella({ input, profile });
     res.json({
       success: true,
       engine: runtime.isabella.snapshot(),
+      governance,
       mediation,
       latencyMs: Date.now() - started,
       timestamp: new Date().toISOString(),
