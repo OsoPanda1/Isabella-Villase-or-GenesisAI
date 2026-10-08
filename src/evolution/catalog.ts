@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   ENGINEERING_AXES,
   IMPROVEMENT_PRIMITIVES,
@@ -45,7 +46,7 @@ export function controlMatrixDigest(controls: readonly EvolutionControl[]): stri
   return cryptoDigest(canonical);
 }
 function cryptoDigest(value: string): string {
-  return new Uint8Array(Buffer.from(value, "utf8")).reduce((h, b) => ((h << 5) - h + b) | 0, 0).toString(16).padStart(8, "0");
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 export function controlSummary(controls: readonly EvolutionControl[]): Record<ControlState, number> {
   const summary: Record<ControlState, number> = { declared: 0, wired: 0, verified: 0, blocked: 0 };
