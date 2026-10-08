@@ -35,7 +35,7 @@ export function inspectAegis(input: string): AegisVerdict {
     for (const pattern of rule.patterns) {
       const match = input.match(pattern);
       if (match) {
-        findings.push({ kind: rule.kind, severity: rule.severity, evidence: match[0] });
+        findings.push({ kind: rule.kind, severity: rule.severity, evidence: match[0] ?? pattern.source });
         break;
       }
     }
