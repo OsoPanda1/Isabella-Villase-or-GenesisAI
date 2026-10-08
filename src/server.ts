@@ -698,6 +698,55 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
   }
 });
 
+// Isabella cognitive mediation — executed only through the canonical Genesis runtime.
+app.post("/api/v1/isabella/mediate", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const input = typeof body.input === "string" ? body.input.trim() : "";
+    const allowedProfiles = new Set(["general", "contra-auditoria", "simulacion", "secretaria", "gobernanza"]);
+    const profile = typeof body.profile === "string" && allowedProfiles.has(body.profile)
+      ? body.profile as "general" | "contra-auditoria" | "simulacion" | "secretaria" | "gobernanza"
+      : "general";
+
+    if (!input) {
+      res.status(400).json({ success: false, error: "input es requerido" });
+      return;
+    }
+
+    const started = Date.now();
+    const mediation = runtime.mediateIsabella({ input, profile });
+    res.json({
+      success: true,
+      engine: runtime.isabella.snapshot(),
+      mediation,
+      latencyMs: Date.now() - started,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post("/api/v1/isabella/entropy", (req, res) => {
+  try {
+    const probabilities = Array.isArray(req.body?.probabilities)
+      ? req.body.probabilities.filter((value: unknown): value is number => typeof value === "number")
+      : [];
+    const result = runtime.evaluateIsabellaEntropy(probabilities);
+    res.json({ success: true, ...result, timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get("/api/v1/isabella/status", (_req, res) => {
+  res.json({
+    success: true,
+    engine: runtime.isabella.snapshot(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Triple Blockade Security Scanner
 app.post("/api/v1/triple-blockade/scan", (req, res) => {
   const { input = "" } = req.body ?? {};
