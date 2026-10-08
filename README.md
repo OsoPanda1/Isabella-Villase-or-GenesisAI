@@ -1256,3 +1256,179 @@ Se añadió `test/pidReconciler.test.ts` para cubrir:
 3. rechazo de ORCID inválido.
 4. modo estricto sin identificadores.
 5. generación del reporte y fingerprint.
+
+
+---
+
+# Atlas Persistence Port — Atlas / HE-HEP / TAMV-online
+
+El subsistema Atlas se integra como **infraestructura de persistencia y signaling**, no como un segundo runtime cognitivo. El principio de integración es:
+
+\`\`\`text
+GENESIS RUNTIME
+      │
+      │ AtlasPersistencePort
+      ▼
+   AtlasStore
+      │
+      ▼
+Supabase Data API
+\`\`\`
+
+Esta separación evita que el kernel conozca tablas, columnas, REST o credenciales de Supabase. Genesis conserva autoridad sobre la ejecución; AtlasStore sólo materializa estado persistente y eventos en el backend configurado.
+
+## Contrato canónico
+
+\`src/atlas/persistence.ts\` define \`AtlasPersistencePort\` con estas capacidades:
+
+| Capacidad | Propósito | Backend |
+|---|---|---|
+| \`createUser\` | Persistir identidad Atlas | \`atlas_users\` |
+| \`listUsers\` | Recuperar usuarios Atlas | \`atlas_users\` |
+| \`recordProtocolExecution\` | Registrar ejecución de protocolo | \`atlas_protocols\` |
+| \`recordEconomyEntry\` | Registrar crédito/débito | \`atlas_ledger\` |
+| \`publishXrEvent\` | Persistir eventos XR | \`atlas_xr_events\` |
+| \`createSignal\` | Persistir signaling WebRTC | \`atlas_webrtc_signals\` |
+| \`onXrEvent\` | Bus local de eventos XR | proceso actual |
+| \`onSignal\` | Bus local de signaling | proceso actual |
+
+Los métodos de dominio devuelven objetos normalizados y no exponen directamente las filas de Supabase al runtime.
+
+## Antifragilidad de transporte
+
+\`AtlasStore\` usa \`fetch\` nativo y \`AbortController\`:
+
+- timeout configurable;
+- timeout predeterminado de 10 segundos;
+- cancelación efectiva de la solicitud;
+- validación de configuración;
+- propagación explícita de errores HTTP;
+- limpieza garantizada del temporizador;
+- listeners aislados: una excepción de un consumidor no rompe a los demás.
+
+La clave \`SUPABASE_SERVICE_ROLE_KEY\` sólo puede existir en backend. Nunca debe enviarse al navegador ni incorporarse a código cliente.
+
+## Inyección en Genesis
+
+\`IsabellaGenesisRuntime\` acepta ahora un segundo parámetro opcional:
+
+\`\`\`ts
+new IsabellaGenesisRuntime(telemetry, persistence);
+\`\`\`
+
+La persistencia puede inicializarse explícitamente mediante \`initPersistence()\` y proyectarse mediante:
+
+\`\`\`ts
+runtime.persistUser(...)
+runtime.persistProtocolExecution(...)
+runtime.persistEconomyEntry(...)
+runtime.publishAtlasXrEvent(...)
+runtime.createAtlasSignal(...)
+\`\`\`
+
+Esto es intencionalmente explícito. **No se añadió persistencia automática a cada evaluación cognitiva**, porque una evaluación de Genesis no debe convertirse accidentalmente en una escritura externa. La ejecución persistente debe ocurrir en el punto de dominio que realmente corresponda.
+
+Por la misma razón, este repositorio no afirma que exista todavía un \`AtlasKernel\`, \`postLedger()\` o \`executeProtocol()\` operativo en el código actual. El port queda preparado para que esos métodos, cuando existan, proyecten sus resultados sin acoplar el kernel a Supabase.
+
+## HE-HEP
+
+Los contratos Atlas admiten \`he_hep_context\` en las operaciones donde el contexto semántico forma parte del dominio:
+
+\`\`\`text
+HE-Identity  → HEP-1
+HE-Transform → HEP-2
+HE-Economy   → HEP-1
+\`\`\`
+
+Estos valores son **metadatos de dominio**, no una prueba criptográfica ni una certificación externa. Su persistencia no implica por sí sola validación de identidad, autoridad, economía o territorio.
+
+## Economía
+
+\`recordEconomyEntry()\` valida:
+
+- usuario;
+- monto finito;
+- monto estrictamente mayor que cero;
+- razón;
+- tipo \`credit | debit\`.
+
+La operación no calcula saldos ni implementa una contabilidad de doble partida. Por tanto, \`atlas_ledger\` debe entenderse como registro de movimientos; un ledger financiero completo requiere invariantes transaccionales adicionales en la base de datos.
+
+## XR y WebRTC
+
+XR y signaling están deliberadamente fuera del núcleo cognitivo:
+
+\`\`\`text
+Atlas / online
+├── XR event persistence
+└── WebRTC signaling persistence
+
+Genesis
+└── governance / cognition / execution
+\`\`\`
+
+\`onXrEvent()\` y \`onSignal()\` son buses **locales al proceso**. No son Supabase Realtime, no son un broker distribuido y no garantizan entrega entre múltiples instancias. Para operación federada/multi-nodo se requiere una capa de mensajería o Realtime explícita.
+
+## Seguridad
+
+La arquitectura conserva la invariante:
+
+\`\`\`text
+CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
+\`\`\`
+
+AtlasStore no concede autoridad. Que una escritura en Supabase sea técnicamente posible no significa que una operación haya sido autorizada por CROWN, AEGIS, consentimiento, política o un principal válido.
+
+La service-role key proporciona privilegios de backend y, por ello, debe quedar detrás de los límites de despliegue. RLS, políticas SQL, constraints, auditoría y controles de infraestructura siguen siendo responsabilidad del entorno Supabase.
+
+## Variables de entorno
+
+Configuración mínima:
+
+\`\`\`bash
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<backend-only-secret>
+\`\`\`
+
+Opcional:
+
+\`\`\`bash
+ATLAS_STORE_TIMEOUT_MS=10000
+\`\`\`
+
+La implementación actual expone \`AtlasStoreConfig\`; la construcción desde variables de entorno queda como una decisión de composición del despliegue y no se mezcla con el dominio.
+
+## Pruebas
+
+Se añadió \`test/atlasPersistence.test.ts\` para cubrir:
+
+- configuración incompleta;
+- creación y mapeo de usuario;
+- llamada a Supabase Data API;
+- aislamiento de errores de listeners XR;
+- rechazo de montos económicos inválidos antes de hacer I/O.
+
+La suite es de contrato/mocks; **no demuestra conectividad con un proyecto Supabase real**. Para certificar el despliegue real todavía se necesita una prueba de integración con una instancia controlada, esquema SQL, políticas y credenciales de entorno.
+
+## Estado de integración
+
+**Implementado en la rama de evolución:**
+
+- \`src/atlas/types.ts\`
+- \`src/atlas/persistence.ts\`
+- \`src/atlas/index.ts\`
+- inyección opcional en \`src/genesis/runtime.ts\`
+- pruebas unitarias de persistencia
+- documentación de límites y configuración
+
+**Pendiente para una integración operativa completa:**
+
+1. esquema SQL real para las tablas Atlas;
+2. RLS/constraints y políticas de Supabase;
+3. health-check de infraestructura;
+4. Realtime/broker para signaling multi-instancia;
+5. integración con métodos de dominio Atlas reales cuando estén presentes;
+6. pruebas contra Supabase real;
+7. observabilidad de latencia, errores y timeouts de persistencia.
+
+El resultado actual debe clasificarse como **puerto de infraestructura + adaptador Supabase integrado al runtime**, no como un Atlas online completamente desplegado.
