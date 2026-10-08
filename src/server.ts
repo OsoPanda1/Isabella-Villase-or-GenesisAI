@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import { IsabellaGenesisRuntime } from "./genesis/runtime";
-import { createPrincipal } from "./identity/principal";
+import { assertBalancedAuthority, createPrincipal } from "./identity/principal";
 import { createCapabilityGate } from "./crown/capability";
 import { GENESIS_EXPERTS, EXPERT_REGISTRY } from "./cognition/experts";
 import { invariantViewModel } from "./core/invariants";
@@ -648,7 +648,7 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       memoryQuery,
     });
 
-    const traceId = `trace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const traceId = `trace-${Date.now()}-${Buffer.from(input).toString("base64url").slice(0, 12)}`;
     const snapshot = createCrownExperienceSnapshot(
       { input, principal, methodId, action, resource, riskTier, memoryQuery },
       decision.crown,
