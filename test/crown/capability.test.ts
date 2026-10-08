@@ -43,11 +43,11 @@ describe("crown/capability", () => {
 
   it("deniega si el principal no tiene rol autorizado", () => {
     const guest = createPrincipal({ id: "g", kind: "human", roles: [] });
-    expect(callGate(gate(), MEMORIA, { principal: guest }).granted).toBe(false);
+    expect(callGate(gate(), MEMORIA, { principal: guest, action: "memory:recall", resource: "memory" }).granted).toBe(false);
   });
 
   it("exige aprobación humana para HIGH/CRITICAL", () => {
-    const sinAprobacion = callGate(gate(), COURIER, { principal: operator });
+    const sinAprobacion = callGate(gate(), COURIER, { principal: operator, action: "transfer_asset", resource: "asset:123" });
     expect(sinAprobacion.granted).toBe(false);
 
     const approving = issueHumanApproval(

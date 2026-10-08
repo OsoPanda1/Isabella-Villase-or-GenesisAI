@@ -68,7 +68,7 @@ describe("Genesis V6 security and cognition", () => {
       evidenceIds: ["s1"],
       claim: {
         subject: "TAMV", predicate: "hasStatus", object: "emerging",
-        sourceIds: ["s1"], temporalState: "current", provenance: { source: "s1" },
+        sourceIds: ["s1"], evidenceIds: ["s1"], temporalState: "current", provenance: { source: "s1" },
       },
     });
     expect(claim.epistemicState).toBe("E1_SOURCE_FOUND");

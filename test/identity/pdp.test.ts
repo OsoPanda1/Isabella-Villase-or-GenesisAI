@@ -86,7 +86,7 @@ describe("identity/pdp", () => {
 
   it("override de ALLOW no cambia nada", () => {
     const allow = decide({ rbac, tenants }, req({ principal: human }));
-    expect(overrideWithHumanApproval(allow, undefined).effect).toBe("ALLOW");
+    expect(overrideWithHumanApproval(allow, undefined, { methodId: "m", action: "read:all", principalId: human.id, resource: "res" }).effect).toBe("ALLOW");
   });
 });
 
