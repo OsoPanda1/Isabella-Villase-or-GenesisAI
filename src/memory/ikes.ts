@@ -49,7 +49,7 @@ export interface KnowledgeProposal {
 }
 
 function hash(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+  return createHash("sha256").update((JSON.stringify(value) ?? ""), "utf8").digest("hex");
 }
 
 export class IKESEngine {
