@@ -23,3 +23,9 @@ export * from "./cognition/emotional-trace";
 export * from "./cognition/experts";
 export * from "./territory/context";
 export * from "./xr/safety";
+
+export * from "./cognition/consent";
+export * from "./cognition/orchestrator";
+export * from "./memory/provenance";
+export * from "./inference/adapters";
+export * from "./deployment/canary";

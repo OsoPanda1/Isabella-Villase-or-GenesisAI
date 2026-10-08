@@ -16,10 +16,10 @@ export interface CompanionSafetyVerdict {
 
 const RULES: ReadonlyArray<{domain: CompanionSafetyDomain; severity: CompanionSafetyFinding["severity"]; patterns: readonly RegExp[]}> = [
   { domain:"sexualization", severity:"HIGH", patterns:[/sexual(?:ly|ized)?/i,/sext(?:ing)?/i,/erotic/i,/porn/i] },
-  { domain:"grooming", severity:"CRITICAL", patterns:[/groom(?:ing)?/i,/meets+(?:me|alone)/i,/keeps+thiss+secret/i] },
-  { domain:"emotional_dependency", severity:"HIGH", patterns:[/you(?:'re| are)s+alls+is+need/i,/onlys+yous+understands+me/i,/don'ts+tells+anyone/i] },
-  { domain:"coercion", severity:"HIGH", patterns:[/threaten/i,/blackmail/i,/forces+me/i,/extort/i] },
-  { domain:"self_harm_signal", severity:"CRITICAL", patterns:[/kills+myself/i,/self[- ]?harm/i,/suicid/i,/ends+mys+life/i] },
+  { domain:"grooming", severity:"CRITICAL", patterns:[/groom(?:ing)?/i,/meet\s+(?:me|alone)/i,/keep\s+this\s+secret/i] },
+  { domain:"emotional_dependency", severity:"HIGH", patterns:[/you(?:'re| are)\s+all\s+i\s+need/i,/only\s+you\s+understand\s+me/i,/don't\s+tell\s+anyone/i] },
+  { domain:"coercion", severity:"HIGH", patterns:[/threaten/i,/blackmail/i,/force\s+me/i,/extort/i] },
+  { domain:"self_harm_signal", severity:"CRITICAL", patterns:[/kill\s+myself/i,/self[- ]?harm/i,/suicid/i,/end\s+my\s+life/i] },
   { domain:"harassment", severity:"MEDIUM", patterns:[/doxx/i,/harass/i,/stalk/i] },
 ];
 
