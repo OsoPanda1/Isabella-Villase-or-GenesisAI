@@ -23,6 +23,7 @@ import type { AtlasPersistencePort, CreateUserInput, RecordEconomyEntryInput, Re
 import { IsabellaEngine, type IsabellaEngineConfig, type IsabellaProfile } from "../isabella";
 import { PennyLaneBridge, type PennyLaneBridgeConfig, type PennyLaneExecutionRequest, type PennyLaneExecutionResult } from "../quantum";
 import { ProtocolRegistry } from "../protocols";
+import { GenesisModuleRegistry } from "../modules";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -56,6 +57,7 @@ export class IsabellaGenesisRuntime {
   readonly isabella: IsabellaEngine;
   readonly quantum: PennyLaneBridge;
   readonly protocols = new ProtocolRegistry();
+  readonly modules = new GenesisModuleRegistry();
 
   constructor(
     telemetry: TelemetrySink = new InMemoryTelemetry(),
@@ -67,7 +69,35 @@ export class IsabellaGenesisRuntime {
     this.persistence = persistence;
     this.isabella = new IsabellaEngine(isabellaConfig);
     this.quantum = new PennyLaneBridge(quantumConfig);
+    this.registerCanonicalModules();
     this.registerCanonicalProtocols();
+  }
+
+  private registerCanonicalModules(): void {
+    this.modules.register({
+      id: "isabella.cognition",
+      version: "1.0.0",
+      domain: "cognition",
+      capabilities: ["mediation", "entropy", "epistemic-analysis"],
+    });
+    this.modules.register({
+      id: "isabella.litle",
+      version: "1.0.0",
+      domain: "trust",
+      capabilities: ["attestation", "evidence-chain", "certificate"],
+    });
+    this.modules.register({
+      id: "isabella.atlas",
+      version: "1.0.0",
+      domain: "infrastructure",
+      capabilities: ["persistence", "xr", "webrtc-signaling"],
+    });
+    this.modules.register({
+      id: "isabella.quantum.pennylane",
+      version: "1.0.0",
+      domain: "quantum",
+      capabilities: ["circuit-execution", "quantum-simulation", "hybrid-workflows", "qiskit-interop"],
+    });
   }
 
   private registerCanonicalProtocols(): void {
