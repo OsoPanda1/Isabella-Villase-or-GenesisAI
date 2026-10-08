@@ -40,6 +40,9 @@ export interface ApprovalRef {
   signature: string;
   action: string;
   resource?: string;
+  principalId?: string;
+  contextHash?: string;
+  policyVersion?: string;
 }
 
 export interface ApprovalReplayRegistry {
@@ -110,12 +113,15 @@ export function issueHumanApproval(
     evidenceId, approver: approver.id, approverKind: "human", methodId: target.methodId,
     decision, decidedAt, expiresAt, nonce, targetHash, keyId: activeSigner.keyId,
     publicKeyPem: activeSigner.publicKeyPem, signature, action: target.action ?? "", resource: target.resource,
+    principalId: target.principalId, contextHash: target.contextHash, policyVersion: target.policyVersion,
   };
 }
 
 export function verifyHumanApproval(ref: ApprovalRef, target: ApprovalTarget, replay?: ApprovalReplayRegistry): boolean {
   if (ref.approverKind !== "human" || ref.methodId !== target.methodId) return false;
-  const canonical = canonicalTarget({ ...target, action: target.action ?? ref.action, resource: target.resource ?? ref.resource }, ref.decision, ref.approver, ref.nonce, ref.expiresAt);
+  const canonical = canonicalTarget({ ...target, action: target.action ?? ref.action, resource: target.resource ?? ref.resource,
+    principalId: target.principalId ?? ref.principalId, contextHash: target.contextHash ?? ref.contextHash,
+    policyVersion: target.policyVersion ?? ref.policyVersion }, ref.decision, ref.approver, ref.nonce, ref.expiresAt);
   if (hashTarget(canonical) !== ref.targetHash) return false;
   const expiry = Date.parse(ref.expiresAt);
   if (!Number.isFinite(expiry) || expiry < Date.now()) return false;
