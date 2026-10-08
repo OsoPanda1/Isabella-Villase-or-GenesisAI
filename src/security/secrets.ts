@@ -8,6 +8,15 @@ export function requiredSecret(name: string, explicit?: string): string {
   return value;
 }
 
+export function bookPiSecret(explicit?: string): string {
+  if (explicit) return requiredSecret("BOOKPI_INTEGRITY_SECRET", explicit);
+  if (process.env.BOOKPI_INTEGRITY_SECRET) return requiredSecret("BOOKPI_INTEGRITY_SECRET");
+  if (process.env.VITEST === "true" || process.env.NODE_ENV === "test") {
+    return "bookpi-test-only-secret-not-for-production-2026";
+  }
+  throw new Error("BOOKPI: integrity secret is required; configure BOOKPI_INTEGRITY_SECRET or pass ctx.secret.");
+}
+
 export function equalSecret(a: string, b: string): boolean {
   const aa = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
