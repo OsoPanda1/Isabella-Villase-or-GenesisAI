@@ -280,6 +280,14 @@ runtime.skills.register({
 // Setup default Capability Gate
 const defaultGate = createCapabilityGate([
   {
+    methodId: "A.COGNITION.E14_COGNITIVE_SAFETY.mediate_isabella.v2.0.0.LOW.CONSTITUTIONAL",
+    owner: "isabella-sovereign",
+    allowedRoles: ["operator", "admin", "viewer"],
+    riskTier: "LOW",
+    governanceTier: "CONSTITUTIONAL",
+    humanApprovalRequired: false,
+  },
+  {
     methodId: "T.TOURISM.E04_TERRITORY.query.v1.0.0.LOW.TERRITORIAL",
     owner: "isabella-sovereign",
     allowedRoles: ["operator", "admin", "viewer"],
