@@ -1,0 +1,22 @@
+{
+  "name": "isabella-villase-or-genesisai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isabella Villaseñor AI — Genesis TINA v40.0.0. Cognitive Orchestrator & Civilizational Memory OS.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
