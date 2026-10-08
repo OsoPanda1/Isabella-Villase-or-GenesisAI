@@ -9,6 +9,8 @@ import { GENESIS_EXPERTS, EXPERT_REGISTRY } from "./cognition/experts";
 import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
 import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
+import { LitleTrustFabric, parseAny, verifyEvidenceChain } from "./litle";
+import { bookPiSecret } from "./security/secrets";
 
 const app = express();
 const port = 3000;
@@ -2961,6 +2963,52 @@ app.get("/", (_req, res) => {
   </script>
 </body>
 </html>`);
+});
+
+app.post("/api/v1/litle/attest", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const evidence = Array.isArray(body.evidence) ? body.evidence : [];
+    if (!body.year || !body.namespace || !body.workType || evidence.length === 0) {
+      res.status(400).json({ success: false, error: "year, namespace, workType y evidence son requeridos" });
+      return;
+    }
+    const fabric = new LitleTrustFabric(bookPiSecret());
+    const result = fabric.attest({
+      year: Number(body.year),
+      namespace: String(body.namespace),
+      workType: String(body.workType) as Parameters<LitleTrustFabric["attest"]>[0]["workType"],
+      evidence: evidence.map((item: Record<string, unknown>, index: number) => ({
+        id: typeof item.id === "string" ? item.id : "evidence-" + (index + 1),
+        type: String(item.type ?? "SOURCE") as Parameters<LitleTrustFabric["attest"]>[0]["evidence"][number]["type"],
+        content: String(item.content ?? ""),
+        parentIds: Array.isArray(item.parentIds) ? item.parentIds.map(String) : undefined,
+        metadata: item.metadata && typeof item.metadata === "object" ? item.metadata as Record<string, string> : undefined,
+      })),
+      dimensions: body.dimensions,
+      aiAssisted: Boolean(body.aiAssisted),
+    });
+    res.json({ success: true, attestation: result.attestation, certificate: result.certificate, evidenceRoot: result.evidenceChain.rootHash, profile: result.profile });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.post("/api/v1/litle/verify", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    if (!body.certificate || !body.secret) {
+      res.status(400).json({ success: false, error: "certificate y secret son requeridos" });
+      return;
+    }
+    const { verifyCertificate } = await import("./litle/certificate");
+    const certificateValid = verifyCertificate(body.certificate, String(body.secret));
+    const evidenceValid = body.evidenceChain ? verifyEvidenceChain(body.evidenceChain) : null;
+    const id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
+    res.json({ success: true, certificateValid, evidenceValid, id });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 app.listen(port, host, () => {
