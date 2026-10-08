@@ -29,3 +29,18 @@ BEGIN
   RETURN QUERY SELECT (bad = 0), total;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION bookpi_require_canonical_on_insert()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.canonical IS NULL OR length(NEW.canonical) = 0 THEN
+    RAISE EXCEPTION 'BOOKPI: canonical event core is mandatory for new events';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_bookpi_require_canonical ON bookpi_events;
+CREATE TRIGGER trg_bookpi_require_canonical
+BEFORE INSERT ON bookpi_events
+FOR EACH ROW EXECUTE FUNCTION bookpi_require_canonical_on_insert();
