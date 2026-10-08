@@ -15,11 +15,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/setup@v3
+      - uses: actions/setup-node@v4
         with:
-          version: 11
-          runtime: node@22
-          cache: true
+          node-version: 22
+      - run: npm install --global pnpm@10.22.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
