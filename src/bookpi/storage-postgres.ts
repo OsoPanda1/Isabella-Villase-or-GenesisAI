@@ -9,7 +9,7 @@ export interface PostgresLike {
 export interface PostgresBookPiRow {
   id: string; type: string; sequence: number; prev_hash: string; timestamp: string;
   actor_id: string | null; payload: unknown; schema_version: string; meta: unknown;
-  header: unknown; hash: string; integrity: string;
+  header: unknown; hash: string; integrity: string; canonical: string;
 }
 
 export const BOOKPI_TABLE = "bookpi_events";
