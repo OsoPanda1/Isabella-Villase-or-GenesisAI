@@ -35,6 +35,8 @@ describe("crown/facade", () => {
       methodId: MEMORIA,
       principal: human,
       gate,
+      action: "memory:recall",
+      resource: "memory",
     });
     expect(v.methodIdValid).toBe(true);
     expect(v.gateApproved).toBe(true);
@@ -48,6 +50,8 @@ describe("crown/facade", () => {
       methodId: DELETER,
       principal: human,
       gate,
+      action: "data:delete",
+      resource: "records",
     });
     expect(v.requiresHumanApproval).toBe(true);
     expect(v.riskLevel).toBe("critical");
@@ -65,13 +69,15 @@ describe("crown/facade", () => {
   });
 
   it("aprobación presente admite la invocación crítica", () => {
-    const approval = issueHumanApproval(human, { methodId: DELETER, action: "permanent_delete" }, "ALLOW");
+    const approval = issueHumanApproval(human, { methodId: DELETER, action: "permanent_delete", resource: "records", principalId: human.id }, "ALLOW");
     const v = evaluateCrown({
       input: "ejecuta la limpieza aprobada",
       methodId: DELETER,
       principal: human,
       gate,
       approval,
+      action: "permanent_delete",
+      resource: "records",
     });
     expect(v.gateApproved).toBe(true);
     expect(v.verification.allPassed).toBe(true);
