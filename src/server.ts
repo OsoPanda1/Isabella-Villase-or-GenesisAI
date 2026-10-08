@@ -8,6 +8,7 @@ import { createCapabilityGate } from "./crown/capability";
 import { GENESIS_EXPERTS, EXPERT_REGISTRY } from "./cognition/experts";
 import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
+import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
 
 const app = express();
 const port = 3000;
@@ -601,6 +602,88 @@ Responde de forma elocuente, rigurosa, profunda, epistemológicamente calibrada 
       success: false,
       error: error instanceof Error ? error.message : String(error),
     });
+  }
+});
+
+// Canonical cognitive API: product/UI clients submit intent only.
+// Identity, authority, policy and system instructions are derived server-side.
+app.post("/api/v1/cognitive/request", async (req, res) => {
+  const startedAt = new Date().toISOString();
+  try {
+    const body = req.body ?? {};
+    const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (!input) {
+      res.status(400).json({ success: false, error: "input es requerido" });
+      return;
+    }
+
+    const principal = createPrincipal({
+      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
+      kind: body.principalKind === "machine" ? "machine" : "human",
+      roles: Array.isArray(body.roles) ? body.roles.filter((v: unknown): v is string => typeof v === "string") : ["operator"],
+    });
+    assertBalancedAuthority(principal);
+
+    const methodId = typeof body.methodId === "string"
+      ? body.methodId
+      : "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
+    const action = typeof body.action === "string" ? body.action : "memory:recall";
+    const resource = typeof body.resource === "string" ? body.resource : "memory";
+    const riskTier = body.riskTier === "MEDIUM" || body.riskTier === "HIGH" || body.riskTier === "CRITICAL" ? body.riskTier : "LOW";
+    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery : undefined;
+
+    const decision = runtime.evaluate({
+      input,
+      methodId,
+      principal,
+      gate: defaultGate,
+      action,
+      resource,
+      riskTier,
+      inputTokens: Math.max(1, Math.ceil(input.length / 4)),
+      expectedOutputTokens: 512,
+      pressure: 0,
+      requiresTools: false,
+      requiresMemory: Boolean(memoryQuery),
+      memoryQuery,
+    });
+
+    const traceId = `trace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const snapshot = createCrownExperienceSnapshot(
+      { input, principal, methodId, action, resource, riskTier, memoryQuery },
+      decision.crown,
+      `req-${Date.now()}`,
+      traceId,
+      startedAt,
+      decision.memory.length,
+    );
+    const systemPrompt = buildCanonicalSystemPrompt(
+      { input, principal, methodId, action, resource, riskTier, memoryQuery },
+      decision.crown,
+      snapshot.route,
+      traceId,
+    );
+
+    let generativeNarrative: string | null = null;
+    if (decision.admitted && genAi && body.modelEngine === "gemini") {
+      const resp = await genAi.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `${systemPrompt}\\n\\nSolicitud del usuario:\\n${input}`,
+      });
+      generativeNarrative = resp.text ?? null;
+    }
+
+    res.status(decision.admitted ? 200 : 403).json({
+      success: decision.admitted,
+      requestId: snapshot.requestId,
+      traceId,
+      decision,
+      snapshot,
+      systemPromptApplied: true,
+      generativeNarrative,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 });
 
