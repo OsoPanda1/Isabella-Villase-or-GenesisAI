@@ -15,6 +15,10 @@ import { createEmotionalTrace, type EmotionalTrace } from "../cognition/emotiona
 import { planExperts, type ExpertPlan, GENESIS_EXPERTS } from "../cognition/experts";
 import { queryTerritory, type TerritoryQuery, type TerritoryAnswer } from "../territory/context";
 import { evaluateXrSafety, type XrSafetyDecision, type XrSafetyEvent } from "../xr/safety";
+import { InMemoryConsentRegistry, type ConsentRegistry } from "../cognition/consent";
+import { planExperts as planCognitiveExperts } from "../cognition/experts";
+import { synthesize, type CognitiveSynthesis, type CognitiveTask, type ExpertResult } from "../cognition/orchestrator";
+import { createSource, validateClaim, type ProvenanceClaim, type ProvenanceSource } from "../memory/provenance";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -43,6 +47,7 @@ export class IsabellaGenesisRuntime {
   readonly inference = new GovernedInferenceRouter();
   readonly verifier = new DeterministicVerifier();
   readonly escalation: HumanEscalationQueue = new InMemoryHumanEscalationQueue();
+  readonly consent: ConsentRegistry = new InMemoryConsentRegistry();
 
   constructor(telemetry: TelemetrySink = new InMemoryTelemetry()) {
     this.telemetry = telemetry;
@@ -74,6 +79,14 @@ export class IsabellaGenesisRuntime {
     return { crown, aegis, plan, memory, admitted };
   }
 
+  synthesizeCognition(task: CognitiveTask, expertIds: readonly (typeof GENESIS_EXPERTS[number])[], results: readonly ExpertResult[]): CognitiveSynthesis {
+    return synthesize(task, planCognitiveExperts(expertIds), results);
+  }
+
+  registerConsent(grant: Parameters<ConsentRegistry["grant"]>[0]): void { this.consent.grant(grant); }
+  revokeConsent(consentId: string): void { this.consent.revoke(consentId); }
+  hasConsent(principalId: string, purpose: Parameters<ConsentRegistry["has"]>[1], scope?: string): boolean { return this.consent.has(principalId,purpose,scope); }
+
   assessCompanionSafety(input: string): CompanionSafetyVerdict {
     return evaluateCompanionSafety(input);
   }
@@ -97,6 +110,9 @@ export class IsabellaGenesisRuntime {
   evaluateXrSafety(event: XrSafetyEvent): XrSafetyDecision {
     return evaluateXrSafety(event);
   }
+
+  createProvenanceSource(input: Parameters<typeof createSource>[0]): ProvenanceSource { return createSource(input); }
+  validateProvenanceClaim(claim: ProvenanceClaim, sources: readonly ProvenanceSource[]): boolean { return validateClaim(claim,sources); }
 
   escalate(request: Parameters<typeof createEscalation>[0]): void {
     this.escalation.enqueue(createEscalation(request));

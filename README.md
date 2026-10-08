@@ -1110,3 +1110,20 @@ Consultar los archivos de licencia y documentación canónica del repositorio an
 **Ecosistema:** TAMV Online Network  
 **Arquitectura:** Edwin Oswaldo Castillo Trejo / Anubis Villaseñor  
 **Origen declarado:** Real del Monte, Hidalgo, México
+
+
+## V6.4 — Hardening cognitivo y de evidencia
+
+Se incorporaron cinco planos adicionales:
+
+- **Consent Registry:** consentimiento explícito, revocable, con alcance y expiración.
+- **Provenance:** fuentes con hash SHA-256, nivel de confianza y claims vinculados a fuentes conocidas.
+- **Cognitive Orchestrator:** síntesis de expertos con resultados vinculados al plan; tareas críticas nunca terminan automáticamente en READY.
+- **Fail-Closed Inference:** adaptador explícito para ausencia de proveedor; no fabrica resultados.
+- **Canary Evaluation:** promoción condicionada a muestras suficientes, error, latencia y señales de seguridad.
+
+La regla sigue siendo:
+
+`CAPABILITY -> CONSENT/AUTHORITY -> SECURITY -> EVIDENCE -> EXECUTION -> VERITAS -> AUDIT`
+
+Estas piezas son infraestructura de gobierno y runtime. No constituyen por sí mismas entrenamiento de un modelo fundacional, aprendizaje autónomo, serving GPU ni despliegue distribuido.
