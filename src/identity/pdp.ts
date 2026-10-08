@@ -1,5 +1,5 @@
 /** PDP — Policy Decision Point. Fail-closed RBAC + ABAC + tenant + consent. */
-import type { ApprovalRef } from "./approval";
+import { verifyHumanApproval, type ApprovalRef } from "./approval";
 import type { ConsentRegistryLike, ConsentRequirement } from "./consent";
 import { requireConsent } from "./consent";
 import type { Principal } from "./principal";
@@ -60,7 +60,7 @@ export function decidePdp(deps: PdpDeps, req: PdpRequest): PdpDecision {
 
 export function overrideWithHumanApproval(decision: PdpDecision, approval?: ApprovalRef): PdpDecision {
   if (decision.effect !== "FLAG") return decision;
-  if (!approval || approval.decision !== "ALLOW") return { ...decision, admitted: false, evidenceRef: approval?.evidenceId };
+  if (!approval || approval.decision !== "ALLOW" || !verifyHumanApproval(approval, { methodId: approval.methodId, action: approval.action, resource: undefined, principalId: undefined })) return { ...decision, admitted: false, evidenceRef: approval?.evidenceId };
   return { ...decision, effect: "ALLOW", admitted: true, evidenceRef: approval.evidenceId, reason: `${decision.reason}; human-approval:${approval.approver}` };
 }
 
