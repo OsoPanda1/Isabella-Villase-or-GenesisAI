@@ -1,0 +1,74 @@
+name: Genesis Atlas Ingest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: genesis-atlas-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ATLAS_READ_TOKEN: ${{ secrets.ATLAS_READ_TOKEN }}
+      GITHUB_OWNER: ${{ vars.GITHUB_OWNER }}
+      INCLUDE_FORKS: "false"
+      MAX_REPOS: "500"
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout GenesisAI
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Genesis before ingest
+        run: npm run validate
+
+      - name: Security audit (high+)
+        run: npm audit --audit-level=high || true
+
+      - name: Ingest Atlas
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run ingest:atlas
+
+      - name: Configure git for Genesis bot
+        run: |
+          git config user.name "genesis-atlas-bot"
+          git config user.email "genesis-atlas-bot@users.noreply.github.com"
+
+      - name: Commit Atlas snapshot
+        run: |
+          set -euo pipefail
+          if [ ! -f "atlas/github-repositories.json" ]; then
+            echo "Atlas artifact missing"
+            exit 1
+          fi
+          git add atlas/github-repositories.json
+          if git diff --staged --quiet; then
+            echo "No Atlas changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(atlas): scheduled Genesis ingest"
+
+      - name: Push Atlas snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: git -c credential.helper= push
