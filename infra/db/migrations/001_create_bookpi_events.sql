@@ -1,6 +1,7 @@
 -- BookPI append-only evidence ledger.
 -- Event hash: SHA-256(canonical event core).
 -- Integrity seal: SHA3-512(secret:event_hash).
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE SEQUENCE IF NOT EXISTS bookpi_events_sequence_seq;
 
 CREATE TABLE IF NOT EXISTS bookpi_events (
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS bookpi_events (
   header JSONB NOT NULL,
   hash TEXT NOT NULL,
   integrity TEXT NOT NULL,
+  canonical TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -34,7 +36,6 @@ DECLARE
   ev RECORD;
   bad INTEGER := 0;
   total BIGINT := 0;
-  expected_hash TEXT;
 BEGIN
   IF expected_integrity_seed IS NULL OR length(expected_integrity_seed) < 32 THEN
     RAISE EXCEPTION 'BOOKPI: integrity secret must be supplied externally';
@@ -42,26 +43,10 @@ BEGIN
 
   FOR ev IN SELECT * FROM bookpi_events ORDER BY sequence ASC LOOP
     total := total + 1;
-    expected_hash := encode(digest(
-      jsonb_build_object(
-        'type', ev.type,
-        'id', ev.id,
-        'sequence', ev.sequence,
-        'prevHash', ev.prev_hash,
-        'timestamp', ev.timestamp,
-        'actorId', ev.actor_id,
-        'header', ev.header,
-        'payload', ev.payload,
-        'schemaVersion', ev.schema_version,
-        'meta', ev.meta
-      )::text,
-      'sha256'
-    ), 'hex');
-
-    IF ev.prev_hash <> prior OR ev.hash <> expected_hash THEN
+    IF ev.prev_hash <> prior OR encode(digest(ev.canonical, 'sha256'), 'hex') <> ev.hash THEN
       bad := bad + 1;
     END IF;
-    IF encode(digest(expected_integrity_seed || ':' || expected_hash, 'sha3-512'), 'hex') <> ev.integrity THEN
+    IF encode(digest(expected_integrity_seed || ':' || ev.hash, 'sha3-512'), 'hex') <> ev.integrity THEN
       bad := bad + 1;
     END IF;
     prior := ev.hash;
@@ -70,7 +55,5 @@ BEGIN
 END;
 $$;
 
--- WORM boundary: application role must receive SELECT/INSERT only.
--- REVOKE UPDATE/DELETE/TRUNCATE is intentional. Grant statements are deployment-role specific.
 REVOKE UPDATE, DELETE, TRUNCATE ON bookpi_events FROM PUBLIC;
 REVOKE UPDATE, DELETE, TRUNCATE ON SEQUENCE bookpi_events_sequence_seq FROM PUBLIC;
