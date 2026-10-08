@@ -40,7 +40,7 @@ describe("Genesis V6 security and cognition", () => {
   it("unknown capabilities always deny", () => {
     const gate = createCapabilityGate([]);
     const principal = createPrincipal({ id: "m1", kind: "machine", roles: ["operator"] });
-    expect(callGate(gate, "UNKNOWN", { principal, requireRegistered: false }).granted).toBe(false);
+    expect(callGate(gate, "UNKNOWN", { principal, action: "x", resource: "x" }).granted).toBe(false);
   });
 
   it("AEGIS blocks explicit policy evasion", () => {
