@@ -20,6 +20,7 @@ import { planExperts as planCognitiveExperts } from "../cognition/experts";
 import { synthesize, type CognitiveSynthesis, type CognitiveTask, type ExpertResult } from "../cognition/orchestrator";
 import { createSource, validateClaim, type ProvenanceClaim, type ProvenanceSource } from "../memory/provenance";
 import type { AtlasPersistencePort, CreateUserInput, RecordEconomyEntryInput, RecordProtocolExecutionInput } from "../atlas";
+import { IsabellaEngine, type IsabellaEngineConfig, type IsabellaProfile } from "../isabella";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -50,13 +51,16 @@ export class IsabellaGenesisRuntime {
   readonly escalation: HumanEscalationQueue = new InMemoryHumanEscalationQueue();
   readonly consent: ConsentRegistry = new InMemoryConsentRegistry();
   readonly persistence?: AtlasPersistencePort;
+  readonly isabella: IsabellaEngine;
 
   constructor(
     telemetry: TelemetrySink = new InMemoryTelemetry(),
     persistence?: AtlasPersistencePort,
+    isabellaConfig?: IsabellaEngineConfig,
   ) {
     this.telemetry = telemetry;
     this.persistence = persistence;
+    this.isabella = new IsabellaEngine(isabellaConfig);
   }
 
   async initPersistence(): Promise<void> {
@@ -88,6 +92,40 @@ export class IsabellaGenesisRuntime {
   async createAtlasSignal(input: Parameters<AtlasPersistencePort["createSignal"]>[0]) {
     if (!this.persistence) throw new Error("Genesis persistence is not configured");
     return this.persistence.createSignal(input);
+  }
+
+  mediateIsabella(input: { input: string; profile?: IsabellaProfile }) {
+    const started = Date.now();
+    try {
+      const result = this.isabella.chat(input);
+      this.telemetry.metric({
+        name: "request_latency_ms",
+        value: Date.now() - started,
+        at: new Date().toISOString(),
+        attributes: { stage: "isabella-mediation", profile: input.profile ?? "general" },
+      });
+      return result;
+    } catch (error) {
+      this.telemetry.metric({
+        name: "request_latency_ms",
+        value: Date.now() - started,
+        at: new Date().toISOString(),
+        attributes: { stage: "isabella-mediation", status: "error" },
+      });
+      throw error;
+    }
+  }
+
+  evaluateIsabellaEntropy(probabilities: number[]) {
+    const started = Date.now();
+    const result = this.isabella.evaluarEntropia(probabilities);
+    this.telemetry.metric({
+      name: "request_latency_ms",
+      value: Date.now() - started,
+      at: new Date().toISOString(),
+      attributes: { stage: "isabella-entropy" },
+    });
+    return result;
   }
 
   evaluate(input: GenesisRuntimeInput): GenesisRuntimeDecision {
