@@ -11,6 +11,7 @@ import { parseMethodId } from "./authority/method-id";
 import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
 import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
 import { bookPiSecret } from "./security/secrets";
+import { createAtlasStoreFromEnv } from "./atlas";
 
 const app = express();
 const port = 3000;
@@ -29,8 +30,14 @@ app.get("/styles/crystal-clear.css", (_req, res) => {
   }
 });
 
-// Initialize Genesis TINA Runtime
-const runtime = new IsabellaGenesisRuntime();
+// Initialize Genesis TINA Runtime with optional Atlas persistence.
+const atlasPersistence = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createAtlasStoreFromEnv()
+  : undefined;
+const runtime = new IsabellaGenesisRuntime(undefined, atlasPersistence);
+void runtime.initPersistence().catch((error) => {
+  console.error("[Genesis] Atlas persistence initialization failed:", error);
+});
 
 // Initialize Google GenAI client if API key is provided in environment
 const apiKey = process.env.GEMINI_API_KEY || process.env.MODEL_API_KEY;
