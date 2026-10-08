@@ -14,7 +14,7 @@ export interface GenesisRuntimeDecision {
   crown: CrownVerdict;
   aegis: AegisVerdict;
   plan: AdaptivePlan;
-  memory: readonly ReturnType<IKESEngine["retrieve"]>;
+  memory: ReturnType<IKESEngine["retrieve"]>;
   admitted: boolean;
 }
 
