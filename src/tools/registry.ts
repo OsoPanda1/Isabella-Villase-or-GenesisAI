@@ -58,7 +58,7 @@ export class ToolRegistry {
 }
 
 function hash(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+  return createHash("sha256").update((JSON.stringify(value) ?? ""), "utf8").digest("hex");
 }
 
 function makeReceipt(tool: ToolDescriptor, principal: Principal, inputHash: string, output: unknown, startedAt: string, status: ToolReceipt["status"]): ToolReceipt {
