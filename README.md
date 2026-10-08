@@ -39,6 +39,35 @@ El puente no copia ni reemplaza esos proyectos. Isabella conserva identidad, aut
 
 Documentación: `docs/ISABELLA_PENNYLANE_BRIDGE.md`.
 
+
+## Hyper Skill Fabric (HSF)
+
+GenesisAI incorpora un **Hyper Skill Fabric** como capa canónica de capacidades. No es un segundo runtime ni modifica el modelo fundacional: registra capacidades desacopladas y las invoca mediante un gateway gobernado.
+
+Capacidades iniciales:
+
+- Memory Fabric
+- Execution Fabric
+- Knowledge Fabric
+- Collective Consensus
+- Truth Verification
+- Architecture Reasoning
+- Digital Twin
+- Strategic Intelligence
+- Self Evaluation
+- Massive Context Parallel
+
+Endpoints gobernados:
+
+```
+GET  /api/v1/hsf/status
+POST /api/v1/hsf/invoke
+```
+
+La implementación actual proporciona contratos y proveedores locales de referencia. PostgreSQL, Qdrant, Neo4j, Redis, Temporal, Kubernetes, MCP y otros proveedores se incorporarán detrás de estos contratos; no se presentan como conectados mientras no exista evidencia de integración real.
+
+Documentación: `docs/ISABELLA_HYPER_SKILL_FABRIC.md`.
+
 ## 1. ¿Qué es Isabella Genesis TINA?
 
 Isabella Genesis TINA es una arquitectura de software para construir y operar sistemas de inteligencia artificial bajo una separación estricta entre:
