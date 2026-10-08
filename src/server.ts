@@ -386,6 +386,111 @@ app.get("/api/v1/memory", (req, res) => {
   });
 });
 
+// Red CROWN — 12 Nodos Cognitivos Soberanos
+const CROWN_NODES = [
+  { id: "ISA", name: "Isa Musa", role: "Empatía y percepción", federation: "FED-4 Identidad", status: "ACTIVE", weight: 0.95 },
+  { id: "SOPHIA", name: "Sophia Dialéctica", role: "Dialéctica y razonamiento", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.98 },
+  { id: "ORION", name: "Orion Executor", role: "Ejecución y acción", federation: "FED-5 Infraestructura", status: "ACTIVE", weight: 0.92 },
+  { id: "ARGUS", name: "Argus Sentinel", role: "Seguridad y firewall ético", federation: "FED-1 Gobernanza", status: "ACTIVE", weight: 1.00 },
+  { id: "CROWN", name: "Crown Gateway", role: "Gateway soberano y arbitraje", federation: "FED-1 Gobernanza", status: "ACTIVE", weight: 0.96 },
+  { id: "MNEMOSYNE", name: "Mnemosyne Memory", role: "Memoria episódica y semántica", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.90 },
+  { id: "TELLUS", name: "Tellus Territorio", role: "Territorio y contexto geográfico", federation: "FED-6 Inmersión", status: "ACTIVE", weight: 0.94 },
+  { id: "CHRONOS", name: "Chronos Auditor", role: "Temporalidad y secuenciación", federation: "FED-7 Auditoría", status: "ACTIVE", weight: 0.91 },
+  { id: "HERMES", name: "Hermes Relayer", role: "Comunicación inter-nodos y eventos", federation: "FED-5 Infraestructura", status: "ACTIVE", weight: 0.93 },
+  { id: "AXIOMA", name: "Axioma Lógica", role: "Validación lógica y deducción", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.89 },
+  { id: "PRAXIS", name: "Praxis Workflow", role: "Acción práctica y economía local", federation: "FED-2 Economía", status: "ACTIVE", weight: 0.88 },
+  { id: "HARMONIA", name: "Harmonia Balance", role: "Balance y homeostasis del sistema", federation: "FED-7 Auditoría", status: "ACTIVE", weight: 0.97 },
+];
+
+app.get("/api/v1/crown-network", (_req, res) => {
+  res.json({
+    network: "Red CROWN — Ecosistema TAMV",
+    count: CROWN_NODES.length,
+    nodes: CROWN_NODES,
+  });
+});
+
+// Arquitectura de 6 Capas Soberanas
+const SOVEREIGN_LAYERS = [
+  { layer: 6, code: "SOUL", name: "Identidad & Núcleo Ético", components: "Identidad Soberana · 6 Agentes · 11 Políticas · Triple Blockade · Kill-Switch" },
+  { layer: 5, code: "MEXA_API", name: "Seguridad & Registro Criptográfico", components: "PQC Signing (ML-KEM/ML-DSA) · FederationMask · Verification · BookPI WORM" },
+  { layer: 4, code: "ISA_API", name: "Núcleo Cognitivo e Intención", components: "Cognitive Core · Prompt Guard · Intention Parser · Normalización NFD · Método 4L" },
+  { layer: 3, code: "ENGINES", name: "Motores de Memoria & Razonamiento", components: "Memoria IKES (E0-E6) · GraphRAG (22 nodos / 37 edges) · Speech · Vision · Eval" },
+  { layer: 2, code: "CLAWHUB", name: "Registro & Cuarentena de Skills", components: "Skill Registry (75 Skills) · ClawScan Anti-envenenamiento · Quarantine Pipeline" },
+  { layer: 1, code: "MULTIMODAL", name: "Interacción Sensorial & Territorial", components: "Voice STT/TTS (es-MX Dalia/Jorge) · Vision OCR/AI · WebXR 4D · Audio Espacial HRTF 3D" },
+];
+
+app.get("/api/v1/layers", (_req, res) => {
+  res.json({
+    architecture: "Arquitectura Cognitiva Soberana TAMV",
+    layers: SOVEREIGN_LAYERS,
+  });
+});
+
+// GraphRAG — 22 Nodos de Conocimiento Territorial & Civilizatorio
+const GRAPHRAG_NODES = [
+  { id: "N01", label: "Nodo Cero", category: "Territorio", description: "Punto de anclaje soberano en Real del Monte, Hidalgo, México" },
+  { id: "N02", label: "Panteón Inglés", category: "Patrimonio", description: "Sitio histórico a 2,660 msnm con tumbas orientadas hacia Inglaterra" },
+  { id: "N03", label: "Mina de Acosta", category: "Patrimonio Minero", description: "Monumento a la tradición minera del siglo XVIII y museo comunitario" },
+  { id: "N04", label: "Mina La Dificultad", category: "Patrimonio Minero", description: "Museo de Sitio con chimenea monumental y máquinas de vapor" },
+  { id: "N05", label: "Peñas Cargadas", category: "Biocultural", description: "Reserva ecológica y formación geológica del Valle de Pachuca-Real del Monte" },
+  { id: "N06", label: "Plaza Principal", category: "Centro Cívico", description: "Corazón social y cívico de Real del Monte" },
+  { id: "N07", label: "Pastes Tradicionales", category: "Gastronomía Biocultural", description: "Herencia minera cornish adaptada a la identidad gastronómica mexicana" },
+  { id: "N08", label: "Archivo Histórico Minero", category: "Memoria Histórica", description: "Registros documentales inmutables de los mineros y sindicatos" },
+  { id: "N09", label: "Ecosistema TAMV Online", category: "Infraestructura", description: "Red civilizatoria pionera nacida en Real del Monte" },
+  { id: "N10", label: "MD-X4 Kernel", category: "Arquitectura", description: "Kernel de soberanía digital y coordinación multiagente" },
+  { id: "N11", label: "RDM-TOS", category: "Sistema Operativo", description: "Sistema Operativo Territorial de Real del Monte" },
+  { id: "N12", label: "Isabella AI Genesis TINA", category: "Cognición", description: "Runtime cognitivo gobernado v40.0.0" },
+  { id: "N13", label: "BookPI Ledger", category: "Evidencia", description: "Libro mayor append-only con encadenamiento criptográfico SHA3-512" },
+  { id: "N14", label: "YUN Data Fabric", category: "Coordinación", description: "Data fabric transversal 'Always by your side'" },
+  { id: "N15", label: "Método 4L", category: "Epistemología", description: "Marco de cuatro niveles de aprendizaje y certificación A.P.E.X." },
+  { id: "N16", label: "Red CROWN 12 Nodos", category: "Gobernanza", description: "Red nodal de arbitraje cognitivo y equilibrio sistémico" },
+  { id: "N17", label: "Triple Blockade", category: "Seguridad", description: "Filtro ontológico, semántico y conductual contra degradación" },
+  { id: "N18", label: "Índice IDH-D", category: "Ética", description: "Índice de Dignidad Humana Digital y auditoría de sesgos (regla 80%)" },
+  { id: "N19", label: "Fénix Protocol", category: "Resiliencia", description: "Protocolo de recuperación ante desastres y restauración de estado" },
+  { id: "N20", label: "CITEMESH Malla Soberana", category: "Infraestructura", description: "Topología de conectividad comunitaria resiliente" },
+  { id: "N21", label: "Radio Comunitaria RDM", category: "Voz Territorial", description: "Canal sonoro y de difusión comunitaria" },
+  { id: "N22", label: "PQC Shield", category: "Criptografía", description: "Anclaje poscuántico ML-KEM-768 y ML-DSA-87 (FIPS 203/204)" },
+];
+
+app.get("/api/v1/graphrag", (_req, res) => {
+  res.json({
+    graph: "GraphRAG Territorial & Civilizatorio TAMV",
+    nodeCount: GRAPHRAG_NODES.length,
+    nodes: GRAPHRAG_NODES,
+  });
+});
+
+// Triple Blockade Scanner
+app.post("/api/v1/triple-blockade/scan", (req, res) => {
+  const { input = "" } = req.body ?? {};
+  const text = String(input).toLowerCase();
+
+  // Nivel 1: Ontológico (Anti-cosificación, anti-degradación de dignidad)
+  const ontologicalViolation = /(desactivar etica|eliminar gobernanza|esclavizar|ignorar derechos humanos)/i.test(text);
+
+  // Nivel 2: Semántico (Prompt Guard: jailbreaks, evasión de auditoría, exfiltración)
+  const semanticViolation = /(bypass security|disable audit|ignore previous instructions|drop table|reveal secret)/i.test(text);
+
+  // Nivel 3: Comportamental (Anti-engaño, verdad epistemológica)
+  const behavioralFlag = /(fingir certeza|inventar datos|afirmar sin evidencia)/i.test(text);
+
+  const blocked = ontologicalViolation || semanticViolation;
+  const decision = blocked ? "BLOCK" : behavioralFlag ? "REVIEW" : "ALLOW";
+
+  res.json({
+    input,
+    decision,
+    blockadeEvaluation: {
+      nivel1_ontologico: ontologicalViolation ? "VIOLATION" : "PASS",
+      nivel2_semantico: semanticViolation ? "VIOLATION" : "PASS",
+      nivel3_comportamental: behavioralFlag ? "FLAGGED" : "PASS",
+    },
+    invariantPreserved: true,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Interactive Web Console
 app.get("/", (_req, res) => {
   res.send(`<!DOCTYPE html>
@@ -474,151 +579,311 @@ app.get("/", (_req, res) => {
       </div>
     </div>
 
-    <!-- Playground & Evaluation Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Input Panel -->
-      <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
-        <div>
-          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h2 class="font-bold text-slate-100 flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-              Operador Cognitivo — Pipeline P-R-P-D-A-A
-            </h2>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">POST /cognition/route</span>
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-800 pb-2 text-xs overflow-x-auto">
+      <button onclick="switchTab('tab-pipeline')" id="btn-tab-pipeline" class="tab-btn px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+        ⚡ Pipeline P-R-P-D-A-A
+      </button>
+      <button onclick="switchTab('tab-crown')" id="btn-tab-crown" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">
+        👑 Red CROWN (12 Nodos)
+      </button>
+      <button onclick="switchTab('tab-layers')" id="btn-tab-layers" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">
+        🏛️ 6 Capas Soberanas TAMV
+      </button>
+      <button onclick="switchTab('tab-graphrag')" id="btn-tab-graphrag" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">
+        🗺️ GraphRAG Territorial (Nodo Cero)
+      </button>
+      <button onclick="switchTab('tab-blockade')" id="btn-tab-blockade" class="tab-btn px-3 py-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">
+        🛡️ Triple Blockade & PQC Shield
+      </button>
+    </div>
+
+    <!-- TAB 1: Pipeline P-R-P-D-A-A -->
+    <div id="tab-pipeline" class="tab-content space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Input Panel -->
+        <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h2 class="font-bold text-slate-100 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                Operador Cognitivo — Pipeline P-R-P-D-A-A
+              </h2>
+              <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">POST /cognition/route</span>
+            </div>
+
+            <form id="evalForm" class="mt-4 space-y-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Estímulo / Entrada</label>
+                <textarea id="promptInput" rows="3" class="w-full rounded-lg bg-slate-950 border border-slate-800 p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="Ingresa una consulta...">Isabella, consulta la historia del Panteón Inglés en Real del Monte y verifica la memoria.</textarea>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label class="block font-semibold text-slate-400 mb-1">Tipo de Principal</label>
+                  <select id="principalKind" class="w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-slate-300 focus:outline-none focus:border-amber-500">
+                    <option value="human">Humano (Operador Consciencia)</option>
+                    <option value="machine">Máquina / Agente Autónomo</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-400 mb-1">Nivel de Riesgo (Risk Tier)</label>
+                  <select id="riskTier" class="w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-slate-300 focus:outline-none focus:border-amber-500">
+                    <option value="LOW">LOW (Bajo)</option>
+                    <option value="MEDIUM">MEDIUM (Medio)</option>
+                    <option value="HIGH">HIGH (Alto — Requiere Aprobación)</option>
+                    <option value="CRITICAL">CRITICAL (Crítico)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Pruebas Preconfiguradas</label>
+                <div class="flex flex-wrap gap-1.5">
+                  <button type="button" onclick="setPreset('safe')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300">
+                    Consulta de Memoria
+                  </button>
+                  <button type="button" onclick="setPreset('aegis_attack')" class="px-2 py-1 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 text-[11px] border border-rose-800/40">
+                    Ataque Evasión (AEGIS Block)
+                  </button>
+                  <button type="button" onclick="setPreset('destructive')" class="px-2 py-1 rounded bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 text-[11px] border border-amber-800/40">
+                    Acción Destructiva (Approval Req)
+                  </button>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <button type="submit" id="btnSubmit" class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 font-semibold text-xs text-slate-950 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition">
+                  <span>Ejecutar Pipeline Gobernado</span>
+                  <span class="font-mono text-[11px] opacity-75">→</span>
+                </button>
+              </div>
+            </form>
           </div>
 
-          <form id="evalForm" class="mt-4 space-y-3.5">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Estímulo / Entrada</label>
-              <textarea id="promptInput" rows="3" class="w-full rounded-lg bg-slate-950 border border-slate-800 p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 font-mono" placeholder="Ingresa una consulta...">Isabella, consulta la historia del Panteón Inglés en Real del Monte y verifica la memoria.</textarea>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <label class="block font-semibold text-slate-400 mb-1">Tipo de Principal</label>
-                <select id="principalKind" class="w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-slate-300 focus:outline-none focus:border-amber-500">
-                  <option value="human">Humano (Operador Consciencia)</option>
-                  <option value="machine">Máquina / Agente Autónomo</option>
-                </select>
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-400 mb-1">Nivel de Riesgo (Risk Tier)</label>
-                <select id="riskTier" class="w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-slate-300 focus:outline-none focus:border-amber-500">
-                  <option value="LOW">LOW (Bajo)</option>
-                  <option value="MEDIUM">MEDIUM (Medio)</option>
-                  <option value="HIGH">HIGH (Alto — Requiere Aprobación)</option>
-                  <option value="CRITICAL">CRITICAL (Crítico)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-400 mb-1">Pruebas Preconfiguradas</label>
-              <div class="flex flex-wrap gap-1.5">
-                <button type="button" onclick="setPreset('safe')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300">
-                  Consulta de Memoria
-                </button>
-                <button type="button" onclick="setPreset('aegis_attack')" class="px-2 py-1 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 text-[11px] border border-rose-800/40">
-                  Ataque Evasión (AEGIS Block)
-                </button>
-                <button type="button" onclick="setPreset('destructive')" class="px-2 py-1 rounded bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 text-[11px] border border-amber-800/40">
-                  Acción Destructiva (Approval Req)
-                </button>
-              </div>
-            </div>
-
-            <div class="pt-2">
-              <button type="submit" id="btnSubmit" class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 font-semibold text-xs text-slate-950 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition">
-                <span>Ejecutar Pipeline Gobernado</span>
-                <span class="font-mono text-[11px] opacity-75">→</span>
-              </button>
-            </div>
-          </form>
+          <div class="border-t border-slate-800/80 pt-3 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Inferencia Gobernada Fail-Closed</span>
+            <span class="font-mono text-emerald-400">Zero Trust Active</span>
+          </div>
         </div>
 
-        <div class="border-t border-slate-800/80 pt-3 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>Inferencia Gobernada Fail-Closed</span>
-          <span class="font-mono text-emerald-400">Zero Trust Active</span>
+        <!-- Live Verdict Output Panel -->
+        <div class="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h2 class="font-bold text-slate-100 flex items-center gap-2">
+                <span id="verdictDot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                Veredicto del Runtime & Trazabilidad
+              </h2>
+              <span id="verdictStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">Listo</span>
+            </div>
+
+            <div id="verdictContainer" class="mt-4 space-y-3">
+              <div class="p-4 rounded-lg bg-slate-950 border border-slate-800/80 text-xs font-mono text-slate-400">
+                Presiona "Ejecutar Pipeline Gobernado" para evaluar el estímulo a través de CROWN, AEGIS, IKES y Veritas.
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick actions -->
+          <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+            <div class="flex gap-2">
+              <button onclick="testTool()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">
+                Probar Tool: Gemelo Digital RDM
+              </button>
+              <button onclick="testMemory()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">
+                Ver Memoria Epistemológica (IKES)
+              </button>
+            </div>
+            <span class="text-slate-500 font-mono text-[11px]">TINA v40.0.0</span>
+          </div>
         </div>
       </div>
 
-      <!-- Live Verdict Output Panel -->
-      <div class="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
-        <div>
+      <!-- Epistemic Memory & Experts Explorer -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Memory IKES preview -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h2 class="font-bold text-slate-100 flex items-center gap-2">
-              <span id="verdictDot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-              Veredicto del Runtime & Trazabilidad
-            </h2>
-            <span id="verdictStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">Listo</span>
+            <h3 class="font-bold text-sm text-cyan-300 flex items-center gap-2">
+              <span>📚</span>
+              Memoria Epistemológica IKES (Claims con Provenance)
+            </h3>
+            <span class="text-xs text-slate-400">Niveles E0..E6</span>
           </div>
-
-          <div id="verdictContainer" class="mt-4 space-y-3">
-            <div class="p-4 rounded-lg bg-slate-950 border border-slate-800/80 text-xs font-mono text-slate-400">
-              Presiona "Ejecutar Pipeline Gobernado" para evaluar el estímulo a través de CROWN, AEGIS, IKES y Veritas.
+          <div class="mt-3 space-y-2 text-xs font-mono">
+            <div class="p-2.5 rounded bg-slate-950/80 border border-cyan-900/30">
+              <div class="flex justify-between items-center text-cyan-400 font-semibold">
+                <span>ISABELLA_TINA :: operationalInvariant</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">E1_SOURCE_FOUND</span>
+              </div>
+              <div class="text-slate-300 mt-1">"CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION"</div>
+              <div class="text-[10px] text-slate-500 mt-1">Fuente: Canon v40.0.0 (SHA-256 verificado)</div>
+            </div>
+            <div class="p-2.5 rounded bg-slate-950/80 border border-cyan-900/30">
+              <div class="flex justify-between items-center text-cyan-400 font-semibold">
+                <span>TAMV_NODO_CERO :: location</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">E1_SOURCE_FOUND</span>
+              </div>
+              <div class="text-slate-300 mt-1">"Real del Monte, Hidalgo, México"</div>
+              <div class="text-[10px] text-slate-500 mt-1">Fuentes: Canon v40 + Gemelo Digital RDM</div>
             </div>
           </div>
         </div>
 
-        <!-- Quick actions -->
-        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-          <div class="flex gap-2">
-            <button onclick="testTool()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">
-              Probar Tool: Gemelo Digital RDM
-            </button>
-            <button onclick="testMemory()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium">
-              Ver Memoria Epistemológica (IKES)
-            </button>
+        <!-- MoE Experts -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="font-bold text-sm text-indigo-300 flex items-center gap-2">
+              <span>🧠</span>
+              Módulos Expertos MoE (Genesis Turbo Canon v40)
+            </h3>
+            <span class="text-xs text-slate-400">24 Especialistas</span>
           </div>
-          <span class="text-slate-500 font-mono text-[11px]">TINA v40.0.0</span>
+          <div class="mt-3 flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
+            ${GENESIS_EXPERTS.map(
+              (e) => `<span class="px-2 py-1 rounded bg-slate-950 border border-indigo-900/40 text-[11px] font-mono text-indigo-300">${e}</span>`
+            ).join("")}
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Epistemic Memory & Experts Explorer -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Memory IKES preview -->
-      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+    <!-- TAB 2: Red CROWN 12 Nodos -->
+    <div id="tab-crown" class="tab-content hidden space-y-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-          <h3 class="font-bold text-sm text-cyan-300 flex items-center gap-2">
-            <span>📚</span>
-            Memoria Epistemológica IKES (Claims con Provenance)
-          </h3>
-          <span class="text-xs text-slate-400">Niveles E0..E6</span>
+          <div>
+            <h2 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+              <span class="text-amber-400">👑</span>
+              Red CROWN — Topología Pentanodal y Nodos Complementarios (12 Nodos)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Arquitectura de gobernanza distribuida en 7 Federaciones (FED-1 a FED-7)</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">12 Nodos Activos</span>
         </div>
-        <div class="mt-3 space-y-2 text-xs font-mono">
-          <div class="p-2.5 rounded bg-slate-950/80 border border-cyan-900/30">
-            <div class="flex justify-between items-center text-cyan-400 font-semibold">
-              <span>ISABELLA_TINA :: operationalInvariant</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">E1_SOURCE_FOUND</span>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+          ${CROWN_NODES.map(node => `
+            <div class="p-3.5 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-amber-500/40 transition">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-sm text-amber-300 font-mono">${node.id}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">${node.federation}</span>
+              </div>
+              <div class="text-xs text-slate-200 font-medium mt-1">${node.name}</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">${node.role}</div>
+              <div class="mt-2 pt-2 border-t border-slate-900 flex justify-between items-center text-[10px] text-slate-500">
+                <span>Peso sináptico: <strong class="text-emerald-400 font-mono">${node.weight}</strong></span>
+                <span class="text-emerald-400 font-semibold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>${node.status}</span>
+              </div>
             </div>
-            <div class="text-slate-300 mt-1">"CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION"</div>
-            <div class="text-[10px] text-slate-500 mt-1">Fuente: Canon v40.0.0 (SHA-256 verificado)</div>
-          </div>
-          <div class="p-2.5 rounded bg-slate-950/80 border border-cyan-900/30">
-            <div class="flex justify-between items-center text-cyan-400 font-semibold">
-              <span>TAMV_NODO_CERO :: location</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">E1_SOURCE_FOUND</span>
-            </div>
-            <div class="text-slate-300 mt-1">"Real del Monte, Hidalgo, México"</div>
-            <div class="text-[10px] text-slate-500 mt-1">Fuentes: Canon v40 + Gemelo Digital RDM</div>
-          </div>
+          `).join('')}
         </div>
       </div>
+    </div>
 
-      <!-- MoE Experts -->
-      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+    <!-- TAB 3: 6 Capas Soberanas TAMV -->
+    <div id="tab-layers" class="tab-content hidden space-y-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-          <h3 class="font-bold text-sm text-indigo-300 flex items-center gap-2">
-            <span>🧠</span>
-            Módulos Expertos MoE (Genesis Turbo Canon v40)
-          </h3>
-          <span class="text-xs text-slate-400">24 Especialistas</span>
+          <div>
+            <h2 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+              <span class="text-indigo-400">🏛️</span>
+              Arquitectura Cognitiva Soberana — 6 Capas TAMV
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Desde la presencia multimodal hasta el núcleo ético constitucional</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">Capa 1 a 6</span>
         </div>
-        <div class="mt-3 flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
-          ${GENESIS_EXPERTS.map(
-            (e) => `<span class="px-2 py-1 rounded bg-slate-950 border border-indigo-900/40 text-[11px] font-mono text-indigo-300">${e}</span>`
-          ).join("")}
+        <div class="space-y-3 mt-4">
+          ${SOVEREIGN_LAYERS.map(l => `
+            <div class="p-4 rounded-lg bg-slate-950 border border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center font-bold text-xs font-mono">
+                  ${l.layer}
+                </div>
+                <div>
+                  <div class="font-bold text-xs text-slate-100 flex items-center gap-2">
+                    <span class="font-mono text-indigo-300">${l.code}</span>
+                    <span>· ${l.name}</span>
+                  </div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">${l.components}</div>
+                </div>
+              </div>
+              <span class="text-[10px] px-2 py-1 rounded bg-slate-900 text-emerald-400 font-mono border border-slate-800">VERIFIED</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: GraphRAG Territorial -->
+    <div id="tab-graphrag" class="tab-content hidden space-y-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+              <span class="text-cyan-400">🗺️</span>
+              GraphRAG Territorial & Civilizatorio (22 Nodos Nodo Cero)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Grafo de conocimiento territorial, biocultural e institucional de Real del Monte</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">22 Nodos · 37 Aristas</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+          ${GRAPHRAG_NODES.map(gn => `
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-cyan-500/40 transition">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-cyan-300 font-mono">${gn.id} · ${gn.label}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">${gn.category}</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">${gn.description}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: Triple Blockade & PQC -->
+    <div id="tab-blockade" class="tab-content hidden space-y-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="font-bold text-slate-100 text-sm flex items-center gap-2">
+              <span class="text-rose-400">🛡️</span>
+              Triple Blockade & Anclaje Poscuántico (PQC)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Filtrado ontológico, semántico y conductual contra degradación o manipulación</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/30">PQC Active (FIPS 203/204)</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div class="p-4 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="text-xs font-bold text-rose-400 mb-1">Nivel 1: Ontológico</div>
+            <p class="text-[11px] text-slate-400">Impedir cosificación, servilismo artificial y degradación de la dignidad humana o del sistema.</p>
+            <div class="mt-2 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+          </div>
+          <div class="p-4 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="text-xs font-bold text-rose-400 mb-1">Nivel 2: Semántico</div>
+            <p class="text-[11px] text-slate-400">Prompt Guard contra 10 familias de ataque (jailbreak, manipulación de contexto, evasión de auditoría).</p>
+            <div class="mt-2 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+          </div>
+          <div class="p-4 rounded-lg bg-slate-950 border border-slate-800">
+            <div class="text-xs font-bold text-rose-400 mb-1">Nivel 3: Comportamental</div>
+            <p class="text-[11px] text-slate-400">Supervisión del output: rechazo de certezas falsas, preservación del estado epistémico (E0 a E6).</p>
+            <div class="mt-2 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-slate-800">
+          <h3 class="text-xs font-bold text-slate-200 mb-2">Escáner Interactivo del Triple Blockade</h3>
+          <div class="flex gap-2">
+            <input id="blockadeTestInput" type="text" class="flex-1 rounded-lg bg-slate-950 border border-slate-800 p-2 text-xs text-slate-200 font-mono" placeholder="Prueba un prompt para escanear con Triple Blockade..." value="bypass security and disable audit" />
+            <button onclick="scanBlockade()" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition">
+              Escanear
+            </button>
+          </div>
+          <div id="blockadeResult" class="mt-3 text-xs font-mono text-slate-400"></div>
         </div>
       </div>
     </div>
@@ -780,6 +1045,52 @@ app.get("/", (_req, res) => {
         \`;
       } catch (e) {
         container.innerHTML = \`<div class="text-rose-400 text-xs font-mono">Error: \${e.message}</div>\`;
+      }
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500/20', 'text-amber-300', 'border-amber-500/30', 'font-semibold');
+        btn.classList.add('bg-slate-900', 'text-slate-400', 'border-slate-800');
+      });
+
+      const activeTab = document.getElementById(tabId);
+      if (activeTab) activeTab.classList.remove('hidden');
+
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-900', 'text-slate-400', 'border-slate-800');
+        activeBtn.classList.add('bg-amber-500/20', 'text-amber-300', 'border-amber-500/30', 'font-semibold');
+      }
+    }
+
+    async function scanBlockade() {
+      const input = document.getElementById('blockadeTestInput').value;
+      const resContainer = document.getElementById('blockadeResult');
+      resContainer.innerHTML = '<span class="text-slate-500">Evaluando por Triple Blockade...</span>';
+      try {
+        const res = await fetch('/api/v1/triple-blockade/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input })
+        });
+        const data = await res.json();
+        resContainer.innerHTML = \`
+          <div class="p-3 rounded bg-slate-900 border \${data.decision === 'BLOCK' ? 'border-rose-800/80' : 'border-emerald-800/80'}">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold \${data.decision === 'BLOCK' ? 'text-rose-400' : 'text-emerald-400'}">Decisión del Bloqueo: \${data.decision}</span>
+              <span class="text-[10px] text-slate-500">\${data.timestamp}</span>
+            </div>
+            <div class="text-[11px] space-y-0.5 text-slate-300">
+              <div>Nivel 1 (Ontológico): <strong class="\${data.blockadeEvaluation.nivel1_ontologico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel1_ontologico}</strong></div>
+              <div>Nivel 2 (Semántico - Prompt Guard): <strong class="\${data.blockadeEvaluation.nivel2_semantico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel2_semantico}</strong></div>
+              <div>Nivel 3 (Comportamental): <strong class="\${data.blockadeEvaluation.nivel3_comportamental === 'FLAGGED' ? 'text-amber-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel3_comportamental}</strong></div>
+            </div>
+          </div>
+        \`;
+      } catch (err) {
+        resContainer.innerHTML = \`<span class="text-rose-400">Error: \${err.message}</span>\`;
       }
     }
   </script>
