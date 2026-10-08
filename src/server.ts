@@ -442,7 +442,6 @@ app.get("/api/v1/status", (_req, res) => {
       pdp: "ACTIVE",
       litleTrustFabric: "ACTIVE",
       quantumPennyLane: runtime.quantum.describe(),
-      quantumHealth: runtime.quantumHealth(),
       geminiEngine: apiKey ? "CONNECTED" : "SOVEREIGN_FALLBACK",
     },
     experts: {
