@@ -27,6 +27,10 @@ export interface CrownEvaluationInput {
   principal: Principal;
   gate: CapabilityGate;
   approval?: ApprovalRef;
+  action: string;
+  resource: string;
+  contextHash?: string;
+  policyVersion?: string;
   governanceInvariantPreserved?: boolean;
 }
 
@@ -55,6 +59,10 @@ export function evaluateCrown(opts: CrownEvaluationInput): CrownVerdict {
   const gateVerdict = callGate(opts.gate, opts.methodId, {
     principal: opts.principal,
     approval: opts.approval,
+    action: opts.action,
+    resource: opts.resource,
+    contextHash: opts.contextHash,
+    policyVersion: opts.policyVersion,
   });
 
   const verification = verifyMethod({
