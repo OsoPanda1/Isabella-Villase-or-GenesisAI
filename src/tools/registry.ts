@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import type { RiskTier } from "../authority/method-id";
+import type { ApprovalRef } from "../identity/approval";
+import { verifyHumanApproval } from "../identity/approval";
 import type { Principal } from "../identity/principal";
+import { inspectAegis } from "../security/aegis";
 
 export interface ToolDescriptor {
   id: string;
@@ -13,6 +16,12 @@ export interface ToolDescriptor {
   execute: (input: unknown, principal: Principal) => Promise<unknown>;
 }
 
+export interface ToolAuthorization {
+  approval?: ApprovalRef;
+  contextHash?: string;
+  policyVersion?: string;
+}
+
 export interface ToolReceipt {
   receiptId: string;
   toolId: string;
@@ -22,7 +31,7 @@ export interface ToolReceipt {
   outputHash: string;
   startedAt: string;
   completedAt: string;
-  status: "ok" | "error";
+  status: "ok" | "error" | "blocked";
 }
 
 export class ToolRegistry {
@@ -30,6 +39,8 @@ export class ToolRegistry {
 
   register(tool: ToolDescriptor): void {
     if (this.tools.has(tool.id)) throw new Error(`TOOLS: duplicate tool ${tool.id}`);
+    if (!tool.id || !tool.methodId || !tool.owner || !tool.description) throw new Error("TOOLS: descriptor metadata is incomplete.");
+    if (tool.scopes.length === 0) throw new Error(`TOOLS: ${tool.id} requires at least one scope.`);
     this.tools.set(tool.id, Object.freeze({ ...tool }));
   }
 
@@ -39,11 +50,45 @@ export class ToolRegistry {
     return tool;
   }
 
-  async execute(id: string, input: unknown, principal: Principal, scope: string): Promise<{ output: unknown; receipt: ToolReceipt }> {
+  async execute(
+    id: string,
+    input: unknown,
+    principal: Principal,
+    scope: string,
+    authorization: ToolAuthorization = {},
+  ): Promise<{ output: unknown; receipt: ToolReceipt }> {
     const tool = this.get(id);
     if (!tool.scopes.includes(scope)) throw new Error(`TOOLS: scope denied for ${id}`);
+
+    const serializedInput = JSON.stringify(input) ?? "";
+    const aegis = inspectAegis(serializedInput);
     const startedAt = new Date().toISOString();
     const inputHash = hash(input);
+
+    if (aegis.decision === "BLOCK") {
+      const receipt = makeReceipt(tool, principal, inputHash, serializedInput, startedAt, "blocked");
+      throw Object.assign(new Error(`TOOLS: AEGIS blocked tool input for ${id}`), { receipt, findings: aegis.findings });
+    }
+
+    const privileged = tool.riskTier === "HIGH" || tool.riskTier === "CRITICAL";
+    if (privileged) {
+      const validApproval =
+        authorization.approval?.decision === "ALLOW" &&
+        verifyHumanApproval(authorization.approval, {
+          methodId: tool.methodId,
+          action: `tool:${tool.id}`,
+          resource: `tool:${tool.id}`,
+          principalId: principal.id,
+          contextHash: authorization.contextHash,
+          policyVersion: authorization.policyVersion,
+        });
+
+      if (!validApproval) {
+        const receipt = makeReceipt(tool, principal, inputHash, "approval-required", startedAt, "blocked");
+        throw Object.assign(new Error(`TOOLS: human approval required for ${id}`), { receipt });
+      }
+    }
+
     try {
       const output = await tool.execute(input, principal);
       const receipt = makeReceipt(tool, principal, inputHash, output, startedAt, "ok");
@@ -61,7 +106,14 @@ function hash(value: unknown): string {
   return createHash("sha256").update((JSON.stringify(value) ?? ""), "utf8").digest("hex");
 }
 
-function makeReceipt(tool: ToolDescriptor, principal: Principal, inputHash: string, output: unknown, startedAt: string, status: ToolReceipt["status"]): ToolReceipt {
+function makeReceipt(
+  tool: ToolDescriptor,
+  principal: Principal,
+  inputHash: string,
+  output: unknown,
+  startedAt: string,
+  status: ToolReceipt["status"],
+): ToolReceipt {
   return {
     receiptId: `tr_${hash({ tool: tool.id, principal: principal.id, inputHash, startedAt }).slice(0, 24)}`,
     toolId: tool.id,
