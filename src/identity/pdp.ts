@@ -36,7 +36,7 @@ export function decidePdp(deps: PdpDeps, req: PdpRequest): PdpDecision {
     effects.push("consent-ok");
   }
   const base: PdpEffect = hasPermission(deps.rbac, req.principal, req.action) ? "ALLOW" : "DENY";
-  let effect = base;
+  let effect: PdpEffect = base;
   effects.push(`rbac:${base}`);
 
   const attrs = { ...req.principal.attributes, ...(req.attributeContext ?? {}) };

@@ -113,7 +113,7 @@ export type HypercoreActivation = (typeof HYPERCORE_ACTIVATIONS)[number];
 /** EARLY_EXIT queda gobernado: prohibido en riesgo MEDIUM o superior. */
 export const EARLY_EXIT_MAX_RISK = "LOW";
 
-export type RiskTier = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "NEGLIGIBLE";
+export type { RiskTier } from "../authority/method-id";
 
 /* ------------------------------------------------------------------ */
 /* API — contratos ISA-API v40                                          */

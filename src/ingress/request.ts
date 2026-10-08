@@ -22,9 +22,9 @@ export function sanitizeText(input: string, maxBytes = MAX_HEADER_BYTES): string
   return out.slice(0, end);
 }
 export function validateIngressShape(input: RawIncoming): void {
-  if (!input || !input.method || !input.path) throw new Error("INGRESS: method and path are required");
+  if (!input || !input.method || !input.path) throw new Error("INGRESS: método y path son obligatorios (method and path are required)");
   const headerCount = Object.keys(input.headers ?? {}).length;
-  if (headerCount > MAX_HEADERS) throw new Error(`INGRESS: too many headers (${headerCount})`);
+  if (headerCount > MAX_HEADERS) throw new Error(`INGRESS: demasiadas cabeceras (${headerCount}) (too many headers)`);
   const queryKeys = Object.keys(input.query ?? {}).length;
   if (queryKeys > MAX_QUERY_KEYS) throw new Error(`INGRESS: too many query keys (${queryKeys})`);
   const headerBytes = Object.values(input.headers ?? {}).reduce((sum, value) => sum + Buffer.byteLength(value, "utf8"), 0);

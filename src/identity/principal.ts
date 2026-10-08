@@ -33,6 +33,6 @@ export function isHuman(p: Principal): boolean { return p.kind === "human"; }
 
 export function assertBalancedAuthority(p: Principal): void {
   if (p.kind !== "human" && p.roles.includes("admin")) {
-    throw new Error("IDENTITY: non-human principals cannot hold admin without explicit human delegation.");
+    throw new Error("IDENTITY: una máquina o principal no humano no puede ostentar admin sin delegación humana (non-human principals cannot hold admin without explicit human delegation).");
   }
 }

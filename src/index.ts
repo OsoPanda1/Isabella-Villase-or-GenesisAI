@@ -13,7 +13,7 @@ export * from "./federation";
 export * from "./intelligence";
 export * from "./genesis";
 export * from "./inference";
-export * from "./veritas";
+export { DeterministicVerifier, type VerificationCandidate, type VerificationResult as VeritasVerificationResult } from "./veritas";
 export * from "./evaluation";
 export * from "./deployment";
 export * from "./companion/safety";
