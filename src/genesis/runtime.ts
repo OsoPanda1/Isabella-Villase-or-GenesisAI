@@ -8,6 +8,13 @@ import { SkillRegistry } from "../skills/registry";
 import { GovernedInferenceRouter } from "../inference/router";
 import type { GenerationRequest, GenerationResult } from "../inference/types";
 import { DeterministicVerifier } from "../veritas/verifier";
+import { evaluateCompanionSafety, type CompanionSafetyVerdict } from "../companion/safety";
+import { InMemoryHumanEscalationQueue, createEscalation, type HumanEscalationQueue } from "../companion/escalation";
+import { explainPolicyDecision, type DecisionExplanation } from "../cognition/explainability";
+import { createEmotionalTrace, type EmotionalTrace } from "../cognition/emotional-trace";
+import { planExperts, type ExpertPlan, GENESIS_EXPERTS } from "../cognition/experts";
+import { queryTerritory, type TerritoryQuery, type TerritoryAnswer } from "../territory/context";
+import { evaluateXrSafety, type XrSafetyDecision, type XrSafetyEvent } from "../xr/safety";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -35,6 +42,7 @@ export class IsabellaGenesisRuntime {
   readonly telemetry: TelemetrySink;
   readonly inference = new GovernedInferenceRouter();
   readonly verifier = new DeterministicVerifier();
+  readonly escalation: HumanEscalationQueue = new InMemoryHumanEscalationQueue();
 
   constructor(telemetry: TelemetrySink = new InMemoryTelemetry()) {
     this.telemetry = telemetry;
@@ -64,6 +72,34 @@ export class IsabellaGenesisRuntime {
     });
 
     return { crown, aegis, plan, memory, admitted };
+  }
+
+  assessCompanionSafety(input: string): CompanionSafetyVerdict {
+    return evaluateCompanionSafety(input);
+  }
+
+  explainPolicy(decision: "ALLOW"|"DENY"|"REVIEW", factors: readonly string[], evidenceRefs: readonly string[], policyVersion: string): DecisionExplanation {
+    return explainPolicyDecision(decision, factors, evidenceRefs, policyVersion);
+  }
+
+  createContextTrace(traceId: string, signals: Parameters<typeof createEmotionalTrace>[1], purpose: Parameters<typeof createEmotionalTrace>[2]): EmotionalTrace {
+    return createEmotionalTrace(traceId, signals, purpose);
+  }
+
+  planExpertModules(ids: readonly (typeof GENESIS_EXPERTS[number])[]): ExpertPlan {
+    return planExperts(ids);
+  }
+
+  routeTerritory(query: TerritoryQuery, resolver: (query: TerritoryQuery) => TerritoryAnswer): TerritoryAnswer {
+    return queryTerritory(query, resolver);
+  }
+
+  evaluateXrSafety(event: XrSafetyEvent): XrSafetyDecision {
+    return evaluateXrSafety(event);
+  }
+
+  escalate(request: Parameters<typeof createEscalation>[0]): void {
+    this.escalation.enqueue(createEscalation(request));
   }
 
   async generate(request: GenerationRequest): Promise<GenerationResult> {
