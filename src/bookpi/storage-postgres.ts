@@ -18,7 +18,7 @@ const rowToRecord = (row: PostgresBookPiRow): BookPiEventRecord => ({
   id: row.id, type: row.type, sequence: row.sequence, prevHash: row.prev_hash, timestamp: row.timestamp,
   actorId: row.actor_id ?? undefined, header: row.header as BookPiEventRecord["header"],
   payload: row.payload as BookPiEventRecord["payload"], schemaVersion: row.schema_version,
-  meta: (row.meta ?? {}) as BookPiEventRecord["meta"], hash: row.hash, integrity: row.integrity, canonical: "",
+  meta: (row.meta ?? {}) as BookPiEventRecord["meta"], hash: row.hash, integrity: row.integrity, canonical: row.canonical,
 });
 
 function isUniqueViolation(error: unknown): boolean {
@@ -51,10 +51,10 @@ export function createPostgresStorage(pool: PostgresLike, table = BOOKPI_TABLE):
       try {
         await pool.query(
           `INSERT INTO ${quote(table)}
-           (id, type, sequence, prev_hash, timestamp, actor_id, payload, schema_version, meta, header, hash, integrity)
+           (id, type, sequence, prev_hash, timestamp, actor_id, payload, schema_version, meta, header, hash, integrity, canonical)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
           [record.id, record.type, record.sequence, record.prevHash, record.timestamp, record.actorId ?? null,
-           record.payload, record.schemaVersion, record.meta, record.header, record.hash, record.integrity],
+           record.payload, record.schemaVersion, record.meta, record.header, record.hash, record.integrity, record.canonical],
         );
         return record;
       } catch (error) {
