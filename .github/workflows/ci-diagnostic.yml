@@ -1,0 +1,79 @@
+name: Genesis V6 Diagnostic
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Diagnose install
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set +e
+          corepack enable
+          pnpm --version > /tmp/pnpm-version.log 2>&1
+          PNPM_STATUS=$?
+          pnpm install --frozen-lockfile > /tmp/install.log 2>&1
+          INSTALL_STATUS=$?
+          {
+            echo "### Genesis V6 CI diagnostic"
+            echo ""
+            echo "pnpm status: $PNPM_STATUS"
+            echo "install status: $INSTALL_STATUS"
+            echo ""
+            echo '--- pnpm version ---'
+            cat /tmp/pnpm-version.log
+            echo ""
+            echo '--- install ---'
+            tail -200 /tmp/install.log
+          } > /tmp/report.md
+          gh pr comment "$PR_NUMBER" --body-file /tmp/report.md
+          if [ "$PNPM_STATUS" -ne 0 ] || [ "$INSTALL_STATUS" -ne 0 ]; then exit 1; fi
+
+      - name: Diagnose typecheck
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set +e
+          pnpm typecheck > /tmp/typecheck.log 2>&1
+          STATUS=$?
+          {
+            echo "### Genesis V6 typecheck"
+            echo "status: $STATUS"
+            echo ""
+            tail -300 /tmp/typecheck.log
+          } > /tmp/report.md
+          gh pr comment "$PR_NUMBER" --body-file /tmp/report.md
+          exit $STATUS
+
+      - name: Diagnose tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set +e
+          pnpm test --reporter=dot > /tmp/test.log 2>&1
+          STATUS=$?
+          {
+            echo "### Genesis V6 tests"
+            echo "status: $STATUS"
+            echo ""
+            tail -400 /tmp/test.log
+          } > /tmp/report.md
+          gh pr comment "$PR_NUMBER" --body-file /tmp/report.md
+          exit $STATUS
