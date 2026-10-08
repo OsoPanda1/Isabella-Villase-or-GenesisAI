@@ -19,6 +19,6 @@ export {
   type Tenant, type TenantCatalog,
 } from "./tenant";
 export {
-  issueHumanApproval, isRecentApproval, verifyHumanApproval, createApprovalReplayRegistry,
+  issueHumanApproval, isRecentApproval, verifyHumanApproval, createApprovalReplayRegistry, approvalSignerFromEnvironment,
   type ApprovalRef, type ApprovalTarget, type ApprovalSigner, type ApprovalReplayRegistry,
 } from "./approval";
