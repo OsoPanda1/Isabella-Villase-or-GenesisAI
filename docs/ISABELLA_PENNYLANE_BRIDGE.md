@@ -109,6 +109,19 @@ Por diseño:
 - no se simula una ejecución cuando PennyLane no está conectado;
 - no se declara hardware cuántico disponible sin un backend real.
 
+## Adaptador ejecutable
+
+El repositorio incluye `services/pennylane_bridge.py`, un servidor HTTP opcional que ejecuta circuitos con PennyLane y, cuando está disponible, `lightning.qubit` y Catalyst. No sustituye al Genesis Runtime: sólo ejecuta solicitudes que ya pasaron la gobernanza de Genesis.
+
+Instalación:
+
+```bash
+python -m pip install -r services/requirements-quantum.txt
+npm run quantum:bridge
+```
+
+Por defecto escucha en `127.0.0.1:8000`.
+
 ## Configuración
 
 Variables:
