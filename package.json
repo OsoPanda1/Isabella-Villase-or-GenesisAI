@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "build": "tsc -p tsconfig.build.json",
     "lint": "tsc --noEmit",
-    "reconcile:pids": "tsx src/cli/reconcilePids.ts"
+    "reconcile:pids": "tsx src/cli/reconcilePids.ts",
+    "quantum:bridge": "python services/pennylane_bridge.py"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
