@@ -60,7 +60,7 @@ export function decidePdp(deps: PdpDeps, req: PdpRequest): PdpDecision {
 
 export function overrideWithHumanApproval(decision: PdpDecision, approval?: ApprovalRef): PdpDecision {
   if (decision.effect !== "FLAG") return decision;
-  if (!approval || approval.decision !== "ALLOW" || !verifyHumanApproval(approval, { methodId: approval.methodId, action: approval.action, resource: undefined, principalId: undefined })) return { ...decision, admitted: false, evidenceRef: approval?.evidenceId };
+  if (!approval || approval.decision !== "ALLOW" || !verifyHumanApproval(approval, { methodId: approval.methodId, action: approval.action, resource: approval.resource, principalId: approval.principalId, contextHash: approval.contextHash, policyVersion: approval.policyVersion })) return { ...decision, admitted: false, evidenceRef: approval?.evidenceId };
   return { ...decision, effect: "ALLOW", admitted: true, evidenceRef: approval.evidenceId, reason: `${decision.reason}; human-approval:${approval.approver}` };
 }
 
