@@ -71,4 +71,4 @@ jobs:
       - name: Push Atlas snapshot
         env:
           GH_TOKEN: ${{ github.token }}
-        run: git -c credential.helper= push
+        run: git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
