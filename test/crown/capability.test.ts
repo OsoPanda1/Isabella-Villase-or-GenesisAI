@@ -60,6 +60,20 @@ describe("crown/capability", () => {
     expect(conAprobacion.evidenceRef).toBe(approving.evidenceId);
   });
 
+  it("no acepta una aprobación para otra acción o recurso aunque el método coincida", () => {
+    const approving = issueHumanApproval(
+      createPrincipal({ id: "adm", kind: "human", roles: ["admin"] }),
+      { methodId: COURIER, action: "transfer_asset", resource: "asset:123", principalId: operator.id },
+      "ALLOW",
+    );
+    expect(callGate(gate(), COURIER, {
+      principal: operator,
+      approval: approving,
+      action: "transfer_asset",
+      resource: "asset:999",
+    }).granted).toBe(false);
+  });
+
   it("no acepta una aprobación para otro método", () => {
     const approving = issueHumanApproval(
       createPrincipal({ id: "adm", kind: "human", roles: ["admin"] }),
