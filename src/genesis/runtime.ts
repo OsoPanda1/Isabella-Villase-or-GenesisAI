@@ -1,7 +1,7 @@
 import { evaluateCrown, type CrownEvaluationInput, type CrownVerdict } from "../crown";
 import { inspectAegis, type AegisVerdict } from "../security/aegis";
 import { planExecution, type AdaptivePlan, type AdaptiveRequest } from "../intelligence/adaptive-router";
-import { InMemoryTelemetry, type TelemetrySink } from "../observability/telemetry";
+import { InMemoryTelemetry, sloSnapshot, type TelemetrySink } from "../observability/telemetry";
 import { IKESEngine } from "../memory/ikes";
 import { ToolRegistry, type ToolAuthorization, type ToolReceipt } from "../tools/registry";
 import { SkillRegistry } from "../skills/registry";
@@ -114,6 +114,21 @@ export class IsabellaGenesisRuntime {
       });
       throw error;
     }
+  }
+
+  isabellaLatencySnapshot() {
+    if (!(this.telemetry instanceof InMemoryTelemetry)) {
+      return { samples: 0, p50Ms: 0, p95Ms: 0, p99Ms: 0, errorRate: 0, source: "custom-sink" as const };
+    }
+    const samples = this.telemetry.metrics
+      .filter((point) => point.name === "request_latency_ms" && point.attributes.stage === "isabella-mediation")
+      .map((point) => point.value);
+    const errors = this.telemetry.metrics.filter(
+      (point) => point.name === "request_latency_ms"
+        && point.attributes.stage === "isabella-mediation"
+        && point.attributes.status === "error",
+    ).length;
+    return { ...sloSnapshot(samples, errors), source: "in-memory" as const };
   }
 
   evaluateIsabellaEntropy(probabilities: number[]) {
