@@ -78,8 +78,8 @@ describe("identity/pdp", () => {
   it("override de FLAG con aprobación humana → ALLOW admited", () => {
     const flag = decide({ rbac, tenants }, req({ principal: machine, action: "admin:escale" }));
     const approver = createPrincipal({ id: "h9", kind: "human", roles: ["admin"] });
-    const approval = issueHumanApproval(approver, { methodId: "m", action: "admin:escale" }, "ALLOW");
-    const overridden = overrideWithHumanApproval(flag, approval);
+    const approval = issueHumanApproval(approver, { methodId: "m", action: "admin:escale", principalId: machine.id, resource: "evolution" }, "ALLOW");
+    const overridden = overrideWithHumanApproval(flag, approval, { methodId: "m", action: "admin:escale", principalId: machine.id, resource: "evolution" });
     expect(overridden.effect).toBe("ALLOW");
     expect(overridden.admitted).toBe(true);
   });
