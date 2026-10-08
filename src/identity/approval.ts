@@ -18,7 +18,7 @@ export interface ApprovalSigner {
 
 export interface ApprovalTarget {
   methodId: string;
-  action: string;
+  action?: string;
   principalId?: string;
   resource?: string;
   contextHash?: string;
@@ -38,6 +38,8 @@ export interface ApprovalRef {
   keyId: string;
   publicKeyPem: string;
   signature: string;
+  action: string;
+  resource?: string;
 }
 
 export interface ApprovalReplayRegistry {
@@ -61,7 +63,7 @@ export function createApprovalReplayRegistry(): ApprovalReplayRegistry {
 }
 
 function canonicalTarget(target: ApprovalTarget, decision: PdpEffect, approver: string, nonce: string, expiresAt: string): string {
-  return JSON.stringify({ approver, decision, expiresAt, methodId: target.methodId, action: target.action,
+  return JSON.stringify({ approver, decision, expiresAt, methodId: target.methodId, action: target.action ?? "",
     principalId: target.principalId ?? null, resource: target.resource ?? null,
     contextHash: target.contextHash ?? null, policyVersion: target.policyVersion ?? null, nonce });
 }
@@ -107,13 +109,13 @@ export function issueHumanApproval(
   return {
     evidenceId, approver: approver.id, approverKind: "human", methodId: target.methodId,
     decision, decidedAt, expiresAt, nonce, targetHash, keyId: activeSigner.keyId,
-    publicKeyPem: activeSigner.publicKeyPem, signature,
+    publicKeyPem: activeSigner.publicKeyPem, signature, action: target.action ?? "", resource: target.resource,
   };
 }
 
 export function verifyHumanApproval(ref: ApprovalRef, target: ApprovalTarget, replay?: ApprovalReplayRegistry): boolean {
   if (ref.approverKind !== "human" || ref.methodId !== target.methodId) return false;
-  const canonical = canonicalTarget(target, ref.decision, ref.approver, ref.nonce, ref.expiresAt);
+  const canonical = canonicalTarget({ ...target, action: target.action ?? ref.action, resource: target.resource ?? ref.resource }, ref.decision, ref.approver, ref.nonce, ref.expiresAt);
   if (hashTarget(canonical) !== ref.targetHash) return false;
   const expiry = Date.parse(ref.expiresAt);
   if (!Number.isFinite(expiry) || expiry < Date.now()) return false;
