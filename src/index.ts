@@ -29,3 +29,5 @@ export * from "./cognition/orchestrator";
 export * from "./memory/provenance";
 export * from "./inference/adapters";
 export * from "./deployment/canary";
+
+export * from "./isabella";
