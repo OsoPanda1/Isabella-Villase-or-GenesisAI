@@ -25,7 +25,7 @@ export function callGate(gate: CapabilityGate, methodId: string, req: Capability
   if (!hasRole) return { granted: false, reason: "el principal no tiene rol autorizado para esta capacidad" };
   if (descriptor.humanApprovalRequired || descriptor.riskTier === "HIGH" || descriptor.riskTier === "CRITICAL") {
     if (!req.approval || req.approval.decision !== "ALLOW" || !verifyHumanApproval(req.approval, {
-      methodId, action: methodId, principalId: req.principal.id,
+      methodId, action: req.approval.action, principalId: req.approval.principalId,
     })) {
       return { granted: false, reason: "capacidad requiere aprobación humana criptográficamente válida" };
     }
