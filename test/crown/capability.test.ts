@@ -37,7 +37,7 @@ describe("crown/capability", () => {
   });
 
   it("deniega capacidades sin registro (fail-closed)", () => {
-    const v = callGate(gate(), "T.TWINS.E00_X.no_op.v1.0.0.LOW.AUTONOMOUS", { principal: operator });
+    const v = callGate(gate(), "T.TWINS.E00_X.no_op.v1.0.0.LOW.AUTONOMOUS", { principal: operator, action: "memory:recall", resource: "memory" });
     expect(v.granted).toBe(false);
   });
 
