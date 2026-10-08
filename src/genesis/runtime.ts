@@ -1,7 +1,7 @@
 import { evaluateCrown, type CrownEvaluationInput, type CrownVerdict } from "../crown";
 import { inspectAegis, type AegisVerdict } from "../security/aegis";
 import { planExecution, type AdaptivePlan, type AdaptiveRequest } from "../intelligence/adaptive-router";
-import { InMemoryTelemetry, type TelemetrySink } from "../observability/telemetry";
+import { InMemoryTelemetry, sloSnapshot, type TelemetrySink } from "../observability/telemetry";
 import { IKESEngine } from "../memory/ikes";
 import { ToolRegistry, type ToolAuthorization, type ToolReceipt } from "../tools/registry";
 import { SkillRegistry } from "../skills/registry";
@@ -19,6 +19,8 @@ import { InMemoryConsentRegistry, type ConsentRegistry } from "../cognition/cons
 import { planExperts as planCognitiveExperts } from "../cognition/experts";
 import { synthesize, type CognitiveSynthesis, type CognitiveTask, type ExpertResult } from "../cognition/orchestrator";
 import { createSource, validateClaim, type ProvenanceClaim, type ProvenanceSource } from "../memory/provenance";
+import type { AtlasPersistencePort, CreateUserInput, RecordEconomyEntryInput, RecordProtocolExecutionInput } from "../atlas";
+import { IsabellaEngine, type IsabellaEngineConfig, type IsabellaProfile } from "../isabella";
 
 export interface GenesisRuntimeInput extends CrownEvaluationInput, AdaptiveRequest {
   memoryQuery?: string;
@@ -48,9 +50,97 @@ export class IsabellaGenesisRuntime {
   readonly verifier = new DeterministicVerifier();
   readonly escalation: HumanEscalationQueue = new InMemoryHumanEscalationQueue();
   readonly consent: ConsentRegistry = new InMemoryConsentRegistry();
+  readonly persistence?: AtlasPersistencePort;
+  readonly isabella: IsabellaEngine;
 
-  constructor(telemetry: TelemetrySink = new InMemoryTelemetry()) {
+  constructor(
+    telemetry: TelemetrySink = new InMemoryTelemetry(),
+    persistence?: AtlasPersistencePort,
+    isabellaConfig?: IsabellaEngineConfig,
+  ) {
     this.telemetry = telemetry;
+    this.persistence = persistence;
+    this.isabella = new IsabellaEngine(isabellaConfig);
+  }
+
+  async initPersistence(): Promise<void> {
+    if (this.persistence && "init" in this.persistence && typeof this.persistence.init === "function") {
+      await this.persistence.init();
+    }
+  }
+
+  async persistUser(input: CreateUserInput) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.createUser(input);
+  }
+
+  async persistProtocolExecution(input: RecordProtocolExecutionInput) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.recordProtocolExecution(input);
+  }
+
+  async persistEconomyEntry(input: RecordEconomyEntryInput) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.recordEconomyEntry(input);
+  }
+
+  async publishAtlasXrEvent(eventType: string, payload: unknown) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.publishXrEvent(eventType, payload);
+  }
+
+  async createAtlasSignal(input: Parameters<AtlasPersistencePort["createSignal"]>[0]) {
+    if (!this.persistence) throw new Error("Genesis persistence is not configured");
+    return this.persistence.createSignal(input);
+  }
+
+  mediateIsabella(input: { input: string; profile?: IsabellaProfile }) {
+    const started = Date.now();
+    try {
+      const result = this.isabella.chat(input);
+      this.telemetry.metric({
+        name: "request_latency_ms",
+        value: Date.now() - started,
+        at: new Date().toISOString(),
+        attributes: { stage: "isabella-mediation", profile: input.profile ?? "general" },
+      });
+      return result;
+    } catch (error) {
+      this.telemetry.metric({
+        name: "request_latency_ms",
+        value: Date.now() - started,
+        at: new Date().toISOString(),
+        attributes: { stage: "isabella-mediation", status: "error" },
+      });
+      throw error;
+    }
+  }
+
+  isabellaLatencySnapshot() {
+    if (!(this.telemetry instanceof InMemoryTelemetry)) {
+      return { samples: 0, p50Ms: 0, p95Ms: 0, p99Ms: 0, errorRate: 0, source: "custom-sink" as const };
+    }
+    const samples = this.telemetry.metrics
+      .filter((point) => point.name === "request_latency_ms" && point.attributes.stage === "isabella-mediation")
+      .map((point) => point.value);
+    const errors = this.telemetry.metrics.filter(
+      (point) => point.name === "request_latency_ms"
+        && point.attributes.stage === "isabella-mediation"
+        && point.attributes.status === "error",
+    ).length;
+    return { ...sloSnapshot(samples, errors), source: "in-memory" as const };
+  }
+
+  evaluateIsabellaEntropy(probabilities: number[]) {
+    const started = Date.now();
+    const result = this.isabella.evaluarEntropia(probabilities);
+    this.telemetry.metric({
+      name: "request_latency_ms",
+      value: Date.now() - started,
+      at: new Date().toISOString(),
+      attributes: { stage: "isabella-entropy" },
+    });
+    return result;
   }
 
   evaluate(input: GenesisRuntimeInput): GenesisRuntimeDecision {

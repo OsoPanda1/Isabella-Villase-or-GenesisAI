@@ -1127,3 +1127,410 @@ La regla sigue siendo:
 `CAPABILITY -> CONSENT/AUTHORITY -> SECURITY -> EVIDENCE -> EXECUTION -> VERITAS -> AUDIT`
 
 Estas piezas son infraestructura de gobierno y runtime. No constituyen por sí mismas entrenamiento de un modelo fundacional, aprendizaje autónomo, serving GPU ni despliegue distribuido.
+
+
+---
+
+# PID Reconciliation — Canonical Identity Layer
+
+GenesisAI incorpora un reconciliador operativo para identificadores persistentes (PIDs) como parte de su plano de identidad y procedencia. Su función es **normalizar, validar, detectar duplicados y producir una huella determinista** de los identificadores configurados; no inventa identidad ni considera que dos identificadores pertenecen a la misma persona sólo por existir.
+
+## Arquitectura
+
+```text
+Environment / Secret Manager
+          │
+          ▼
+     src/config.ts
+          │
+          ▼
+   src/pidReconciler.ts
+          │
+     ┌────┼─────────────┐
+     │    │             │
+   ORCID DOI           ISNI
+     │    │             │
+     └────┼─────────────┘
+          ▼
+   Canonical records
+          │
+          ├── checksum / format validation
+          ├── duplicate detection
+          └── deterministic SHA-256 fingerprint
+          │
+          ▼
+ ReconciliationReport
+          │
+          ▼
+ src/cli/reconcilePids.ts
+```
+
+## Identificadores soportados
+
+- **ORCID**: normalización y validación de checksum.
+- **DOI**: normalización desde URI/`doi:` y validación estructural.
+- **ISNI**: normalización y validación de checksum.
+- **DataCite DOI**: tratado como DOI con procedencia de configuración independiente.
+
+La reconciliación es deliberadamente conservadora: **formato válido no equivale a identidad confirmada**. La pertenencia de un PID a una entidad concreta requiere evidencia externa o institucional.
+
+## Ejecución
+
+```bash
+npm run reconcile:pids
+```
+
+La salida es JSON estructurado y utiliza códigos de proceso estables:
+
+```text
+0 = SUCCESS
+1 = VALIDATION_FAILED
+2 = RUNTIME_ERROR
+```
+
+Ejemplo de configuración:
+
+```bash
+GENESIS_PID_STRICT=true
+GENESIS_PID_ORCID=0000-0002-1825-0097
+GENESIS_PID_ZENODO_DOI=10.5281/zenodo.20606361
+GENESIS_PID_ISNI=0000000090000000
+GENESIS_PID_DATACITE_DOI=10.xxxx/example
+GENESIS_PID_NAMESPACE=tamv/genesis
+GENESIS_PID_PERSON_NAME="..."
+GENESIS_PID_GEOGRAPHIC_ORIGIN="..."
+```
+
+Las variables de entorno son opcionales para el modo no estricto, pero en operación gobernada se recomienda configurar explícitamente los PIDs canónicos. **No se deben introducir secretos en estos campos.**
+
+## Integración con GenesisAI
+
+El reconciliador no crea un subsistema de identidad paralelo. Se integra con:
+
+```text
+Identity
+   │
+   ├── Principal
+   ├── Authority
+   ├── Canonical Registry
+   │      └── did_isni_triangulate
+   │
+   └── PID Reconciliation
+          ├── normalization
+          ├── checksum validation
+          ├── uniqueness
+          └── fingerprint
+```
+
+La herramienta existente `did_isni_triangulate` continúa siendo una capability del Tool Registry. El nuevo reconciliador aporta la validación determinista y reutilizable que esa capability puede consumir posteriormente.
+
+## Garantías y límites
+
+El reconciliador garantiza:
+
+- entradas normalizadas;
+- validación checksum donde el estándar lo permite;
+- detección de duplicados canónicos;
+- fingerprint determinista;
+- modo estricto fail-closed;
+- códigos de salida adecuados para automatización;
+- logs estructurados;
+- errores normalizados.
+
+No garantiza:
+
+- que un PID pertenezca realmente a una persona;
+- resolución federada contra ORCID/ISNI/DataCite;
+- prueba de propiedad;
+- firma institucional;
+- verificación criptográfica de un registro remoto.
+
+Esas operaciones requieren conectores o fuentes autoritativas externas y deben incorporarse como evidencia, no como inferencia.
+
+## Pruebas
+
+Se añadió `test/pidReconciler.test.ts` para cubrir:
+
+1. ORCID válido + DOI válido.
+2. Normalización de DOI.
+3. rechazo de ORCID inválido.
+4. modo estricto sin identificadores.
+5. generación del reporte y fingerprint.
+
+
+---
+
+# Atlas Persistence Port — Atlas / HE-HEP / TAMV-online
+
+El subsistema Atlas se integra como **infraestructura de persistencia y signaling**, no como un segundo runtime cognitivo. El principio de integración es:
+
+```text
+GENESIS RUNTIME
+      │
+      │ AtlasPersistencePort
+      ▼
+   AtlasStore
+      │
+      ▼
+Supabase Data API
+```
+
+Esta separación evita que el kernel conozca tablas, columnas, REST o credenciales de Supabase. Genesis conserva autoridad sobre la ejecución; AtlasStore sólo materializa estado persistente y eventos en el backend configurado.
+
+## Contrato canónico
+
+`src/atlas/persistence.ts` define `AtlasPersistencePort` con estas capacidades:
+
+| Capacidad | Propósito | Backend |
+|---|---|---|
+| `createUser` | Persistir identidad Atlas | `atlas_users` |
+| `listUsers` | Recuperar usuarios Atlas | `atlas_users` |
+| `recordProtocolExecution` | Registrar ejecución de protocolo | `atlas_protocols` |
+| `recordEconomyEntry` | Registrar crédito/débito | `atlas_ledger` |
+| `publishXrEvent` | Persistir eventos XR | `atlas_xr_events` |
+| `createSignal` | Persistir signaling WebRTC | `atlas_webrtc_signals` |
+| `onXrEvent` | Bus local de eventos XR | proceso actual |
+| `onSignal` | Bus local de signaling | proceso actual |
+
+Los métodos de dominio devuelven objetos normalizados y no exponen directamente las filas de Supabase al runtime.
+
+## Antifragilidad de transporte
+
+`AtlasStore` usa `fetch` nativo y `AbortController`:
+
+- timeout configurable;
+- timeout predeterminado de 10 segundos;
+- cancelación efectiva de la solicitud;
+- validación de configuración;
+- propagación explícita de errores HTTP;
+- limpieza garantizada del temporizador;
+- listeners aislados: una excepción de un consumidor no rompe a los demás.
+
+La clave `SUPABASE_SERVICE_ROLE_KEY` sólo puede existir en backend. Nunca debe enviarse al navegador ni incorporarse a código cliente.
+
+## Inyección en Genesis
+
+`IsabellaGenesisRuntime` acepta ahora un segundo parámetro opcional:
+
+```ts
+new IsabellaGenesisRuntime(telemetry, persistence);
+```
+
+La persistencia puede inicializarse explícitamente mediante `initPersistence()` y proyectarse mediante:
+
+```ts
+runtime.persistUser(...)
+runtime.persistProtocolExecution(...)
+runtime.persistEconomyEntry(...)
+runtime.publishAtlasXrEvent(...)
+runtime.createAtlasSignal(...)
+```
+
+Esto es intencionalmente explícito. **No se añadió persistencia automática a cada evaluación cognitiva**, porque una evaluación de Genesis no debe convertirse accidentalmente en una escritura externa. La ejecución persistente debe ocurrir en el punto de dominio que realmente corresponda.
+
+Por la misma razón, este repositorio no afirma que exista todavía un `AtlasKernel`, `postLedger()` o `executeProtocol()` operativo en el código actual. El port queda preparado para que esos métodos, cuando existan, proyecten sus resultados sin acoplar el kernel a Supabase.
+
+## HE-HEP
+
+Los contratos Atlas admiten `he_hep_context` en las operaciones donde el contexto semántico forma parte del dominio:
+
+```text
+HE-Identity  → HEP-1
+HE-Transform → HEP-2
+HE-Economy   → HEP-1
+```
+
+Estos valores son **metadatos de dominio**, no una prueba criptográfica ni una certificación externa. Su persistencia no implica por sí sola validación de identidad, autoridad, economía o territorio.
+
+## Economía
+
+`recordEconomyEntry()` valida:
+
+- usuario;
+- monto finito;
+- monto estrictamente mayor que cero;
+- razón;
+- tipo `credit | debit`.
+
+La operación no calcula saldos ni implementa una contabilidad de doble partida. Por tanto, `atlas_ledger` debe entenderse como registro de movimientos; un ledger financiero completo requiere invariantes transaccionales adicionales en la base de datos.
+
+## XR y WebRTC
+
+XR y signaling están deliberadamente fuera del núcleo cognitivo:
+
+```text
+Atlas / online
+├── XR event persistence
+└── WebRTC signaling persistence
+
+Genesis
+└── governance / cognition / execution
+```
+
+`onXrEvent()` y `onSignal()` son buses **locales al proceso**. No son Supabase Realtime, no son un broker distribuido y no garantizan entrega entre múltiples instancias. Para operación federada/multi-nodo se requiere una capa de mensajería o Realtime explícita.
+
+## Seguridad
+
+La arquitectura conserva la invariante:
+
+```text
+CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
+```
+
+AtlasStore no concede autoridad. Que una escritura en Supabase sea técnicamente posible no significa que una operación haya sido autorizada por CROWN, AEGIS, consentimiento, política o un principal válido.
+
+La service-role key proporciona privilegios de backend y, por ello, debe quedar detrás de los límites de despliegue. RLS, políticas SQL, constraints, auditoría y controles de infraestructura siguen siendo responsabilidad del entorno Supabase.
+
+## Variables de entorno
+
+Configuración mínima:
+
+```bash
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<backend-only-secret>
+```
+
+Opcional:
+
+```bash
+ATLAS_STORE_TIMEOUT_MS=10000
+```
+
+La implementación actual expone `AtlasStoreConfig`; la construcción desde variables de entorno queda como una decisión de composición del despliegue y no se mezcla con el dominio.
+
+## Pruebas
+
+Se añadió `test/atlasPersistence.test.ts` para cubrir:
+
+- configuración incompleta;
+- creación y mapeo de usuario;
+- llamada a Supabase Data API;
+- aislamiento de errores de listeners XR;
+- rechazo de montos económicos inválidos antes de hacer I/O.
+
+La suite es de contrato/mocks; **no demuestra conectividad con un proyecto Supabase real**. Para certificar el despliegue real todavía se necesita una prueba de integración con una instancia controlada, esquema SQL, políticas y credenciales de entorno.
+
+## Estado de integración
+
+**Implementado en la rama de evolución:**
+
+- `src/atlas/types.ts`
+- `src/atlas/persistence.ts`
+- `src/atlas/index.ts`
+- inyección opcional en `src/genesis/runtime.ts`
+- pruebas unitarias de persistencia
+- documentación de límites y configuración
+
+**Pendiente para una integración operativa completa:**
+
+1. esquema SQL real para las tablas Atlas;
+2. RLS/constraints y políticas de Supabase;
+3. health-check de infraestructura;
+4. Realtime/broker para signaling multi-instancia;
+5. integración con métodos de dominio Atlas reales cuando estén presentes;
+6. pruebas contra Supabase real;
+7. observabilidad de latencia, errores y timeouts de persistencia.
+
+El resultado actual debe clasificarse como **puerto de infraestructura + adaptador Supabase integrado al runtime**, no como un Atlas online completamente desplegado.
+
+
+---
+
+# IsabellaEngine v2 — Mediación cognitiva TAMV-ready
+
+La evolución de Isabella se incorpora al runtime canónico GenesisAI como un motor de mediación cognitiva, no como un segundo runtime.
+
+```text
+CLIENT
+  │
+  ▼
+CROWN / AEGIS
+  │
+  ▼
+Genesis Runtime
+  │
+  ├── IsabellaEngine v2
+  │     ├── LatentSpaceManifold
+  │     ├── HeptafederatedValidator
+  │     ├── EntropyMitigator
+  │     └── Isabella Ledger
+  │
+  ├── IKES / Memory
+  ├── VERITAS
+  ├── Tools / Skills
+  └── AtlasPersistencePort
+```
+
+## Capacidades implementadas
+
+src/isabella/engine.ts incorpora espacio latente conceptual, proyección OOD, siete federaciones, validación heptafederada, análisis de entropía de Shannon, mitigación entrópica, contra-auditoría cognitiva, simulación epistemológica, ledger operativo, API chat() compatible con integración progresiva y snapshot operacional del engine.
+
+La versión integrada es determinista. Se eliminó la aleatoriedad del diseño original: los vectores conceptuales y scores federados se derivan mediante SHA-256. Esto permite reproducibilidad, testing, comparación entre nodos y auditoría.
+
+## Interconexión con Genesis
+
+El runtime expone:
+
+```ts
+runtime.isabella
+runtime.mediateIsabella(...)
+runtime.evaluateIsabellaEntropy(...)
+runtime.isabellaLatencySnapshot()
+```
+
+La API pública dispone de:
+
+```text
+POST /api/v1/isabella/mediate
+POST /api/v1/isabella/entropy
+GET  /api/v1/isabella/status
+```
+
+La ruta /api/v1/isabella/mediate no ejecuta Isabella directamente desde HTTP. Primero construye el principal, verifica autoridad balanceada y pasa por runtime.evaluate(), donde CROWN y AEGIS tienen oportunidad de admitir o bloquear la operación. Sólo después se ejecuta la mediación.
+
+Esto preserva:
+
+```text
+CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
+```
+
+## Latencia y observabilidad
+
+La mediación local no requiere una llamada a un modelo externo. Las operaciones de espacio latente, hashing, entropía y evaluación federada son CPU-locales y están diseñadas para minimizar I/O.
+
+Cada mediación emite request_latency_ms con stage=isabella-mediation y profile=<profile>.
+
+GET /api/v1/isabella/status expone versión, hash documental, entradas del ledger, conceptos, dimensiones del manifold y p50/p95/p99 de latencia junto con tasa de error.
+
+“Latencia casi cero” no se declara como propiedad garantizada. El sistema mide la latencia real y permite establecer SLO después de observar cargas reales. CROWN, AEGIS, red, persistencia o inferencia externa pueden dominar el tiempo total.
+
+## Evolución respecto al código conceptual suministrado
+
+Se preservan LatentSpaceManifold, HeptafederatedValidator, EntropyMitigator, ContraAuditoriaResult, EpistemicSimulationResult, LedgerEntry, perfiles de Isabella, OOD, heptafederación, entropía, contra-auditoría y simulación epistemológica.
+
+Se introducen controles de producción: validación de dimensiones y umbrales, rechazo de masa probabilística inválida, identificadores deterministas, vectores reproducibles, scores reproducibles, instrumentación de latencia, integración con autoridad Genesis y pruebas automatizadas.
+
+## Límite epistemológico
+
+Los scores heptafederados implementados actualmente son heurísticos/deterministas derivados del contenido, no verificaciones externas de una federación real. OOD no es todavía un embedding de un modelo fundacional; el manifold no es un vector database; la consonancia no constituye una prueba científica; el ledger local no sustituye BookPI; y el hash documental no demuestra por sí mismo autenticidad de una fuente.
+
+La evolución correcta es conectar estas primitivas con evidencia real, IKES, Veritas y BookPI sin convertir una heurística en una afirmación de verdad.
+
+## Integración con Atlas
+
+El engine no duplica persistencia. Las operaciones pueden proyectarse posteriormente a AtlasPersistencePort o BookPI cuando exista un punto de dominio explícito.
+
+```text
+IsabellaEngine → decisión/mediación cognitiva
+Genesis        → autoridad y orquestación
+BookPI         → provenance/audit
+LITLE          → evidencia/certificación
+AtlasStore     → persistencia/online/XR/signaling
+Telemetry      → latencia/SLO/operación
+```
+
+## Pruebas
+
+ test/isabellaEngine.test.ts cubre determinismo de la evaluación heptafederada, entropía, rechazo de vectores probabilísticos inválidos, ledger y estabilidad de evaluaciones repetidas.
+
+La validación final de typecheck, suite completa y build debe hacerse mediante CI; la implementación del código no constituye evidencia de una ejecución CI exitosa.

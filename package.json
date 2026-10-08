@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "tsc -p tsconfig.build.json",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "reconcile:pids": "tsx src/cli/reconcilePids.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -3,11 +3,15 @@ import fs from "fs";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import { IsabellaGenesisRuntime } from "./genesis/runtime";
-import { createPrincipal } from "./identity/principal";
+import { assertBalancedAuthority, createPrincipal } from "./identity/principal";
 import { createCapabilityGate } from "./crown/capability";
 import { GENESIS_EXPERTS, EXPERT_REGISTRY } from "./cognition/experts";
 import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
+import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
+import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
+import { bookPiSecret } from "./security/secrets";
+import { createAtlasStoreFromEnv } from "./atlas";
 
 const app = express();
 const port = 3000;
@@ -26,8 +30,14 @@ app.get("/styles/crystal-clear.css", (_req, res) => {
   }
 });
 
-// Initialize Genesis TINA Runtime
-const runtime = new IsabellaGenesisRuntime();
+// Initialize Genesis TINA Runtime with optional Atlas persistence.
+const atlasPersistence = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createAtlasStoreFromEnv()
+  : undefined;
+const runtime = new IsabellaGenesisRuntime(undefined, atlasPersistence);
+void runtime.initPersistence().catch((error) => {
+  console.error("[Genesis] Atlas persistence initialization failed:", error);
+});
 
 // Initialize Google GenAI client if API key is provided in environment
 const apiKey = process.env.GEMINI_API_KEY || process.env.MODEL_API_KEY;
@@ -270,6 +280,14 @@ runtime.skills.register({
 // Setup default Capability Gate
 const defaultGate = createCapabilityGate([
   {
+    methodId: "A.COGNITION.E14_COGNITIVE_SAFETY.mediate_isabella.v2.0.0.LOW.CONSTITUTIONAL",
+    owner: "isabella-sovereign",
+    allowedRoles: ["operator", "admin", "viewer"],
+    riskTier: "LOW",
+    governanceTier: "CONSTITUTIONAL",
+    humanApprovalRequired: false,
+  },
+  {
     methodId: "T.TOURISM.E04_TERRITORY.query.v1.0.0.LOW.TERRITORIAL",
     owner: "isabella-sovereign",
     allowedRoles: ["operator", "admin", "viewer"],
@@ -404,6 +422,7 @@ app.get("/api/v1/status", (_req, res) => {
       veritas: "ACTIVE",
       bookpi: "ACTIVE",
       pdp: "ACTIVE",
+      litleTrustFabric: "ACTIVE",
       geminiEngine: apiKey ? "CONNECTED" : "SOVEREIGN_FALLBACK",
     },
     experts: {
@@ -414,6 +433,7 @@ app.get("/api/v1/status", (_req, res) => {
     toolsCount: 2,
     skillsCount: 6,
     invariant: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
+    trust: { litle: "L-512.v1", evidence: "SHA3-512", certificates: "HMAC-SHA256" },
   });
 });
 
@@ -602,6 +622,173 @@ Responde de forma elocuente, rigurosa, profunda, epistemológicamente calibrada 
       error: error instanceof Error ? error.message : String(error),
     });
   }
+});
+
+// Canonical cognitive API: product/UI clients submit intent only.
+// Identity, authority, policy and system instructions are derived server-side.
+app.post("/api/v1/cognitive/request", async (req, res) => {
+  const startedAt = new Date().toISOString();
+  try {
+    const body = req.body ?? {};
+    const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (!input) {
+      res.status(400).json({ success: false, error: "input es requerido" });
+      return;
+    }
+
+    const principal = createPrincipal({
+      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
+      kind: body.principalKind === "machine" ? "machine" : "human",
+      roles: Array.isArray(body.roles) ? body.roles.filter((v: unknown): v is string => typeof v === "string") : ["operator"],
+    });
+    assertBalancedAuthority(principal);
+
+    const methodId = typeof body.methodId === "string"
+      ? body.methodId
+      : "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
+    const action = typeof body.action === "string" ? body.action : "memory:recall";
+    const resource = typeof body.resource === "string" ? body.resource : "memory";
+    const riskTier = body.riskTier === "MEDIUM" || body.riskTier === "HIGH" || body.riskTier === "CRITICAL" ? body.riskTier : "LOW";
+    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery : undefined;
+
+    const decision = runtime.evaluate({
+      input,
+      methodId,
+      principal,
+      gate: defaultGate,
+      action,
+      resource,
+      riskTier,
+      inputTokens: Math.max(1, Math.ceil(input.length / 4)),
+      expectedOutputTokens: 512,
+      pressure: 0,
+      requiresTools: false,
+      requiresMemory: Boolean(memoryQuery),
+      memoryQuery,
+    });
+
+    const traceId = `trace-${Date.now()}-${Buffer.from(input).toString("base64url").slice(0, 12)}`;
+    const snapshot = createCrownExperienceSnapshot(
+      { input, principal, methodId, action, resource, riskTier, memoryQuery },
+      decision.crown,
+      `req-${Date.now()}`,
+      traceId,
+      startedAt,
+      decision.memory.length,
+    );
+    const systemPrompt = buildCanonicalSystemPrompt(
+      { input, principal, methodId, action, resource, riskTier, memoryQuery },
+      decision.crown,
+      snapshot.route,
+      traceId,
+    );
+
+    let generativeNarrative: string | null = null;
+    if (decision.admitted && genAi && body.modelEngine === "gemini") {
+      const resp = await genAi.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `${systemPrompt}\\n\\nSolicitud del usuario:\\n${input}`,
+      });
+      generativeNarrative = resp.text ?? null;
+    }
+
+    res.status(decision.admitted ? 200 : 403).json({
+      success: decision.admitted,
+      requestId: snapshot.requestId,
+      traceId,
+      decision,
+      snapshot,
+      systemPromptApplied: true,
+      generativeNarrative,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// Isabella cognitive mediation — executed only through the canonical Genesis runtime.
+app.post("/api/v1/isabella/mediate", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const input = typeof body.input === "string" ? body.input.trim() : "";
+    const allowedProfiles = new Set(["general", "contra-auditoria", "simulacion", "secretaria", "gobernanza"]);
+    const profile = typeof body.profile === "string" && allowedProfiles.has(body.profile)
+      ? body.profile as "general" | "contra-auditoria" | "simulacion" | "secretaria" | "gobernanza"
+      : "general";
+
+    if (!input) {
+      res.status(400).json({ success: false, error: "input es requerido" });
+      return;
+    }
+
+    const started = Date.now();
+    const principal = createPrincipal({
+      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
+      kind: body.principalKind === "machine" ? "machine" : "human",
+      roles: Array.isArray(body.roles)
+        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
+        : ["operator"],
+    });
+    assertBalancedAuthority(principal);
+
+    const governance = runtime.evaluate({
+      input,
+      methodId: "A.COGNITION.E14_COGNITIVE_SAFETY.mediate_isabella.v2.0.0.LOW.CONSTITUTIONAL",
+      principal,
+      gate: defaultGate,
+      action: "cognition:mediate",
+      resource: "isabella",
+      riskTier: "LOW",
+      inputTokens: Math.max(1, Math.ceil(input.length / 4)),
+      expectedOutputTokens: 256,
+      pressure: 0,
+      requiresTools: false,
+      requiresMemory: false,
+    });
+
+    if (!governance.admitted) {
+      res.status(403).json({
+        success: false,
+        error: "Isabella mediation denied by Genesis governance",
+        governance,
+        latencyMs: Date.now() - started,
+      });
+      return;
+    }
+
+    const mediation = runtime.mediateIsabella({ input, profile });
+    res.json({
+      success: true,
+      engine: runtime.isabella.snapshot(),
+      governance,
+      mediation,
+      latencyMs: Date.now() - started,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post("/api/v1/isabella/entropy", (req, res) => {
+  try {
+    const probabilities = Array.isArray(req.body?.probabilities)
+      ? req.body.probabilities.filter((value: unknown): value is number => typeof value === "number")
+      : [];
+    const result = runtime.evaluateIsabellaEntropy(probabilities);
+    res.json({ success: true, ...result, timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get("/api/v1/isabella/status", (_req, res) => {
+  res.json({
+    success: true,
+    engine: runtime.isabella.snapshot(),
+    latency: runtime.isabellaLatencySnapshot(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Triple Blockade Security Scanner
@@ -2878,6 +3065,51 @@ app.get("/", (_req, res) => {
   </script>
 </body>
 </html>`);
+});
+
+app.post("/api/v1/litle/attest", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const evidence = Array.isArray(body.evidence) ? body.evidence : [];
+    if (!body.year || !body.namespace || !body.workType || evidence.length === 0) {
+      res.status(400).json({ success: false, error: "year, namespace, workType y evidence son requeridos" });
+      return;
+    }
+    const fabric = new LitleTrustFabric(bookPiSecret());
+    const result = fabric.attest({
+      year: Number(body.year),
+      namespace: String(body.namespace),
+      workType: String(body.workType) as Parameters<LitleTrustFabric["attest"]>[0]["workType"],
+      evidence: evidence.map((item: Record<string, unknown>, index: number) => ({
+        id: typeof item.id === "string" ? item.id : "evidence-" + (index + 1),
+        type: String(item.type ?? "SOURCE") as Parameters<LitleTrustFabric["attest"]>[0]["evidence"][number]["type"],
+        content: String(item.content ?? ""),
+        parentIds: Array.isArray(item.parentIds) ? item.parentIds.map(String) : undefined,
+        metadata: item.metadata && typeof item.metadata === "object" ? item.metadata as Record<string, string> : undefined,
+      })),
+      dimensions: body.dimensions,
+      aiAssisted: Boolean(body.aiAssisted),
+    });
+    res.json({ success: true, attestation: result.attestation, certificate: result.certificate, evidenceRoot: result.evidenceChain.rootHash, profile: result.profile });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+app.post("/api/v1/litle/verify", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    if (!body.certificate) {
+      res.status(400).json({ success: false, error: "certificate es requerido" });
+      return;
+    }
+    const certificateValid = verifyCertificate(body.certificate, bookPiSecret());
+    const evidenceValid = body.evidenceChain ? verifyEvidenceChain(body.evidenceChain) : null;
+    const id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
+    res.json({ success: true, certificateValid, evidenceValid, id });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 app.listen(port, host, () => {
