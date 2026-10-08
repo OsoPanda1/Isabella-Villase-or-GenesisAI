@@ -1,0 +1,234 @@
+/**
+ * Crystal Clear Aesthetic CSS Module
+ * Isabella Genesis TINA V6 (esLatina)
+ *
+ * Implements:
+ * - High-translucency glassmorphic layers with backdrop-filter: blur(28px - 36px)
+ * - Iridescent linear-gradient borders with chromatic shifts
+ * - Subtle neon-iridescent box-shadows (neon crystal glow alive)
+ * - 100% Retractable accordion-style sidebars with fluid transitions
+ * - Focused ultra-clean chat immersion mode
+ */
+
+:root {
+  --bg-deep-space: #040711;
+  --crystal-surface: rgba(13, 19, 36, 0.42);
+  --crystal-surface-active: rgba(18, 27, 52, 0.65);
+  --crystal-card: rgba(15, 23, 42, 0.38);
+  --crystal-card-hover: rgba(22, 34, 62, 0.58);
+  
+  /* Linear gradient & iridescent borders */
+  --crystal-border-subtle: rgba(255, 255, 255, 0.08);
+  --crystal-border-glow: rgba(0, 242, 254, 0.32);
+  --crystal-highlight-top: rgba(255, 255, 255, 0.22);
+  --crystal-highlight-bottom: rgba(0, 0, 0, 0.45);
+  
+  /* Neon Palette */
+  --neon-cyan: #00f2fe;
+  --neon-indigo: #6366f1;
+  --neon-rose: #f43f5e;
+  --neon-amber: #f59e0b;
+  --neon-emerald: #10b981;
+  --neon-violet: #8b5cf6;
+}
+
+/* ==========================================================================
+   Crystal Clear Panels & Glass Surfaces
+   ========================================================================== */
+
+.crystal-clear-panel {
+  background: var(--crystal-surface);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid var(--crystal-border-subtle);
+  position: relative;
+  box-shadow: 
+    inset 0 1px 1px 0 var(--crystal-highlight-top),
+    inset 0 -1px 1px 0 var(--crystal-highlight-bottom),
+    0 20px 45px -15px rgba(0, 0, 0, 0.82),
+    0 0 25px -8px rgba(0, 242, 254, 0.08);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.crystal-clear-card {
+  background: var(--crystal-card);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 10px 25px -8px rgba(0, 0, 0, 0.6);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.crystal-clear-card:hover {
+  background: var(--crystal-card-hover);
+  border-color: rgba(0, 242, 254, 0.38);
+  transform: translateY(-1.5px);
+  box-shadow: 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
+    0 16px 32px -8px rgba(0, 0, 0, 0.7),
+    0 0 24px -4px rgba(0, 242, 254, 0.22);
+}
+
+/* ==========================================================================
+   Linear Gradient Borders & Iridescent Neon Glow Alive
+   ========================================================================== */
+
+@keyframes iridescentShift {
+  0% {
+    filter: hue-rotate(0deg) brightness(1);
+  }
+  50% {
+    filter: hue-rotate(35deg) brightness(1.25);
+  }
+  100% {
+    filter: hue-rotate(0deg) brightness(1);
+  }
+}
+
+@keyframes neonGlowPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 18px -2px rgba(0, 242, 254, 0.28),
+      0 0 35px -6px rgba(244, 63, 94, 0.18),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.28);
+  }
+  50% {
+    box-shadow: 
+      0 0 28px 0px rgba(0, 242, 254, 0.42),
+      0 0 48px -4px rgba(244, 63, 94, 0.28),
+      inset 0 1px 2px rgba(255, 255, 255, 0.45);
+  }
+}
+
+.crystal-gradient-border {
+  position: relative;
+  background-clip: padding-box;
+}
+
+.crystal-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, 
+    rgba(0, 242, 254, 0.7) 0%, 
+    rgba(99, 102, 241, 0.5) 25%, 
+    rgba(244, 63, 94, 0.6) 50%, 
+    rgba(245, 158, 11, 0.65) 75%, 
+    rgba(0, 242, 254, 0.7) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: iridescentShift 12s ease-in-out infinite;
+  z-index: 1;
+}
+
+.neon-crystal-glow-alive {
+  animation: neonGlowPulse 4s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Retractable Accordion-Style Sidebars (100% Collapsible)
+   ========================================================================== */
+
+.crystal-sidebar {
+  width: 21rem; /* 336px */
+  max-width: 21rem;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), 
+              margin 0.35s cubic-bezier(0.16, 1, 0.3, 1), 
+              opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+              transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: width, margin, opacity, transform;
+}
+
+.crystal-sidebar-left.collapsed {
+  width: 0 !important;
+  max-width: 0 !important;
+  min-width: 0 !important;
+  margin-left: 0 !important;
+  padding: 0 !important;
+  border-right-width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  transform: translateX(-100%);
+}
+
+.crystal-sidebar-right.collapsed {
+  width: 0 !important;
+  max-width: 0 !important;
+  min-width: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+  border-left-width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  transform: translateX(100%);
+}
+
+/* Floating Clean Edge Triggers when sidebars are collapsed */
+.floating-edge-trigger {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 45;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 242, 254, 0.25);
+  transition: all 0.25s ease-in-out;
+}
+
+.floating-edge-trigger:hover {
+  background: rgba(22, 34, 62, 0.95);
+  border-color: rgba(0, 242, 254, 0.6);
+  transform: translateY(-50%) scale(1.08);
+}
+
+/* Accordion Item Aesthetics */
+.crystal-accordion-header {
+  transition: all 0.2s ease;
+  border-radius: 0.75rem;
+}
+
+.crystal-accordion-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.crystal-accordion-content {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Focus Mode: Centered clean chat space when all sidebars are retracted */
+.chat-focus-mode {
+  transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chat-focus-mode.wide-view {
+  max-width: 58rem !important;
+}
+
+/* Subtle glass scrollbar */
+.crystal-clear-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.crystal-clear-scrollbar::-webkit-scrollbar-track {
+  background: rgba(5, 8, 17, 0.35);
+}
+.crystal-clear-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.crystal-clear-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 254, 0.5);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
+}

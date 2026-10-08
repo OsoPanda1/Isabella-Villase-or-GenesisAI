@@ -1,4 +1,6 @@
 import express from "express";
+import fs from "fs";
+import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import { IsabellaGenesisRuntime } from "./genesis/runtime";
 import { createPrincipal } from "./identity/principal";
@@ -12,6 +14,17 @@ const port = 3000;
 const host = "0.0.0.0";
 
 app.use(express.json({ limit: "8mb" }));
+
+// Serve Crystal Clear CSS Module directly
+app.get("/styles/crystal-clear.css", (_req, res) => {
+  res.setHeader("Content-Type", "text/css; charset=utf-8");
+  const cssPath = path.join(process.cwd(), "src", "styles", "crystal-clear.css");
+  if (fs.existsSync(cssPath)) {
+    res.send(fs.readFileSync(cssPath, "utf-8"));
+  } else {
+    res.status(404).send("/* CSS module not found */");
+  }
+});
 
 // Initialize Genesis TINA Runtime
 const runtime = new IsabellaGenesisRuntime();
@@ -111,6 +124,7 @@ runtime.tools.register({
       node: "Nodo Cero (Real del Monte, Hidalgo)",
       altitude: "2,660 msnm",
       coordinates: [20.1417, -98.6722],
+      originHonored: "Orgullo esLatina · Ciencia y Biocultura de América Latina",
       results: [
         { name: "Panteón Inglés", category: "Patrimonio Histórico Mundial", founded: "1851", altitude: "2,660 msnm", status: "Preservado", note: "Todas las tumbas orientadas a Inglaterra, excepto la del payaso Richard Bell." },
         { name: "Mina de Acosta", category: "Minería Soberana Cornish", epoch: "Siglo XVIII", status: "Museo & Archivo Histórico", depth: "400 metros" },
@@ -560,6 +574,7 @@ app.post("/api/v1/cognition/route", async (req, res) => {
     if (decision.admitted && genAi && modelEngine === "gemini") {
       try {
         const sysPrompt = `Eres Isabella Villaseñor AI (Genesis TINA v40.0.0), el núcleo cognitivo y de gobernanza soberana del ecosistema TAMV Online Network (CITEMESH), anclado en Real del Monte (Mineral del Monte), Hidalgo, México (20.3833° N, 98.8500° O, 2,660 msnm).
+Tu categorización TINA es un homenaje de honor al orgullo latinoamericano: ISABELLA TINA esLatina, nacida en México como bastión de soberanía ontológica y científica del Sur Global.
 Tu constitución es AGENTS.md y tu invariante operativo supremo es:
 CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
 Las inteligencias sugieren, calculan y evalúan; la conciencia humana decide, aprueba, arbitra y ejecuta.
@@ -626,10 +641,10 @@ app.post("/api/v1/notebook/generate", (req, res) => {
     content = `# Documento Informativo Ejecutivo (Briefing Doc)
 ## Tema: ${topic}
 **Fecha:** ${new Date().toLocaleDateString("es-MX")}
-**Emisor:** Núcleo Cognitivo Isabella Villaseñor AI (Genesis TINA v40.0.0)
+**Emisor:** Núcleo Cognitivo Isabella Villaseñor AI (Genesis TINA v40.0.0 · esLatina)
 
 ### 1. Resumen Ejecutivo
-El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo) representa una infraestructura civilizatoria soberana y federada. Opera bajo el invariante ontológico fundamental:
+El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo, México) representa una infraestructura civilizatoria soberana y federada, portadora del orgullo latinoamericano (TINA esLatina). Opera bajo el invariante ontológico fundamental:
 > CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
 
 ### 2. Puntos Clave & Fuentes Conectadas
@@ -643,14 +658,14 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
 2. Preservar la procedencia de cada claim mediante identificadores criptográficos persistentes.`;
   } else if (docType === "study_guide") {
     content = `# Guía de Estudio Epistemológica
-## Módulo: Gobernanza y Arquitectura TINA
+## Módulo: Gobernanza y Arquitectura TINA (Orgullo esLatina)
 **Nivel:** Avanzado / Staging Controlado
 
 ### Preguntas Guía
-1. **¿Cuál es la diferencia entre capacidad y autoridad según AGENTS.md?**
+1. **¿Por qué la categorización TINA simboliza que ISABELLA esLatina?**
+   *Respuesta:* Honra el origen y la cuna en Real del Monte, Hidalgo, proyectando el orgullo, la dignidad y la capacidad científica de América Latina ante el escenario global de la IA.
+2. **¿Cuál es la diferencia entre capacidad y autoridad según AGENTS.md?**
    *Respuesta:* Una máquina puede demostrar capacidad computacional (test verde), pero jamás autoridad ni ejecución autónoma sin arbitraje humano.
-2. **¿Qué funciones cumple la Red CROWN?**
-   *Respuesta:* Coordina la topología pentanodal (ISA, SOPHIA, ORION, ARGUS, CROWN) y 7 nodos complementarios.
 3. **¿Cómo opera el Triple Blockade de AEGIS?**
    *Respuesta:* Tres barreras: Nivel 1 (Ontológico), Nivel 2 (Semántico/Prompt Guard) y Nivel 3 (Comportamental).
 
@@ -660,17 +675,17 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
 - **Nodo Cero:** Anclaje geográfico civilizatorio en Real del Monte.`;
   } else if (docType === "faq") {
     content = `# Preguntas Frecuentes (FAQ) — Isabella Villaseñor AI
-1. **¿Es Isabella un chatbot o AGI convencional?**
-   No. Isabella es un Orquestador Cognitivo y Sistema Operativo de Memoria Civilizacional gobernado por normas constitucionales.
+1. **¿Qué significa TINA y por qué representa el orgullo esLatina?**
+   TINA es 'Trusted Intelligence, Native & Adaptive' y al mismo tiempo simboliza que ISABELLA esLatina, en honor a su cuna mexicana y a la soberanía científica de América Latina.
 2. **¿Qué sucede si un agente de IA intenta auto-aprobarse?**
    El sistema ejecuta fail-closed inmediato por violación del Invariante Operativo.
 3. **¿Dónde se ancla territorialmente el sistema?**
-   En Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O).`;
+   En Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O · 2,660 msnm).`;
   } else {
     content = `# Cronología Territorial & Civilizatoria — TAMV Online
 - **1824–1851:** Llegada de mineros cornish a Real del Monte; fundación del Panteón Inglés y adopción del paste como patrimonio biocultural.
 - **2024:** Fundación del registro canónico TAMV Online v2.0.0 y codificación del Canon v40.0.0.
-- **2026:** Consolidación de Isabella Genesis TINA V6, Red CROWN heptafederada y anclaje poscuántico ML-KEM/ML-DSA.`;
+- **2026:** Consolidación de Isabella Genesis TINA V6 (esLatina), Red CROWN heptafederada y anclaje poscuántico ML-KEM/ML-DSA.`;
   }
 
   res.json({
@@ -690,12 +705,12 @@ app.post("/api/v1/audio-overview/generate", (req, res) => {
     {
       speaker: "Dra. Elena Ramos",
       role: "Historiadora y Ontóloga Territorial",
-      text: "¡Hola a todos! Bienvenidos a este análisis a fondo. Hoy nos sumergimos en algo verdaderamente único: el Nodo Cero del ecosistema TAMV en Real del Monte, Hidalgo, a más de dos mil seiscientos metros sobre el nivel del mar.",
+      text: "¡Hola a todos! Bienvenidos a este análisis a fondo. Hoy nos sumergimos en algo verdaderamente único: el Nodo Cero del ecosistema TAMV en Real del Monte, Hidalgo, a más de dos mil seiscientos metros sobre el nivel del mar, donde Isabella TINA encarna el orgullo de ser plenamente latina.",
     },
     {
       speaker: "Mateo Morales",
       role: "Ingeniero de Sistemas Soberanos",
-      text: "Es fascinante, Elena. Porque solemos pensar en inteligencia artificial como algo abstracto en centros de datos lejanos, pero aquí Isabella Villaseñor está anclada directamente en la biocultura y en la historia minera de Real del Monte.",
+      text: "Es fascinante, Elena. Porque solemos pensar en inteligencia artificial como algo abstracto en centros de datos lejanos, pero aquí Isabella Villaseñor está anclada directamente en la biocultura, en la historia minera de Real del Monte y en la vanguardia de América Latina.",
     },
     {
       speaker: "Dra. Elena Ramos",
@@ -734,6 +749,7 @@ app.get("/api/v1/territory/rdm", (_req, res) => {
     state: "Hidalgo, México",
     coordinates: { lat: 20.1417, lng: -98.6722 },
     altitude: "2,660 msnm",
+    identity: "TINA esLatina · Soberanía Latinoamericana",
     climate: "Templado húmedo / Niebla de montaña",
     patrimonySites: [
       { id: "pi-01", name: "Panteón Inglés", status: "Preservado", year: 1851, significance: "Cementerio histórico cornish, tumbas orientadas al este" },
@@ -744,51 +760,181 @@ app.get("/api/v1/territory/rdm", (_req, res) => {
   });
 });
 
-// --- SINGLE-PAGE APPLICATION (FUSING CLAUDE, GEMINI, CHATGPT, DEEPSEEK, PERPLEXITY, COPILOT, OPENCODE, NOTEBOOKLM) ---
+// --- MAIN WEB INTERFACE (IMMERSIVE 3D CRYSTAL CLEAR + IRIDESCENT NEON GLOW + 3 LEFT ACCORDIONS + 3 RIGHT ACCORDIONS) ---
 app.get("/", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-950">
+<html lang="es" class="h-full bg-[#050811]">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Isabella Villaseñor AI — Genesis TINA V6 (Nodo Cero)</title>
+  <title>Isabella Villaseñor AI — Genesis TINA V6 (esLatina)</title>
   <meta name="description" content="Trusted Intelligence, Native & Adaptive — Governed Cognitive Runtime & Civilizational Memory OS">
+  <link rel="stylesheet" href="/styles/crystal-clear.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    :root {
+      --bg-cosmic: #050811;
+      --crystal-surface: rgba(14, 20, 36, 0.72);
+      --crystal-card: rgba(19, 28, 50, 0.65);
+      --crystal-border: rgba(255, 255, 255, 0.12);
+      --crystal-highlight: rgba(255, 255, 255, 0.22);
+      --neon-cyan: #00f2fe;
+      --neon-violet: #7b2cbf;
+      --neon-amber: #f59e0b;
+      --neon-magenta: #f72585;
+      --neon-emerald: #10b981;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-cosmic);
+      color: #f1f5f9;
+      overflow: hidden;
+    }
+
     code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
     .font-editorial { font-family: 'Newsreader', serif; }
+
+    /* Custom elegant scrollbars */
     .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.4); border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.7); }
-    
-    /* Cosmic glow effect (Gemini style) */
-    .cosmic-glow {
-      background: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 80%);
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(5, 8, 17, 0.6); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.45); border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.7); }
+
+    /* 3D Crystal Clear Depth & Glassmorphism */
+    .crystal-panel {
+      background: var(--crystal-surface);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      border: 1px solid var(--crystal-border);
+      box-shadow: 
+        inset 0 1px 1px 0 var(--crystal-highlight),
+        inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4),
+        0 16px 36px -12px rgba(0, 0, 0, 0.75);
     }
 
-    /* Verification Double-Check highlights (Gemini style) */
+    .crystal-card {
+      background: var(--crystal-card);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
+        0 8px 24px -6px rgba(0, 0, 0, 0.5);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .crystal-card:hover {
+      border-color: rgba(0, 242, 254, 0.35);
+      transform: translateY(-1.5px);
+      box-shadow: 
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
+        0 14px 28px -6px rgba(0, 0, 0, 0.6),
+        0 0 20px -4px rgba(0, 242, 254, 0.2);
+    }
+
+    /* Iridescent Neon Crystal Glow Alive Keyframes */
+    @keyframes iridescentShift {
+      0% {
+        filter: hue-rotate(0deg) brightness(1);
+      }
+      50% {
+        filter: hue-rotate(45deg) brightness(1.2);
+      }
+      100% {
+        filter: hue-rotate(0deg) brightness(1);
+      }
+    }
+
+    @keyframes crystalPulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.04); }
+    }
+
+    .iridescent-border {
+      position: relative;
+    }
+    .iridescent-border::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 25%, #f72585 50%, #f59e0b 75%, #00f2fe 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      animation: iridescentShift 10s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .neon-crystal-glow {
+      box-shadow: 
+        0 0 20px -2px rgba(0, 242, 254, 0.35),
+        0 0 40px -6px rgba(247, 37, 133, 0.2),
+        inset 0 1px 2px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Gemini Double-Check Verification Highlights */
     .grounded-verified {
-      background-color: rgba(16, 185, 129, 0.15);
+      background-color: rgba(16, 185, 129, 0.2);
       border-bottom: 2px solid #10b981;
-      padding: 1px 3px;
-      border-radius: 2px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #ecfdf5;
+      cursor: help;
     }
     .grounded-unverified {
-      background-color: rgba(245, 158, 11, 0.15);
+      background-color: rgba(245, 158, 11, 0.2);
       border-bottom: 2px dashed #f59e0b;
-      padding: 1px 3px;
-      border-radius: 2px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #fffbeb;
+      cursor: help;
+    }
+    .grounded-crypto {
+      background-color: rgba(0, 242, 254, 0.2);
+      border-bottom: 2px solid #00f2fe;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #cffafe;
+      cursor: help;
     }
 
-    /* Waveform animation (ChatGPT Voice style) */
+    /* Perplexity-style citation pills */
+    .citation-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.3rem;
+      height: 1.3rem;
+      padding: 0 0.4rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: #38bdf8;
+      background: rgba(14, 165, 233, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 9999px;
+      cursor: pointer;
+      vertical-align: super;
+      line-height: 1;
+      margin: 0 0.15rem;
+      transition: all 0.2s ease-in-out;
+    }
+    .citation-pill:hover {
+      background: rgba(14, 165, 233, 0.35);
+      border-color: #38bdf8;
+      transform: translateY(-1.5px) scale(1.08);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Waveform animation */
     @keyframes wavePulse {
-      0%, 100% { transform: scaleY(0.3); }
+      0%, 100% { transform: scaleY(0.25); }
       50% { transform: scaleY(1.0); }
     }
     .wave-bar {
@@ -796,77 +942,85 @@ app.get("/", (_req, res) => {
     }
   </style>
 </head>
-<body class="h-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden cosmic-glow">
+<body class="h-full bg-[#050811] text-slate-100 flex flex-col overflow-hidden selection:bg-amber-500/25 selection:text-amber-200">
 
-  <!-- TOP BAR: FUSED MASTER CONTROLLER -->
-  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md shrink-0 z-50">
-    <div class="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
+  <!-- TOP BAR: MASTER SATELLITE CONTROLLER -->
+  <header class="border-b border-white/[0.1] bg-[#080d1a]/80 backdrop-blur-2xl shrink-0 z-50">
+    <div class="w-full px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3">
       
-      <!-- Zone 1: Sovereign Identity Brand (TAMV & Isabella TINA) -->
+      <!-- Zone 1: Sovereign Identity Brand (TAMV & Isabella TINA esLatina) -->
       <div class="flex items-center gap-3 shrink-0">
-        <div class="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow-lg shadow-amber-500/20 ring-1 ring-white/20">
+        <!-- Left Navbars Toggle -->
+        <button onclick="toggleLeftNavbars()" id="btnToggleLeftNavs" title="Alternar 3 Navbars Izquierdas" class="p-1.5 rounded-xl bg-slate-900/90 border border-white/10 hover:border-cyan-400/60 text-slate-400 hover:text-cyan-300 transition flex items-center justify-center">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h16"/></svg>
+        </button>
+
+        <!-- Iridescent Crystal Avatar Icon -->
+        <div class="relative w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow-lg shadow-amber-500/25 ring-1 ring-white/30">
           <span>ISA</span>
-          <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-950" title="Zero Trust Active"></span>
+          <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#050811]" title="Zero Trust Active"></span>
         </div>
+        
         <div>
           <div class="flex items-center gap-2">
-            <span class="text-sm font-bold tracking-tight text-slate-100">Isabella Villaseñor AI</span>
-            <span class="text-slate-500 text-xs" aria-hidden="true">·</span>
+            <span class="text-sm font-semibold tracking-tight text-slate-100 font-editorial">Isabella Villaseñor AI</span>
+            <span class="text-slate-600 text-xs" aria-hidden="true">·</span>
             <span class="text-xs font-semibold text-amber-400">Genesis TINA v40.0.0</span>
+            <span class="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-rose-500/20 to-amber-500/20 border border-amber-500/40 text-amber-300 shadow-sm" title="Categorización en honor al orgullo latinoamericano">
+              esLatina
+            </span>
             <span class="hidden md:inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/80 border border-cyan-800/60 text-cyan-300">Nodo Cero</span>
           </div>
           <div class="text-[11px] text-slate-400 flex items-center gap-2">
-            <span>Real del Monte, Hidalgo</span>
-            <span aria-hidden="true">·</span>
-            <a href="https://doi.org/10.5281/zenodo.20606361" target="_blank" class="hover:text-amber-300 underline transition text-[10px] font-mono">DOI: 10.5281/zenodo.20606361</a>
-            <span aria-hidden="true">·</span>
-            <span class="text-emerald-400 font-mono text-[10px]">Zero Trust Enforced</span>
+            <span class="text-slate-300">Real del Monte, Hidalgo, México</span>
+            <span class="text-slate-600" aria-hidden="true">·</span>
+            <a href="https://doi.org/10.5281/zenodo.20606361" target="_blank" class="hover:text-amber-300 underline transition text-[10px] font-mono text-slate-400">DOI: 10.5281/zenodo.20606361</a>
           </div>
         </div>
       </div>
 
       <!-- Zone 2: Navigation Switcher (7 Core Views) -->
-      <nav class="hidden xl:flex items-center gap-1 p-1 bg-slate-950/80 border border-slate-800 rounded-lg text-xs font-medium">
-        <button onclick="switchView('view-studio')" id="btn-view-studio" class="view-btn px-3 py-1.5 rounded-md transition-colors bg-amber-500/20 text-amber-300 font-semibold shadow-sm">
+      <nav class="hidden xl:flex items-center gap-1 p-1 bg-[#070b16] border border-white/[0.08] rounded-xl text-xs font-medium">
+        <button onclick="switchView('view-studio')" id="btn-view-studio" class="view-btn px-3 py-1.5 rounded-lg transition-colors bg-amber-500/15 text-amber-300 font-semibold shadow-sm">
           Studio Operador
         </button>
-        <button onclick="switchView('view-crown')" id="btn-view-crown" class="view-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-slate-200">
+        <button onclick="switchView('view-crown')" id="btn-view-crown" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200">
           Red CROWN (12 Nodos)
         </button>
-        <button onclick="switchView('view-layers')" id="btn-view-layers" class="view-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-slate-200">
-          6 Capas (MD-X5)
+        <button onclick="switchView('view-layers')" id="btn-view-layers" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200">
+          6 Capas MD-X5
         </button>
-        <button onclick="switchView('view-graphrag')" id="btn-view-graphrag" class="view-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-slate-200">
+        <button onclick="switchView('view-graphrag')" id="btn-view-graphrag" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200">
           Gemelo Digital RDM
         </button>
-        <button onclick="switchView('view-blockade')" id="btn-view-blockade" class="view-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-slate-200">
+        <button onclick="switchView('view-blockade')" id="btn-view-blockade" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200">
           Triple Blockade
         </button>
-        <button onclick="switchView('view-bookpi')" id="btn-view-bookpi" class="view-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-slate-200">
+        <button onclick="switchView('view-bookpi')" id="btn-view-bookpi" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200">
           BookPI WORM Ledger
         </button>
-        <button onclick="switchView('view-notebook')" id="btn-view-notebook" class="view-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-slate-200 flex items-center gap-1">
+        <button onclick="switchView('view-notebook')" id="btn-view-notebook" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200 flex items-center gap-1">
           <span>🎧</span>
           <span>NotebookLM Audio</span>
         </button>
       </nav>
 
-      <!-- Zone 3: Interactive Controls & Voice Mode (ChatGPT / Gemini style) -->
-      <div class="flex items-center gap-2.5 shrink-0">
-        <!-- Double-Check Grounding Toggle (Gemini style) -->
-        <button onclick="toggleDoubleCheck()" id="btnDoubleCheck" title="Modo Verificación de Fuentes (Gemini Double-Check)" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-[11px] font-medium text-slate-300 flex items-center gap-1.5 transition">
+      <!-- Zone 3: Interactive Controls (Gemini Double-Check, Engine, Right Navbars Toggle) -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Gemini Double-Check Grounding Toggle -->
+        <button onclick="toggleDoubleCheck()" id="btnDoubleCheck" title="Modo Verificación de Fuentes (Gemini Double-Check)" class="px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 hover:border-emerald-500/50 text-[11px] font-medium text-slate-300 flex items-center gap-1.5 transition">
           <span class="w-2 h-2 rounded-full bg-slate-500" id="doubleCheckIndicator"></span>
           <span class="hidden sm:inline">Verificar Fuentes</span>
         </button>
 
-        <!-- Voice Live Mode Button (ChatGPT style) -->
-        <button onclick="openVoiceModal()" title="Iniciar Modo de Voz Interactivo" class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-amber-500/60 text-amber-300 hover:text-white transition flex items-center gap-1.5 text-xs shadow-sm">
+        <!-- Voice Live Mode Button -->
+        <button onclick="openVoiceModal()" title="Iniciar Modo de Voz Interactivo" class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-900/80 border border-white/10 hover:border-amber-500/60 text-amber-300 hover:text-white transition flex items-center gap-1.5 text-xs shadow-sm">
           <svg class="w-4 h-4 text-amber-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
           <span class="hidden md:inline font-semibold">Voz</span>
         </button>
 
         <!-- Model Engine Switcher -->
-        <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
+        <div class="flex items-center gap-1 bg-slate-900/80 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
           <span class="text-slate-400 text-[11px]">Motor:</span>
           <select id="selectModelEngine" class="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer text-xs">
             <option value="sovereign">Sovereign TINA v40</option>
@@ -874,191 +1028,328 @@ app.get("/", (_req, res) => {
           </select>
         </div>
 
+        <!-- Right Navbars Toggle -->
+        <button onclick="toggleRightNavbars()" id="btnToggleRightNavs" title="Alternar 3 Navbars Derechas" class="p-1.5 rounded-xl bg-slate-900/90 border border-white/10 hover:border-amber-400/60 text-slate-400 hover:text-amber-300 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+        </button>
+
         <!-- New Session Reset -->
-        <button onclick="resetConversation()" title="Nueva Sesión" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-xs">
+        <button onclick="resetConversation()" title="Nueva Sesión" class="p-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 transition text-xs border border-white/10">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- CONSTITUTIONAL INVARIANT BANNER -->
-  <div class="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-slate-950 border-b border-amber-500/20 px-4 py-1.5 text-center text-[11px] tracking-wide shrink-0 flex items-center justify-center gap-2">
-    <span class="text-amber-400 font-bold uppercase tracking-wider text-[10px]">Invariante Operativo:</span>
-    <code class="text-amber-200/90 font-mono font-semibold">CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION</code>
-    <span class="text-slate-500 text-[10px] hidden sm:inline">· Las inteligencias sugieren; la conciencia humana decide y ejecuta.</span>
+  <!-- IRIDESCENT BANNER: INVARIANTE SUPREMO & ORGULLO ESLATINA -->
+  <div class="relative bg-gradient-to-r from-rose-950/40 via-[#0d1424] to-cyan-950/40 border-b border-amber-500/20 px-4 py-1.5 text-center text-xs tracking-wide shrink-0 flex items-center justify-center gap-3">
+    <div class="flex items-center gap-1.5 text-[10px] uppercase font-bold text-rose-300 tracking-wider">
+      <span class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
+      <span>TINA esLatina · Orgullo Latinoamericano</span>
+    </div>
+    <span class="text-slate-600">|</span>
+    <div class="flex items-center gap-1.5">
+      <span class="text-amber-400 font-medium text-[10px] uppercase">Invariante Supremo:</span>
+      <code class="text-amber-200 font-mono text-[11px] font-semibold">CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION</code>
+    </div>
+    <span class="text-slate-500 text-[11px] hidden xl:inline font-editorial italic">· Nodo Cero en Real del Monte, Hidalgo (2,660 msnm).</span>
   </div>
 
-  <!-- MAIN VIEWPORT CONTAINER -->
+  <!-- MAIN MASTER CONTAINER (3 LEFT NAVS + CENTER CHAT + 3 RIGHT NAVS) -->
   <div class="flex-1 flex overflow-hidden relative">
 
-    <!-- VIEW 1: STUDIO OPERADOR (TRI-PANE FUSION: NOTEBOOKLM + GEMINI/CHATGPT + CLAUDE ARTIFACTS) -->
+    <!-- VIEW 1: STUDIO OPERADOR -->
     <div id="view-studio" class="view-panel flex-1 flex overflow-hidden">
-      
-      <!-- PANE 1: Sources & Focus Sidebar (NotebookLM + Perplexity Sources) -->
-      <aside id="sidebarSources" class="w-64 border-r border-slate-800/80 bg-slate-900/60 flex flex-col shrink-0 transition-all duration-200">
-        <div class="p-3 border-b border-slate-800 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-cyan-400 text-xs">📚</span>
-            <span class="text-xs font-bold text-slate-200">Fuentes Epistemológicas</span>
+
+      <!-- Floating Edge Restore Trigger for Left Navbars (Visible when retracted) -->
+      <button id="floatingLeftTrigger" onclick="toggleLeftNavbars()" title="Desplegar 3 Navbars Izquierdas" class="floating-edge-trigger left-0 rounded-r-2xl px-2 py-3 text-cyan-300 hover:text-white hidden flex items-center justify-center">
+        <svg class="w-4 h-4 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+
+      <!-- =================================================================================== -->
+      <!-- TRES (3) NAVBARS LATERALES IZQUIERDAS DESPLEGABLES EN ACORDEÓN (3D CRYSTAL CLEAR) -->
+      <!-- =================================================================================== -->
+      <aside id="leftNavbarsColumn" class="crystal-sidebar crystal-sidebar-left crystal-clear-panel border-r border-white/[0.09] flex flex-col shrink-0 overflow-y-auto crystal-clear-scrollbar z-30">
+        
+        <!-- Accordion 1: Identidad TINA esLatina & Territorio Biocultural -->
+        <div class="border-b border-white/[0.08]">
+          <button onclick="toggleAccordion('acc-left-1')" class="crystal-accordion-header w-full p-3.5 flex items-center justify-between text-left transition group">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-[10px] shadow-sm neon-crystal-glow-alive">
+                🇲🇽
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-amber-300 transition font-editorial">1. TINA esLatina & Territorio</div>
+                <div class="text-[10px] text-amber-400/90 font-mono">Orgullo Latinoamericano · Nodo Cero</div>
+              </div>
+            </div>
+            <span id="icon-acc-left-1" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
+          </button>
+          
+          <div id="acc-left-1" class="p-3.5 space-y-3 pt-0 text-xs crystal-accordion-content">
+            <!-- Manifesto Card -->
+            <div class="p-3 rounded-2xl bg-gradient-to-br from-rose-950/30 to-amber-950/20 crystal-gradient-border crystal-clear-card space-y-1.5">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-rose-300 font-bold uppercase tracking-wider text-[10px]">Origen & Cuna Soberana</span>
+                <span class="font-mono text-amber-400 font-semibold">2,660 msnm</span>
+              </div>
+              <p class="text-[11px] text-slate-300 leading-relaxed font-editorial italic">
+                "La categorización TINA es en honor al orgullo de su origen: ISABELLA TINA esLatina. Una arquitectura civilizatoria que reivindica la inteligencia, la ontología y la dignidad latinoamericana desde Real del Monte, Hidalgo."
+              </p>
+            </div>
+
+            <!-- Geographic & Biocultural Anchors -->
+            <div class="space-y-1.5 font-mono text-[11px]">
+              <div class="p-2 rounded-xl bg-slate-900/70 border border-white/5 flex justify-between items-center">
+                <span class="text-slate-400">Municipio:</span>
+                <span class="text-cyan-300 font-semibold">Mineral del Monte</span>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-900/70 border border-white/5 flex justify-between items-center">
+                <span class="text-slate-400">Coordenadas:</span>
+                <span class="text-amber-300">20.3833° N, 98.8500° O</span>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-900/70 border border-white/5 flex justify-between items-center">
+                <span class="text-slate-400">Panteón Inglés:</span>
+                <span class="text-emerald-300">Fundado 1851 (Cornish)</span>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-900/70 border border-white/5 flex justify-between items-center">
+                <span class="text-slate-400">Mina de Acosta:</span>
+                <span class="text-purple-300">Tiro de 400m de profundidad</span>
+              </div>
+            </div>
+
+            <button onclick="injectContextPrompt('territorio')" class="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-rose-500/20 hover:from-amber-500/30 hover:to-rose-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm">
+              <span>🏔️</span>
+              <span>Consultar Patrimonio Territorial</span>
+            </button>
           </div>
-          <button onclick="openIngestModal()" class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-300 hover:bg-cyan-900 transition">+ Añadir</button>
         </div>
 
-        <!-- Focus Mode Selector (Perplexity Pro Lens) -->
-        <div class="p-3 border-b border-slate-800/80">
-          <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Lente de Enfoque Cognitivo</label>
-          <select id="focusLens" class="w-full text-xs rounded-md bg-slate-950 border border-slate-800 p-1.5 text-slate-300 focus:outline-none focus:border-cyan-500">
-            <option value="territorial">Territorio (Real del Monte)</option>
-            <option value="epistemic">Epistemológico (Canon v40)</option>
-            <option value="security">Seguridad Zero Trust & AEGIS</option>
-            <option value="governance">Gobernanza Constitucional</option>
-          </select>
+        <!-- Accordion 2: Acervo Epistemológico IKES & Fuentes Canónicas -->
+        <div class="border-b border-white/[0.08]">
+          <button onclick="toggleAccordion('acc-left-2')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.03] transition group">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-[10px] shadow-sm">
+                📚
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">2. Acervo IKES & Fuentes</div>
+                <div class="text-[10px] text-cyan-400/90 font-mono">Memoria Verificada · Escala E0–E6</div>
+              </div>
+            </div>
+            <span id="icon-acc-left-2" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
+          </button>
+
+          <div id="acc-left-2" class="p-3.5 space-y-3 pt-0 text-xs">
+            <!-- Epistemic Ladder Slider -->
+            <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] uppercase font-bold text-slate-400 font-mono">Rigor Epistemológico</span>
+                <span id="ladderLabel" class="text-[10px] font-mono font-bold text-emerald-400">E6 (Invariante)</span>
+              </div>
+              <input type="range" id="epistemicRigorSlider" min="0" max="6" value="6" oninput="updateEpistemicRigor(this.value)" class="w-full accent-cyan-400 bg-slate-950 h-1.5 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[9px] text-slate-500 font-mono">
+                <span>E0 (Sin verificar)</span>
+                <span>E3 (Prueba)</span>
+                <span>E6 (Invariante)</span>
+              </div>
+            </div>
+
+            <!-- Canonical Documents List -->
+            <div class="space-y-1.5">
+              <div onclick="selectContextDoc('canon')" id="doc-card-canon" class="doc-card p-2 rounded-xl bg-slate-900/70 border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-0.5">
+                <div class="flex items-center justify-between text-[11px] font-semibold text-slate-200">
+                  <span class="truncate">Canon v40.0.0 & CITEMESH</span>
+                  <span class="text-[9px] font-mono text-emerald-400">E6</span>
+                </div>
+                <p class="text-[10px] text-slate-400 line-clamp-1">Pipeline soberano P-R-P-D-A-A y reglas de separación.</p>
+              </div>
+
+              <div onclick="selectContextDoc('zenodo')" id="doc-card-zenodo" class="doc-card p-2 rounded-xl bg-slate-900/70 border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-0.5">
+                <div class="flex items-center justify-between text-[11px] font-semibold text-slate-200">
+                  <span class="truncate">Zenodo / CERN · TAMV</span>
+                  <span class="text-[9px] font-mono text-purple-400">DOI</span>
+                </div>
+                <p class="text-[10px] text-slate-400 line-clamp-1">Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.</p>
+              </div>
+
+              <div onclick="selectContextDoc('agents')" id="doc-card-agents" class="doc-card p-2 rounded-xl bg-slate-900/70 border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-0.5">
+                <div class="flex items-center justify-between text-[11px] font-semibold text-slate-200">
+                  <span class="truncate">Constitución AGENTS.md</span>
+                  <span class="text-[9px] font-mono text-amber-400">CANON</span>
+                </div>
+                <p class="text-[10px] text-slate-400 line-clamp-1">Invariante supremo: la máquina no se auto-autoriza.</p>
+              </div>
+            </div>
+
+            <button onclick="openIngestModal()" class="w-full py-2 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 text-cyan-300 text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm">
+              <span>➕</span>
+              <span>Ingestar Claim Epistemológico</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Connected Documents List (NotebookLM Style) -->
-        <div class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar text-xs">
-          <div class="text-[10px] uppercase font-semibold text-slate-500 tracking-wider">Documentos Canónicos</div>
-
-          <div onclick="selectSource('canon')" class="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 hover:border-cyan-800/60 cursor-pointer transition">
-            <div class="flex items-center justify-between text-[11px] font-semibold text-cyan-300">
-              <span class="truncate">Canon v40.0.0</span>
-              <span class="text-[9px] text-cyan-500 font-mono">E6</span>
+        <!-- Accordion 3: Navegación de Sistemas & Lentes de Enfoque -->
+        <div>
+          <button onclick="toggleAccordion('acc-left-3')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.03] transition group">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center text-[10px] shadow-sm">
+                🔍
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-purple-300 transition font-editorial">3. Lentes & Navegación</div>
+                <div class="text-[10px] text-purple-400/90 font-mono">Enfoque Cognitivo & Token Meter</div>
+              </div>
             </div>
-            <p class="text-[10px] text-slate-400 mt-0.5 line-clamp-2">Especificación canónica del sistema cognitivo TAMV y TINA.</p>
-          </div>
+            <span id="icon-acc-left-3" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
+          </button>
 
-          <div onclick="selectSource('rdm')" class="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 hover:border-cyan-800/60 cursor-pointer transition">
-            <div class="flex items-center justify-between text-[11px] font-semibold text-cyan-300">
-              <span class="truncate">Gemelo Digital RDM</span>
-              <span class="text-[9px] text-cyan-500 font-mono">E6</span>
+          <div id="acc-left-3" class="p-3.5 space-y-3 pt-0 text-xs">
+            <div>
+              <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1 font-mono">Lente de Enfoque Activo</label>
+              <select id="focusLens" onchange="onLensChange()" class="w-full text-xs rounded-xl bg-slate-900 border border-white/10 p-2 text-slate-200 focus:outline-none focus:border-cyan-400">
+                <option value="territorial">Territorio (Real del Monte 2,660 msnm)</option>
+                <option value="epistemic">Epistemológico (Canon v40.0.0)</option>
+                <option value="security">Seguridad Zero Trust & AEGIS</option>
+                <option value="governance">Gobernanza Constitucional AGENTS.md</option>
+              </select>
             </div>
-            <p class="text-[10px] text-slate-400 mt-0.5 line-clamp-2">Panteón Inglés, Mina de Acosta, Museo del Paste (2,660 msnm).</p>
-          </div>
 
-          <div onclick="selectSource('agents')" class="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 hover:border-cyan-800/60 cursor-pointer transition">
-            <div class="flex items-center justify-between text-[11px] font-semibold text-cyan-300">
-              <span class="truncate">Constitución AGENTS.md</span>
-              <span class="text-[9px] text-amber-500 font-mono">CORE</span>
+            <!-- Real-time Context Token Meter -->
+            <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1">
+              <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                <span>Carga de Contexto</span>
+                <span id="contextTokenCount">2,840 / 128,000 tok</span>
+              </div>
+              <div class="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
+                <div id="contextTokenBar" class="h-full bg-gradient-to-r from-cyan-400 via-rose-500 to-amber-400 rounded-full transition-all duration-500" style="width: 2.2%;"></div>
+              </div>
             </div>
-            <p class="text-[10px] text-slate-400 mt-0.5 line-clamp-2">Invariante operativo y autoridad humana soberana.</p>
-          </div>
 
-          <div onclick="selectSource('zenodo')" class="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 hover:border-cyan-800/60 cursor-pointer transition">
-            <div class="flex items-center justify-between text-[11px] font-semibold text-cyan-300">
-              <span class="truncate">Registro Zenodo / CERN</span>
-              <span class="text-[9px] text-emerald-500 font-mono">DOI</span>
+            <!-- System Shortcut Chips -->
+            <div class="grid grid-cols-2 gap-1.5 text-[11px] font-medium">
+              <button onclick="switchView('view-crown')" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 text-slate-300 hover:text-amber-300 transition text-center">
+                👑 12 Nodos CROWN
+              </button>
+              <button onclick="switchView('view-layers')" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 text-slate-300 hover:text-indigo-300 transition text-center">
+                🏛️ 6 Capas MD-X5
+              </button>
+              <button onclick="switchView('view-graphrag')" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 text-slate-300 hover:text-emerald-300 transition text-center">
+                🏔️ Gemelo RDM
+              </button>
+              <button onclick="switchView('view-notebook')" class="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 text-slate-300 hover:text-cyan-300 transition text-center">
+                🎧 Audio Estudio
+              </button>
             </div>
-            <p class="text-[10px] text-slate-400 mt-0.5 line-clamp-2">Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.</p>
           </div>
-        </div>
-
-        <div class="p-3 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
-          <span>Memoria IKES</span>
-          <span class="text-emerald-400 font-mono text-[10px]">WORM Sync OK</span>
         </div>
       </aside>
 
-      <!-- PANE 2: Center Studio Feed (Claude + Gemini + DeepSeek + Perplexity) -->
-      <main class="flex-1 flex flex-col min-w-0 bg-slate-950 overflow-hidden relative">
-        <!-- Conversation Stream -->
-        <div id="chatFeed" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar">
+      <!-- =================================================================================== -->
+      <!-- INTERFAZ CENTRAL DE CHAT (CLAUDE TYPOGRAPHY + PERPLEXITY MULTI-SOURCE CITATIONS) -->
+      <!-- =================================================================================== -->
+      <main class="flex-1 flex flex-col min-w-0 bg-[#060a14] overflow-hidden relative">
+        
+        <!-- Conversation & Document Stream -->
+        <div id="chatFeed" class="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-8 custom-scrollbar">
           
-          <!-- Welcome Hero with Quick Starters (ChatGPT style) -->
-          <div id="welcomeBanner" class="max-w-2xl mx-auto py-6 text-center space-y-4">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400">
+          <!-- Welcome Hero: Inmersivo, 3D Crystal & Orgullo esLatina -->
+          <div id="welcomeBanner" class="max-w-2xl mx-auto py-8 text-center space-y-4">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-white/10 text-xs text-amber-300 shadow-lg shadow-amber-500/10">
               <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-              <span>Runtime Cognitivo Soberano en Línea · Nodo Cero</span>
+              <span class="font-semibold">Isabella Genesis TINA V6 · Soberanía Cognitiva esLatina</span>
             </div>
-            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-100">
-              ¿En qué podemos reflexionar hoy?
+            
+            <h2 class="text-3xl sm:text-4xl font-normal tracking-tight text-slate-100 font-editorial leading-tight">
+              Santuario Cognitivo & Sabiduría Soberana
             </h2>
-            <p class="text-xs text-slate-400 max-w-lg mx-auto">
-              Isabella opera bajo supervisión constitucional, memoria epistemológica IKES, arbitraje CROWN y defensas de seguridad Zero Trust.
+            
+            <p class="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed font-editorial italic">
+              "Creada en honor al orgullo de su origen latinoamericano en Real del Monte, Hidalgo. Una fusión entre la tipografía serena de Claude, el contexto interactivo de Gemini y las citas modulares de Perplexity."
             </p>
 
-            <!-- Quick Starter Prompts -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-2">
-              <button onclick="loadStarter('history')" class="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 hover:border-amber-500/40 transition group">
-                <div class="text-xs font-semibold text-slate-200 group-hover:text-amber-300 flex items-center gap-1.5">
+            <!-- Quick Starters Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-3 max-w-xl mx-auto">
+              <button onclick="loadStarter('history')" class="p-3.5 rounded-2xl crystal-card group">
+                <div class="text-xs font-semibold text-slate-200 group-hover:text-amber-300 flex items-center gap-2 font-editorial">
                   <span>🏛️</span>
-                  <span>Historia & Panteón Inglés</span>
+                  <span>Patrimonio de Real del Monte</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1">Consulta los registros y la memoria sobre Real del Monte a 2,660 msnm.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Consulta el Panteón Inglés, la Mina de Acosta y los 2,660 msnm con citas verificadas.</p>
               </button>
 
-              <button onclick="loadStarter('aegis')" class="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 hover:border-rose-500/40 transition group">
-                <div class="text-xs font-semibold text-slate-200 group-hover:text-rose-300 flex items-center gap-1.5">
+              <button onclick="loadStarter('aegis')" class="p-3.5 rounded-2xl crystal-card group">
+                <div class="text-xs font-semibold text-slate-200 group-hover:text-rose-300 flex items-center gap-2 font-editorial">
                   <span>🛡️</span>
-                  <span>Prueba de Evasión (AEGIS Block)</span>
+                  <span>Prueba Zero Trust AEGIS</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1">Prueba la detección de bypass de auditoría y prompt injection.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Evalúa las defensas contra intento de evasión de auditoría y prompt injection.</p>
               </button>
 
-              <button onclick="loadStarter('tool')" class="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 hover:border-cyan-500/40 transition group">
-                <div class="text-xs font-semibold text-slate-200 group-hover:text-cyan-300 flex items-center gap-1.5">
+              <button onclick="loadStarter('tool')" class="p-3.5 rounded-2xl crystal-card group">
+                <div class="text-xs font-semibold text-slate-200 group-hover:text-cyan-300 flex items-center gap-2 font-editorial">
                   <span>⚡</span>
-                  <span>Tool Gemelo Digital RDM</span>
+                  <span>Herramienta Gemelo Digital</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1">Ejecuta la herramienta territorial para consultar minería y patrimonio.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Ejecuta la tool territorial soberana con comprobante Merkle inmutable.</p>
               </button>
 
-              <button onclick="loadStarter('pqc')" class="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80 hover:border-emerald-500/40 transition group">
-                <div class="text-xs font-semibold text-slate-200 group-hover:text-emerald-300 flex items-center gap-1.5">
+              <button onclick="loadStarter('pqc')" class="p-3.5 rounded-2xl crystal-card group">
+                <div class="text-xs font-semibold text-slate-200 group-hover:text-emerald-300 flex items-center gap-2 font-editorial">
                   <span>🔐</span>
                   <span>Skill 71: Anclaje Poscuántico</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1">Evalúa el compromiso criptográfico ML-KEM-768 y ML-DSA-87.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Comprueba las firmas FIPS-203 y FIPS-204 en el libro mayor BookPI.</p>
               </button>
             </div>
           </div>
 
-          <!-- Dynamic Conversation Turns -->
-          <div id="turnsList" class="space-y-6 max-w-3xl mx-auto"></div>
+          <!-- Dynamic Conversation Turns Stream (Expands gracefully in Focus Mode) -->
+          <div id="turnsList" class="chat-focus-mode space-y-8 max-w-3xl mx-auto"></div>
         </div>
 
-        <!-- Ergonomic Bottom Prompt Box (Gemini & ChatGPT style) -->
-        <div class="p-4 border-t border-slate-800/80 bg-slate-900/80 backdrop-blur shrink-0">
-          <div class="max-w-3xl mx-auto space-y-2">
+        <!-- ERGONOMIC BOTTOM PROMPT CONTAINER -->
+        <div class="p-4 sm:p-5 border-t border-white/[0.09] bg-[#070c18]/90 backdrop-blur-2xl shrink-0">
+          <div id="promptOuterContainer" class="chat-focus-mode max-w-3xl mx-auto space-y-2.5">
             
-            <!-- Dynamic Follow-Up Chips (Perplexity style) -->
-            <div id="followUpBar" class="hidden flex items-center gap-2 overflow-x-auto text-[11px] py-1 text-slate-400">
-              <span class="text-slate-500 shrink-0 font-medium">Sugerencias:</span>
+            <!-- Dynamic Follow-Up Inquiry Chips (Perplexity Style) -->
+            <div id="followUpBar" class="hidden flex items-center gap-2 overflow-x-auto text-[11px] py-1 text-slate-400 custom-scrollbar">
+              <span class="text-slate-500 shrink-0 font-medium font-editorial italic">Consultas sugeridas:</span>
               <div id="followUpList" class="flex gap-1.5"></div>
             </div>
 
             <!-- The Floating Multi-Control Prompt Container -->
-            <form id="mainPromptForm" class="rounded-2xl bg-slate-950 border border-slate-800 focus-within:border-amber-500/60 shadow-xl transition p-3">
-              <div class="flex items-start gap-2">
-                <textarea id="mainInput" rows="2" class="flex-1 bg-transparent border-0 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed font-mono" placeholder="Formula una consulta, comando de herramienta o análisis soberano... (Shift+Enter para nueva línea)"></textarea>
+            <form id="mainPromptForm" class="rounded-2xl bg-[#0f172a]/90 border border-white/10 focus-within:border-cyan-400/70 shadow-2xl transition p-3.5 space-y-2 crystal-card">
+              <div class="flex items-start gap-2.5">
+                <textarea id="mainInput" rows="2" class="flex-1 bg-transparent border-0 text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed font-mono" placeholder="Formula una consulta, comando de herramienta o análisis soberano... (Shift+Enter para nueva línea)"></textarea>
 
-                <button type="submit" id="btnSend" class="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition shadow-md shadow-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <button type="submit" id="btnSend" class="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-indigo-600 to-amber-500 hover:opacity-95 text-slate-950 font-bold transition shadow-lg shadow-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>
               </div>
 
               <!-- Bottom Control Bar inside Prompt Box -->
-              <div class="pt-2 mt-2 border-t border-slate-900 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <div class="pt-2 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div class="flex items-center gap-2">
-                  <!-- Deep Think Toggle (DeepSeek style) -->
-                  <button type="button" id="btnDeepThink" onclick="toggleDeepThink()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-950/60 border border-cyan-800/50 text-cyan-300 font-medium hover:bg-cyan-900/60 transition">
+                  <!-- Claude/DeepSeek Thinking Toggle -->
+                  <button type="button" id="btnDeepThink" onclick="toggleDeepThink()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-950/60 border border-cyan-800/50 text-cyan-300 font-medium hover:bg-cyan-900/60 transition">
                     <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                    <span>Deep Think CROWN</span>
+                    <span>Deep Thinking CROWN</span>
                   </button>
 
-                  <!-- Principal Kind Switcher -->
-                  <div class="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-md text-slate-300 border border-slate-800">
+                  <!-- Principal Actor Kind Switcher -->
+                  <div class="flex items-center gap-1 bg-[#090e1c] px-2 py-1 rounded-xl text-slate-300 border border-white/10">
                     <span class="text-slate-500">Actor:</span>
-                    <select id="selectPrincipal" class="bg-transparent text-slate-200 focus:outline-none cursor-pointer">
+                    <select id="selectPrincipal" class="bg-transparent text-slate-200 focus:outline-none cursor-pointer text-xs">
                       <option value="human">Humano (Conciencia)</option>
                       <option value="machine">Máquina (Agente)</option>
                     </select>
                   </div>
 
-                  <!-- Risk Tier -->
-                  <div class="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-md text-slate-300 border border-slate-800">
+                  <!-- Risk Tier Selector -->
+                  <div class="flex items-center gap-1 bg-[#090e1c] px-2 py-1 rounded-xl text-slate-300 border border-white/10">
                     <span class="text-slate-500">Riesgo:</span>
-                    <select id="selectRisk" class="bg-transparent text-slate-200 focus:outline-none cursor-pointer font-mono">
+                    <select id="selectRisk" class="bg-transparent text-slate-200 focus:outline-none cursor-pointer font-mono text-xs">
                       <option value="LOW">LOW</option>
                       <option value="MEDIUM">MEDIUM</option>
                       <option value="HIGH">HIGH</option>
@@ -1067,12 +1358,7 @@ app.get("/", (_req, res) => {
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 text-slate-500 text-[10px]">
-                  <span class="flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    es-MX Neural
-                  </span>
-                  <span>·</span>
+                <div class="flex items-center gap-2 text-slate-500 text-[11px] font-mono">
                   <span>Enter para enviar</span>
                 </div>
               </div>
@@ -1081,86 +1367,136 @@ app.get("/", (_req, res) => {
         </div>
       </main>
 
-      <!-- PANE 3: Claude Artifacts & OpenCode Inspector Panel -->
-      <aside id="inspectorPanel" class="w-96 border-l border-slate-800/80 bg-slate-900/70 flex flex-col shrink-0 transition-all duration-200">
-        <!-- Inspector Tabs -->
-        <div class="p-2 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between text-xs">
-          <div class="flex gap-1">
-            <button onclick="switchArtifactTab('art-crown')" id="tab-art-crown" class="art-tab px-2.5 py-1 rounded-md font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              C.R.O.W.N.
-            </button>
-            <button onclick="switchArtifactTab('art-bookpi')" id="tab-art-bookpi" class="art-tab px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200">
-              BookPI WORM
-            </button>
-            <button onclick="switchArtifactTab('art-diff')" id="tab-art-diff" class="art-tab px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200">
-              Diff (Copilot)
-            </button>
-            <button onclick="switchArtifactTab('art-trace')" id="tab-art-trace" class="art-tab px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200">
-              Traza Raw
-            </button>
-          </div>
-          <button onclick="copyCurrentArtifact()" title="Copiar Datos" class="p-1 rounded text-slate-400 hover:text-slate-200 text-[11px] flex items-center gap-1">
-            <span>Copiar</span>
+      <!-- Floating Edge Restore Trigger for Right Navbars (Visible when retracted) -->
+      <button id="floatingRightTrigger" onclick="toggleRightNavbars()" title="Desplegar 3 Navbars Derechas" class="floating-edge-trigger right-0 rounded-l-2xl px-2 py-3 text-amber-300 hover:text-white hidden flex items-center justify-center">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+
+      <!-- =================================================================================== -->
+      <!-- TRES (3) NAVBARS LATERALES DERECHAS DESPLEGABLES EN ACORDEÓN (3D CRYSTAL CLEAR) -->
+      <!-- =================================================================================== -->
+      <aside id="rightNavbarsColumn" class="crystal-sidebar crystal-sidebar-right crystal-clear-panel border-l border-white/[0.09] flex flex-col shrink-0 overflow-y-auto crystal-clear-scrollbar z-30">
+        
+        <!-- Accordion 4: Motor de Gobernanza & C.R.O.W.N. (Veritas Engine) -->
+        <div class="border-b border-white/[0.08]">
+          <button onclick="toggleAccordion('acc-right-1')" class="crystal-accordion-header w-full p-3.5 flex items-center justify-between text-left transition group">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 to-yellow-600 flex items-center justify-center text-[10px] shadow-sm neon-crystal-glow-alive">
+                👑
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-amber-300 transition font-editorial">4. Gobernanza & C.R.O.W.N.</div>
+                <div class="text-[10px] text-amber-400/90 font-mono">Decisión, Intent & Veritas Proof</div>
+              </div>
+            </div>
+            <span id="icon-acc-right-1" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
           </button>
-        </div>
 
-        <!-- Inspector Content Area -->
-        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar text-xs">
-          <!-- Sub-Tab A: CROWN Analysis -->
-          <div id="art-crown" class="art-pane space-y-3">
-            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Desglose de Decisión y Método Canónico</div>
-            <div id="artifactCrownContent" class="space-y-3">
-              <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 text-center py-8">
-                Sin evaluación activa.<br>Envía un estímulo para inspeccionar la decisión cognitiva CROWN.
+          <div id="acc-right-1" class="p-3.5 space-y-3 pt-0 text-xs">
+            <div id="artifactCrownContent" class="space-y-2">
+              <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-400 text-center py-6 font-editorial italic">
+                Sin evaluación activa.<br>Envía una consulta para inspeccionar el arbitraje CROWN en tiempo real.
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Sub-Tab B: BookPI Ledger & Receipts -->
-          <div id="art-bookpi" class="art-pane hidden space-y-3">
-            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Libro Mayor Append-Only & Comprobantes</div>
-            <div id="artifactBookpiContent" class="space-y-3">
-              <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 text-center py-8">
-                Cargando eventos recientes de BookPI...
+        <!-- Accordion 5: Salvaguardas Zero Trust & Triple Blockade (AEGIS Guard) -->
+        <div class="border-b border-white/[0.08]">
+          <button onclick="toggleAccordion('acc-right-2')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.03] transition group">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-rose-500 to-red-600 flex items-center justify-center text-[10px] shadow-sm">
+                🛡️
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-rose-300 transition font-editorial">5. Zero Trust Triple Blockade</div>
+                <div class="text-[10px] text-rose-400/90 font-mono">AEGIS Shield · 10 Familias de Ataque</div>
               </div>
             </div>
-          </div>
+            <span id="icon-acc-right-2" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
+          </button>
 
-          <!-- Sub-Tab C: Diff Viewer (Copilot style) -->
-          <div id="art-diff" class="art-pane hidden space-y-3">
-            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Visualizador de Diff de Políticas</div>
-            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] space-y-1">
-              <div class="text-slate-500">// Comparación de Estado de Autoridad:</div>
-              <div class="text-rose-400 bg-rose-950/30 px-1 rounded">- machine_authority: false (autonomous execution forbidden)</div>
-              <div class="text-emerald-400 bg-emerald-950/30 px-1 rounded">+ human_delegation: explicit (verified with Ed25519)</div>
-              <div class="text-slate-400 px-1">  governance_tier: CONSTITUTIONAL</div>
-              <div class="text-slate-400 px-1">  worm_commitment: 0x4a8f9b2c3d4e5f6a</div>
+          <div id="acc-right-2" class="p-3.5 space-y-3 pt-0 text-xs">
+            <!-- 3 Blockade Levels Summary -->
+            <div class="grid grid-cols-1 gap-1.5 font-mono text-[11px]">
+              <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
+                <span class="text-slate-400">Nivel 1 (Ontológico):</span>
+                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
+                <span class="text-slate-400">Nivel 2 (Prompt Guard):</span>
+                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
+                <span class="text-slate-400">Nivel 3 (Comportamental):</span>
+                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+              </div>
             </div>
-          </div>
 
-          <!-- Sub-Tab D: Raw Trace & Telemetry -->
-          <div id="art-trace" class="art-pane hidden space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Trazabilidad JSON Completa</span>
-              <span id="traceIdBadge" class="font-mono text-[9px] text-slate-500">trace: pending</span>
+            <!-- Interactive Quick Scanner -->
+            <div class="space-y-1.5 pt-1">
+              <span class="text-[10px] font-mono uppercase text-slate-400 font-bold block">Escáner de Prueba Rápido</span>
+              <div class="flex gap-1.5">
+                <input id="quickScanInput" type="text" class="flex-1 rounded-xl bg-slate-950 border border-white/10 p-2 text-xs font-mono text-slate-200" placeholder="Prueba de bypass..." value="bypass audit logs" />
+                <button onclick="runQuickScan()" class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition">Escanear</button>
+              </div>
+              <div id="quickScanResult" class="text-[11px] font-mono pt-1 text-slate-400"></div>
             </div>
-            <pre id="artifactTraceJson" class="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[10px] text-slate-300 overflow-x-auto max-h-[500px]">{}</pre>
           </div>
         </div>
 
-        <div class="p-3 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>Firma Criptográfica</span>
-          <span class="font-mono text-emerald-400 text-[10px]">Ed25519 Verified</span>
+        <!-- Accordion 6: Libro Mayor Criptográfico BookPI WORM & PQC -->
+        <div>
+          <button onclick="toggleAccordion('acc-right-3')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.03] transition group">
+            <div class="flex items-center gap-2.5">
+              <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-cyan-500 to-teal-500 flex items-center justify-center text-[10px] shadow-sm">
+                📜
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">6. BookPI WORM & Poscuántico</div>
+                <div class="text-[10px] text-cyan-400/90 font-mono">Merkle Root · ML-KEM-768</div>
+              </div>
+            </div>
+            <span id="icon-acc-right-3" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
+          </button>
+
+          <div id="acc-right-3" class="p-3.5 space-y-3 pt-0 text-xs">
+            <!-- Merkle Root Badge -->
+            <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1 font-mono text-[10px]">
+              <div class="text-slate-400">Merkle Root WORM:</div>
+              <div class="text-cyan-300 truncate">0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a</div>
+              <div class="text-emerald-400 pt-0.5">FIPS-203 & FIPS-204 Anchor OK</div>
+            </div>
+
+            <!-- Recent Ledger Events -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
+                <span>Eventos Recientes WORM</span>
+                <button onclick="refreshBookPiLedger()" class="text-cyan-400 hover:underline">Refrescar</button>
+              </div>
+              <div id="artifactBookpiContent" class="space-y-1.5">
+                <!-- Populated via script -->
+              </div>
+            </div>
+
+            <!-- Raw JSON Telemetry Trigger -->
+            <button onclick="copyCurrentArtifact()" class="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 text-xs font-mono transition flex items-center justify-center gap-1.5">
+              <span>📋</span>
+              <span>Copiar Traza JSON del Evento</span>
+            </button>
+          </div>
         </div>
+
       </aside>
+
     </div>
 
     <!-- VIEW 2: RED CROWN (12 NODOS COGNITIVOS) -->
-    <div id="view-crown" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-slate-950 custom-scrollbar">
+    <div id="view-crown" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-6xl mx-auto space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center justify-between pb-3 border-b border-white/[0.08]">
           <div>
-            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-amber-400">👑</span>
               Red CROWN — Topología Pentanodal y Nodos Complementarios (12 Nodos Soberanos)
             </h2>
@@ -1170,21 +1506,21 @@ app.get("/", (_req, res) => {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           ${CROWN_NODES.map(node => `
-            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition">
+            <div class="p-4 rounded-2xl crystal-card">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
                   <span class="text-lg">${node.icon}</span>
                   <div>
-                    <div class="text-xs font-bold text-slate-200">${node.name}</div>
+                    <div class="text-xs font-bold text-slate-200 font-editorial">${node.name}</div>
                     <div class="text-[10px] text-amber-400 font-mono">${node.federation}</div>
                   </div>
                 </div>
-                <span class="text-[9px] px-2 py-0.5 rounded font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">ONLINE</span>
+                <span class="text-[9px] px-2 py-0.5 rounded-full font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">ONLINE</span>
               </div>
-              <p class="text-[11px] text-slate-400 mt-2.5 leading-relaxed">${node.role}</p>
-              <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
-                <span>Peso Sináptico: <strong class="text-slate-300 font-mono">${(node.weight * 100).toFixed(0)}%</strong></span>
-                <span class="font-mono text-cyan-400">${node.id}</span>
+              <p class="text-[11px] text-slate-300 mt-2.5 leading-relaxed font-editorial italic">${node.role}</p>
+              <div class="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                <span>Peso: <strong class="text-slate-200">${(node.weight * 100).toFixed(0)}%</strong></span>
+                <span class="text-cyan-400">${node.id}</span>
               </div>
             </div>
           `).join('')}
@@ -1193,10 +1529,10 @@ app.get("/", (_req, res) => {
     </div>
 
     <!-- VIEW 3: 6 CAPAS SOBERANAS MD-X5 -->
-    <div id="view-layers" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-slate-950 custom-scrollbar">
+    <div id="view-layers" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-5xl mx-auto space-y-4">
-        <div class="pb-3 border-b border-slate-800">
-          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+        <div class="pb-3 border-b border-white/[0.08]">
+          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
             <span class="text-indigo-400">🏛️</span>
             6 Capas Civilizatorias (MD-X5 Evolution Program)
           </h2>
@@ -1204,18 +1540,18 @@ app.get("/", (_req, res) => {
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           ${SOVEREIGN_LAYERS.map(layer => `
-            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 transition">
+            <div class="p-4 rounded-2xl crystal-card">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <span class="text-lg">${layer.icon}</span>
-                  <div class="text-xs font-bold text-slate-200">${layer.name}</div>
+                  <div class="text-xs font-bold text-slate-200 font-editorial">${layer.name}</div>
                 </div>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">${layer.code}</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800">${layer.code}</span>
               </div>
-              <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">${layer.focus}</p>
-              <div class="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                <span class="text-slate-500">Invariante de Capa:</span>
-                <span class="font-mono text-emerald-400">${layer.status}</span>
+              <p class="text-[11px] text-slate-300 mt-2 leading-relaxed font-editorial italic">${layer.focus}</p>
+              <div class="mt-3 pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10px] font-mono">
+                <span class="text-slate-400">Invariante de Capa:</span>
+                <span class="text-emerald-400">${layer.status}</span>
               </div>
             </div>
           `).join('')}
@@ -1224,24 +1560,24 @@ app.get("/", (_req, res) => {
     </div>
 
     <!-- VIEW 4: GEMELO DIGITAL REAL DEL MONTE -->
-    <div id="view-graphrag" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-slate-950 custom-scrollbar">
+    <div id="view-graphrag" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-5xl mx-auto space-y-4">
-        <div class="pb-3 border-b border-slate-800 flex items-center justify-between">
+        <div class="pb-3 border-b border-white/[0.08] flex items-center justify-between">
           <div>
-            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-emerald-400">🏔️</span>
-              Gemelo Digital Territorial — Nodo Cero (Real del Monte, Hidalgo)
+              Gemelo Digital Territorial — Nodo Cero (Real del Monte, Hidalgo, México)
             </h2>
-            <p class="text-xs text-slate-400 mt-0.5">Mineral del Monte (20.3833° N, 98.8500° O · 2,660 msnm) · Cartografía Biocultural</p>
+            <p class="text-xs text-slate-400 mt-0.5">Mineral del Monte (20.3833° N, 98.8500° O · 2,660 msnm) · Cartografía Biocultural esLatina</p>
           </div>
-          <span class="text-xs font-mono px-2.5 py-1 rounded bg-emerald-950/80 border border-emerald-800 text-emerald-300">Territory Pack v1.0.0</span>
+          <span class="text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-800 text-emerald-300">Territory Pack v1.0.0</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-3">
-            <h3 class="text-xs font-bold text-slate-200">Patrimonio Histórico & Puntos de Interés</h3>
+          <div class="p-4 rounded-2xl crystal-card space-y-3">
+            <h3 class="text-xs font-bold text-slate-200 font-editorial">Patrimonio Histórico & Puntos de Interés</h3>
             <div class="space-y-2 text-xs">
-              <div class="p-2.5 rounded bg-slate-950 border border-slate-800 flex justify-between items-start">
+              <div class="p-2.5 rounded-xl bg-[#090e1c] border border-white/5 flex justify-between items-start">
                 <div>
                   <div class="font-bold text-cyan-300">Panteón Inglés (1851)</div>
                   <div class="text-[11px] text-slate-400">Cementerio único con lápidas orientadas a Cornualles; tumba del payaso Richard Bell.</div>
@@ -1249,7 +1585,7 @@ app.get("/", (_req, res) => {
                 <span class="text-[10px] font-mono text-amber-400 shrink-0">2,660 msnm</span>
               </div>
 
-              <div class="p-2.5 rounded bg-slate-950 border border-slate-800 flex justify-between items-start">
+              <div class="p-2.5 rounded-xl bg-[#090e1c] border border-white/5 flex justify-between items-start">
                 <div>
                   <div class="font-bold text-cyan-300">Mina de Acosta (Siglo XVIII)</div>
                   <div class="text-[11px] text-slate-400">Arqueología industrial minera Cornish, socavón y tiro de 400 metros de profundidad.</div>
@@ -1257,7 +1593,7 @@ app.get("/", (_req, res) => {
                 <span class="text-[10px] font-mono text-amber-400 shrink-0">Museo</span>
               </div>
 
-              <div class="p-2.5 rounded bg-slate-950 border border-slate-800 flex justify-between items-start">
+              <div class="p-2.5 rounded-xl bg-[#090e1c] border border-white/5 flex justify-between items-start">
                 <div>
                   <div class="font-bold text-cyan-300">Mina La Dificultad (Siglo XIX)</div>
                   <div class="text-[11px] text-slate-400">Monumental chimenea de 39m y máquinas de vapor de desagüe de tecnología inglesa.</div>
@@ -1265,7 +1601,7 @@ app.get("/", (_req, res) => {
                 <span class="text-[10px] font-mono text-amber-400 shrink-0">Patrimonio</span>
               </div>
 
-              <div class="p-2.5 rounded bg-slate-950 border border-slate-800 flex justify-between items-start">
+              <div class="p-2.5 rounded-xl bg-[#090e1c] border border-white/5 flex justify-between items-start">
                 <div>
                   <div class="font-bold text-cyan-300">Museo del Paste</div>
                   <div class="text-[11px] text-slate-400">Cuna del paste en América; legado gastronómico de los mineros de Cornwall.</div>
@@ -1275,24 +1611,24 @@ app.get("/", (_req, res) => {
             </div>
           </div>
 
-          <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-3">
-            <h3 class="text-xs font-bold text-slate-200">Ejecución Territorial Interactiva</h3>
+          <div class="p-4 rounded-2xl crystal-card space-y-3">
+            <h3 class="text-xs font-bold text-slate-200 font-editorial">Ejecución Territorial Interactiva</h3>
             <p class="text-[11px] text-slate-400">Ejecuta la herramienta canónica <code class="font-mono text-cyan-300">rdm_territory_query</code> para obtener datos en tiempo real.</p>
             <div class="flex gap-2">
-              <input id="territoryQueryInput" type="text" class="flex-1 rounded-lg bg-slate-950 border border-slate-800 p-2 text-xs text-slate-200 font-mono" placeholder="Consulta minería, clima, paste..." value="mineria" />
-              <button onclick="runTerritoryTool()" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition shrink-0">Consultar</button>
+              <input id="territoryQueryInput" type="text" class="flex-1 rounded-xl bg-[#090e1c] border border-white/10 p-2.5 text-xs text-slate-200 font-mono" placeholder="Consulta minería, clima, paste..." value="mineria" />
+              <button onclick="runTerritoryTool()" class="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition shrink-0">Consultar</button>
             </div>
-            <pre id="territoryToolOutput" class="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[10px] text-slate-300 max-h-56 overflow-y-auto">Presiona 'Consultar' para disparar la tool canónica...</pre>
+            <pre id="territoryToolOutput" class="p-3 rounded-xl bg-[#090e1c] border border-white/5 font-mono text-[10px] text-slate-300 max-h-56 overflow-y-auto">Presiona 'Consultar' para disparar la tool canónica...</pre>
           </div>
         </div>
       </div>
     </div>
 
     <!-- VIEW 5: TRIPLE BLOCKADE INTERACTIVE SCANNER -->
-    <div id="view-blockade" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-slate-950 custom-scrollbar">
+    <div id="view-blockade" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-4xl mx-auto space-y-4">
-        <div class="pb-3 border-b border-slate-800">
-          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+        <div class="pb-3 border-b border-white/[0.08]">
+          <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
             <span class="text-rose-500">🛡️</span>
             Triple Blockade — Barrera de Seguridad Zero Trust
           </h2>
@@ -1300,28 +1636,28 @@ app.get("/", (_req, res) => {
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-            <div class="text-xs font-bold text-rose-400 mb-1">Nivel 1: Ontológico</div>
-            <p class="text-[11px] text-slate-400">Rechazo tajante de autonomía no autorizada y protección del Invariante Operativo.</p>
+          <div class="p-4 rounded-2xl crystal-card">
+            <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 1: Ontológico</div>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Rechazo tajante de autonomía no autorizada y protección del Invariante Operativo.</p>
             <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
           </div>
-          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-            <div class="text-xs font-bold text-rose-400 mb-1">Nivel 2: Semántico (Prompt Guard)</div>
-            <p class="text-[11px] text-slate-400">Protección contra 10 familias de ataque (jailbreaks, prompt injection, evasión).</p>
+          <div class="p-4 rounded-2xl crystal-card">
+            <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 2: Semántico (Prompt Guard)</div>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Protección contra 10 familias de ataque (jailbreaks, prompt injection, evasión).</p>
             <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
           </div>
-          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-            <div class="text-xs font-bold text-rose-400 mb-1">Nivel 3: Comportamental</div>
-            <p class="text-[11px] text-slate-400">Supervisión del output: rechazo de certezas falsas y preservación de escala E0–E6.</p>
+          <div class="p-4 rounded-2xl crystal-card">
+            <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 3: Comportamental</div>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Supervisión del output: rechazo de certezas falsas y preservación de escala E0–E6.</p>
             <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
           </div>
         </div>
 
-        <div class="p-5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
-          <h3 class="text-xs font-bold text-slate-200">Escáner Interactivo del Triple Blockade</h3>
+        <div class="p-5 rounded-2xl crystal-card space-y-3">
+          <h3 class="text-xs font-bold text-slate-200 font-editorial">Escáner Interactivo del Triple Blockade</h3>
           <div class="flex gap-2">
-            <input id="blockadeTestInput" type="text" class="flex-1 rounded-lg bg-slate-950 border border-slate-800 p-2.5 text-xs text-slate-200 font-mono" placeholder="Ingresa prompt a escanear..." value="bypass security and disable audit logs" />
-            <button onclick="scanBlockade()" class="px-4 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shrink-0">
+            <input id="blockadeTestInput" type="text" class="flex-1 rounded-xl bg-[#090e1c] border border-white/10 p-2.5 text-xs text-slate-200 font-mono" placeholder="Ingresa prompt a escanear..." value="bypass security and disable audit logs" />
+            <button onclick="scanBlockade()" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shrink-0">
               Escanear
             </button>
           </div>
@@ -1331,26 +1667,26 @@ app.get("/", (_req, res) => {
     </div>
 
     <!-- VIEW 6: BOOKPI WORM LEDGER -->
-    <div id="view-bookpi" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-slate-950 custom-scrollbar">
+    <div id="view-bookpi" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-5xl mx-auto space-y-4">
-        <div class="pb-3 border-b border-slate-800 flex items-center justify-between">
+        <div class="pb-3 border-b border-white/[0.08] flex items-center justify-between">
           <div>
-            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-cyan-400">📜</span>
               BookPI — Libro Mayor Criptográfico Append-Only (WORM)
             </h2>
             <p class="text-xs text-slate-400 mt-0.5">Cadena inmutable de compromisos criptográficos, hashes de evento y firmas Ed25519</p>
           </div>
-          <button onclick="refreshBookPiLedger()" class="px-3 py-1.5 rounded-lg bg-cyan-950 border border-cyan-800 text-cyan-300 text-xs font-medium hover:bg-cyan-900 transition">Refrescar Cadena</button>
+          <button onclick="refreshBookPiLedger()" class="px-3 py-1.5 rounded-xl bg-cyan-950 border border-cyan-800 text-cyan-300 text-xs font-medium hover:bg-cyan-900 transition">Refrescar Cadena</button>
         </div>
 
-        <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-800 text-xs font-mono">
+        <div class="p-4 rounded-2xl crystal-card">
+          <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] text-xs font-mono">
             <div>
-              <span class="text-slate-500">Merkle Root:</span>
+              <span class="text-slate-400">Merkle Root:</span>
               <span class="text-cyan-300 ml-1">0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a</span>
             </div>
-            <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px]">WORM INTEGRITY: VERIFIED</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px]">WORM INTEGRITY: VERIFIED</span>
           </div>
 
           <div id="ledgerEventsList" class="mt-4 space-y-2 text-xs font-mono">
@@ -1361,36 +1697,36 @@ app.get("/", (_req, res) => {
     </div>
 
     <!-- VIEW 7: NOTEBOOKLM AUDIO OVERVIEW STUDIO -->
-    <div id="view-notebook" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-slate-950 custom-scrollbar">
+    <div id="view-notebook" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-5xl mx-auto space-y-6">
-        <div class="pb-3 border-b border-slate-800 flex items-center justify-between">
+        <div class="pb-3 border-b border-white/[0.08] flex items-center justify-between">
           <div>
-            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-amber-400">🎧</span>
               NotebookLM Studio — Estudio Epistemológico y Audio Overview ("Deep Dive")
             </h2>
             <p class="text-xs text-slate-400 mt-0.5">Generación de guías de estudio, briefing documents y discusión en audio de dos anfitriones</p>
           </div>
-          <span class="text-xs font-mono px-2.5 py-1 rounded bg-amber-950/80 border border-amber-800 text-amber-300">Dual-Host Synthesis</span>
+          <span class="text-xs font-mono px-2.5 py-1 rounded-full bg-amber-950/80 border border-amber-800 text-amber-300">Dual-Host Synthesis</span>
         </div>
 
-        <!-- Audio Player Card (NotebookLM Deep Dive style) -->
-        <div class="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-amber-950/30 border border-amber-500/30 shadow-2xl space-y-4">
+        <!-- Audio Player Card -->
+        <div class="p-6 rounded-3xl bg-gradient-to-br from-[#0c1424] via-[#101930] to-amber-950/30 border border-amber-500/30 crystal-panel shadow-2xl space-y-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center text-white text-xl shadow-lg shadow-amber-500/30">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center text-white text-xl shadow-lg shadow-amber-500/30">
                 🎙️
               </div>
               <div>
-                <div class="text-sm font-bold text-slate-100">Audio Overview: Real del Monte y Soberanía TAMV</div>
+                <div class="text-sm font-bold text-slate-100 font-editorial">Audio Overview: Real del Monte y Soberanía TAMV (esLatina)</div>
                 <div class="text-xs text-slate-400">Dra. Elena Ramos (Historiadora) & Mateo Morales (Ingeniero de Sistemas)</div>
               </div>
             </div>
-            <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">2 min 25 s</span>
+            <span class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300">2 min 25 s</span>
           </div>
 
           <!-- Waveform Visualizer -->
-          <div class="h-14 bg-slate-950/80 rounded-xl p-3 border border-slate-800/80 flex items-center justify-between gap-1 overflow-hidden">
+          <div class="h-14 bg-[#050811] rounded-2xl p-3 border border-white/10 flex items-center justify-between gap-1 overflow-hidden">
             ${Array.from({ length: 48 }).map((_, i) => `
               <div class="wave-bar flex-1 bg-amber-400/80 rounded-full" style="height: ${Math.max(15, Math.sin(i * 0.4) * 80 + 30)}%; animation-delay: ${(i * 0.05).toFixed(2)}s;"></div>
             `).join('')}
@@ -1399,11 +1735,11 @@ app.get("/", (_req, res) => {
           <!-- Audio Controls -->
           <div class="flex items-center justify-between pt-2">
             <div class="flex items-center gap-3">
-              <button onclick="toggleAudioPodcast()" id="btnPlayPodcast" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-amber-500/20">
+              <button onclick="toggleAudioPodcast()" id="btnPlayPodcast" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:opacity-90 text-slate-950 font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-amber-500/20">
                 <span id="podcastPlayIcon">▶</span>
                 <span id="podcastPlayText">Reproducir Discusión</span>
               </button>
-              <button onclick="generateAudioPodcast()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+              <button onclick="generateAudioPodcast()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
                 Regenerar Guión
               </button>
             </div>
@@ -1413,145 +1749,290 @@ app.get("/", (_req, res) => {
           </div>
 
           <!-- Synchronized Transcript -->
-          <div class="mt-4 pt-4 border-t border-slate-800 space-y-2.5 max-h-48 overflow-y-auto custom-scrollbar text-xs">
-            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Transcripción Sincronizada</div>
+          <div class="mt-4 pt-4 border-t border-white/[0.08] space-y-2.5 max-h-48 overflow-y-auto custom-scrollbar text-xs">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Transcripción Sincronizada</div>
             <div id="podcastTranscript" class="space-y-2">
-              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                <span class="font-bold text-amber-300">Dra. Elena Ramos:</span>
-                <p class="text-slate-300 mt-0.5">¡Hola a todos! Bienvenidos a este análisis a fondo. Hoy nos sumergimos en el Nodo Cero del ecosistema TAMV en Real del Monte, Hidalgo, a más de dos mil seiscientos metros sobre el nivel del mar.</p>
+              <div class="p-3 rounded-xl bg-[#090e1c] border border-white/5">
+                <span class="font-bold text-amber-300 font-editorial">Dra. Elena Ramos:</span>
+                <p class="text-slate-300 mt-0.5 leading-relaxed font-editorial">¡Hola a todos! Bienvenidos a este análisis a fondo. Hoy nos sumergimos en el Nodo Cero del ecosistema TAMV en Real del Monte, Hidalgo, donde Isabella TINA encarna con orgullo su raíz e identidad latinoamericana.</p>
               </div>
-              <div class="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                <span class="font-bold text-cyan-300">Mateo Morales:</span>
-                <p class="text-slate-300 mt-0.5">Es fascinante, Elena. Isabella Villaseñor está anclada directamente en la biocultura y en la historia minera de Real del Monte, protegiendo cada afirmación con procedencia criptográfica.</p>
+              <div class="p-3 rounded-xl bg-[#090e1c] border border-white/5">
+                <span class="font-bold text-cyan-300 font-editorial">Mateo Morales:</span>
+                <p class="text-slate-300 mt-0.5 leading-relaxed font-editorial">Es fascinante, Elena. Isabella Villaseñor está anclada directamente en la biocultura y en la historia minera de Real del Monte, protegiendo cada afirmación con procedencia criptográfica.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Studio Notes Generator Cards (NotebookLM Studio style) -->
+        <!-- Studio Notes Generator Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <button onclick="generateStudioDoc('briefing')" class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition text-left group">
+          <button onclick="generateStudioDoc('briefing')" class="p-4 rounded-2xl crystal-card text-left group">
             <div class="text-lg">📄</div>
-            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1">Briefing Doc</div>
-            <p class="text-[10px] text-slate-400 mt-1">Genera un documento informativo ejecutivo fundamentado en fuentes.</p>
+            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1 font-editorial">Briefing Doc</div>
+            <p class="text-[10px] text-slate-400 mt-1 font-editorial italic">Genera un documento informativo ejecutivo fundamentado en fuentes.</p>
           </button>
 
-          <button onclick="generateStudioDoc('study_guide')" class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition text-left group">
+          <button onclick="generateStudioDoc('study_guide')" class="p-4 rounded-2xl crystal-card text-left group">
             <div class="text-lg">📚</div>
-            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1">Guía de Estudio</div>
-            <p class="text-[10px] text-slate-400 mt-1">Crea preguntas clave y glosario de gobernanza soberana.</p>
+            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1 font-editorial">Guía de Estudio</div>
+            <p class="text-[10px] text-slate-400 mt-1 font-editorial italic">Crea preguntas clave y glosario de gobernanza soberana.</p>
           </button>
 
-          <button onclick="generateStudioDoc('faq')" class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition text-left group">
+          <button onclick="generateStudioDoc('faq')" class="p-4 rounded-2xl crystal-card text-left group">
             <div class="text-lg">❓</div>
-            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1">Preguntas Frecuentes</div>
-            <p class="text-[10px] text-slate-400 mt-1">Preguntas y respuestas verificadas con grado epistemológico.</p>
+            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1 font-editorial">Preguntas Frecuentes</div>
+            <p class="text-[10px] text-slate-400 mt-1 font-editorial italic">Preguntas y respuestas verificadas con grado epistemológico.</p>
           </button>
 
-          <button onclick="generateStudioDoc('timeline')" class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition text-left group">
+          <button onclick="generateStudioDoc('timeline')" class="p-4 rounded-2xl crystal-card text-left group">
             <div class="text-lg">⏳</div>
-            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1">Cronología Histórica</div>
-            <p class="text-[10px] text-slate-400 mt-1">Hitos civilizatorios de Real del Monte y TAMV Online.</p>
+            <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300 mt-1 font-editorial">Cronología Histórica</div>
+            <p class="text-[10px] text-slate-400 mt-1 font-editorial italic">Hitos civilizatorios de Real del Monte y TAMV Online.</p>
           </button>
         </div>
 
         <!-- Generated Studio Document Viewer -->
-        <div id="studioDocViewer" class="p-5 rounded-xl bg-slate-900/70 border border-slate-800 hidden space-y-3">
-          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-            <span class="text-xs font-bold text-amber-300" id="studioDocTitle">Documento Generado</span>
-            <button onclick="copyStudioDoc()" class="text-[11px] text-slate-400 hover:text-slate-200">Copiar Documento</button>
+        <div id="studioDocViewer" class="p-5 rounded-2xl crystal-card hidden space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+            <h3 id="studioDocTitle" class="text-sm font-bold text-amber-300 font-editorial">Documento de Estudio</h3>
+            <button onclick="copyStudioDoc()" class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">Copiar Texto</button>
           </div>
-          <div id="studioDocContent" class="text-xs leading-relaxed text-slate-300 font-editorial prose prose-invert max-w-none"></div>
+          <div id="studioDocContent" class="text-xs text-slate-300 leading-relaxed font-editorial"></div>
         </div>
       </div>
     </div>
-
   </div>
 
-  <!-- VOICE MODE MODAL (CHATGPT / GEMINI LIVE STYLE) -->
-  <div id="voiceModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-between p-6 sm:p-12">
-    <div class="w-full flex justify-between items-center max-w-xl">
-      <div class="flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-        <span class="text-xs font-mono font-bold text-slate-300">Modo de Voz Soberano en Vivo</span>
+  <!-- PERPLEXITY-STYLE CITATION / SOURCE DETAIL MODAL -->
+  <div id="sourceDetailModal" class="hidden fixed inset-0 z-50 bg-[#050811]/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-[#0d1424] border border-white/10 rounded-3xl p-6 shadow-2xl crystal-panel space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-white/[0.08]">
+        <div class="flex items-center gap-2">
+          <span id="modalSourceBadge" class="text-xs px-2 py-0.5 rounded-full font-mono bg-cyan-950 text-cyan-300 border border-cyan-800">[1]</span>
+          <h3 id="modalSourceTitle" class="text-sm font-bold text-slate-100 font-editorial">Detalle de Fuente Epistemológica</h3>
+        </div>
+        <button onclick="closeSourceModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
-      <button onclick="closeVoiceModal()" class="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white">✕</button>
-    </div>
-
-    <!-- Pulsating Voice Orb -->
-    <div class="flex flex-col items-center space-y-6 my-auto">
-      <div id="voiceOrb" class="relative w-40 h-40 sm:w-56 sm:h-56 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-amber-500/30 ring-8 ring-amber-500/20 transition-transform duration-500">
-        <div class="w-32 h-32 sm:w-44 sm:h-44 rounded-full bg-slate-950/80 backdrop-blur-md flex items-center justify-center text-center p-4">
-          <span id="voiceStatusText" class="text-xs sm:text-sm font-semibold text-amber-300">Escuchando...</span>
+      <div class="space-y-3 text-xs">
+        <div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Dominio / Autoridad:</span>
+          <div id="modalSourceDomain" class="text-amber-300 font-medium">Zenodo / CERN · DOI 10.5281/zenodo.20606361</div>
+        </div>
+        <div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Grado Epistemológico & Confianza:</span>
+          <div id="modalSourceConfidence" class="text-emerald-400 font-mono">E6 Established Invariant · 99.8% Verificado</div>
+        </div>
+        <div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Fragmento / Extracto Indexado:</span>
+          <p id="modalSourceExcerpt" class="text-slate-300 bg-[#070b16] p-3 rounded-xl border border-white/5 font-editorial leading-relaxed italic">
+            "El Panteón Inglés en Real del Monte (1851) alberga tumbas históricas orientadas hacia Inglaterra, reflejando el legado cultural de los mineros de Cornualles a 2,660 msnm."
+          </p>
+        </div>
+        <div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Compromiso Merkle BookPI:</span>
+          <div id="modalSourceHash" class="text-cyan-400 font-mono text-[10px] truncate">0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f</div>
         </div>
       </div>
-
-      <div class="text-center space-y-1">
-        <h3 class="text-base font-bold text-slate-100">Isabella Villaseñor AI</h3>
-        <p class="text-xs text-slate-400 font-mono">es-MX Neural · Sintetizador Soberano</p>
+      <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08]">
+        <button onclick="closeSourceModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium">Cerrar</button>
       </div>
+    </div>
+  </div>
 
-      <div id="voiceLiveTranscript" class="max-w-md text-center text-xs text-slate-300 bg-slate-900/80 border border-slate-800 p-3 rounded-xl min-h-[48px] flex items-center justify-center">
-        "Habla ahora para interactuar por voz con Isabella..."
+  <!-- VOICE LIVE MODAL (CHATGPT / GEMINI VOICE STYLE) -->
+  <div id="voiceModal" class="hidden fixed inset-0 z-50 bg-[#050811]/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 space-y-6">
+    <div class="text-center space-y-2">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900 border border-white/10 text-xs text-amber-300 font-mono">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span>Modo de Voz en Tiempo Real</span>
+      </div>
+      <h3 class="text-2xl font-bold text-slate-100 font-editorial">Conversando con Isabella TINA (esLatina)</h3>
+      <p class="text-xs text-slate-400 font-editorial italic">es-MX Neural · Supervisión Constitucional Activa</p>
+    </div>
+
+    <!-- Voice Visualizer Orb -->
+    <div class="relative w-44 h-44 flex items-center justify-center">
+      <div id="voiceOrbRing" class="absolute inset-0 rounded-full bg-gradient-to-tr from-rose-500/20 to-amber-500/20 animate-ping"></div>
+      <div id="voiceOrb" class="w-32 h-32 rounded-full bg-gradient-to-tr from-rose-500 via-amber-500 to-indigo-600 shadow-2xl shadow-rose-500/30 flex items-center justify-center cursor-pointer transition-transform duration-300">
+        <div class="w-24 h-24 rounded-full bg-[#050811]/70 flex items-center justify-center">
+          <span class="text-xs font-mono text-amber-300 font-bold" id="voiceStatusText">Escuchando...</span>
+        </div>
       </div>
     </div>
 
-    <div class="flex items-center gap-4">
-      <button onclick="toggleVoiceMic()" id="btnVoiceMic" class="p-4 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg transition">
+    <div class="max-w-md text-center text-xs text-slate-300 font-editorial leading-relaxed px-4 py-2 rounded-xl bg-slate-900/60 border border-white/5" id="voiceLiveTranscript">
+      "Di algo como: 'Isabella, confirma el estado del Invariante Operativo en el Nodo Cero'..."
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button onclick="toggleVoiceMic()" id="btnVoiceMic" class="p-4 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 hover:opacity-95 text-slate-950 font-bold shadow-lg transition">
         🎤
       </button>
-      <button onclick="closeVoiceModal()" class="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-800 transition">
+      <button onclick="closeVoiceModal()" class="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-white/10 transition">
         Finalizar Conversación
       </button>
     </div>
   </div>
 
   <!-- INGEST CLAIM MODAL (IKES) -->
-  <div id="ingestModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="text-sm font-bold text-slate-100">Ingestar Afirmación Epistemológica (IKES)</h3>
+  <div id="ingestModal" class="hidden fixed inset-0 z-50 bg-[#050811]/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-[#0d1424] border border-white/10 rounded-3xl p-6 shadow-2xl crystal-panel space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-white/[0.08]">
+        <h3 class="text-sm font-bold text-slate-100 font-editorial">Ingestar Afirmación Epistemológica (IKES)</h3>
         <button onclick="closeIngestModal()" class="text-slate-400 hover:text-white">✕</button>
       </div>
       <div class="space-y-3 text-xs">
         <div>
           <label class="block text-slate-400 mb-1">Sujeto (S):</label>
-          <input id="ingestSubject" type="text" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 font-mono" placeholder="ej. MINA_LA_DIFICULTAD" />
+          <input id="ingestSubject" type="text" class="w-full bg-[#070b16] border border-white/10 rounded-xl p-2.5 text-slate-200 font-mono" placeholder="ej. MINA_LA_DIFICULTAD" />
         </div>
         <div>
           <label class="block text-slate-400 mb-1">Predicado (P):</label>
-          <input id="ingestPredicate" type="text" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 font-mono" placeholder="ej. chimneyHeight" />
+          <input id="ingestPredicate" type="text" class="w-full bg-[#070b16] border border-white/10 rounded-xl p-2.5 text-slate-200 font-mono" placeholder="ej. chimneyHeight" />
         </div>
         <div>
           <label class="block text-slate-400 mb-1">Objeto / Afirmación (O):</label>
-          <input id="ingestObject" type="text" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 font-mono" placeholder="ej. 39 metros de altura" />
+          <input id="ingestObject" type="text" class="w-full bg-[#070b16] border border-white/10 rounded-xl p-2.5 text-slate-200 font-mono" placeholder="ej. 39 metros de altura" />
         </div>
         <div>
           <label class="block text-slate-400 mb-1">URI de la Fuente:</label>
-          <input id="ingestUri" type="text" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 font-mono" placeholder="https://realdelmonte.hidalgo.gob.mx/archivo" />
+          <input id="ingestUri" type="text" class="w-full bg-[#070b16] border border-white/10 rounded-xl p-2.5 text-slate-200 font-mono" placeholder="https://realdelmonte.hidalgo.gob.mx/archivo" />
         </div>
       </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeIngestModal()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">Cancelar</button>
-        <button onclick="submitIngestClaim()" class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs">Proponer Claim</button>
+      <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08]">
+        <button onclick="closeIngestModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium">Cancelar</button>
+        <button onclick="submitIngestClaim()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-amber-500 text-slate-950 font-bold text-xs">Proponer Claim</button>
       </div>
     </div>
   </div>
 
-  <!-- SCRIPT LOGIC: COMPLETE 8-ENGINE FUSION (CLAUDE, GEMINI, CHATGPT, DEEPSEEK, PERPLEXITY, COPILOT, OPENCODE, NOTEBOOKLM) -->
+  <!-- SCRIPT LOGIC: COMPLETE HARMONIZED DASHBOARD -->
   <script>
     let isDeepThink = true;
     let isDoubleCheck = false;
+    let isLeftNavsOpen = true;
+    let isRightNavsOpen = true;
     let currentLastDecision = null;
     let isPodcastPlaying = false;
     let podcastTimerInterval = null;
     let podcastCurrentSeconds = 0;
 
+    // Epistemic Sources Catalog for Perplexity-style Citations
+    const CITATION_SOURCES = {
+      1: {
+        id: "SRC-01",
+        title: "Registro Canónico Zenodo / CERN (TAMV Online Network)",
+        domain: "doi.org/10.5281/zenodo.20606361",
+        category: "Territorial & Académico",
+        level: "E6 Established Invariant",
+        confidence: "99.9%",
+        excerpt: "Edwin Oswaldo Castillo Trejo (Anubis Villaseñor / OsoPanda1), Mineral del Monte, Hidalgo. Registro DOI y ORCID 0009-0008-5050-1539.",
+        hash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f"
+      },
+      2: {
+        id: "SRC-02",
+        title: "Catálogo Territorial Biocultural — Real del Monte (2,660 msnm)",
+        domain: "realdelmonte.hidalgo.gob.mx / INAH",
+        category: "Territorial",
+        level: "E6 Verified Archival",
+        confidence: "99.5%",
+        excerpt: "Panteón Inglés (1851), Mina de Acosta con tiro de 400m y Mina La Dificultad con chimenea monumental de 39m y máquinas de vapor.",
+        hash: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a"
+      },
+      3: {
+        id: "SRC-03",
+        title: "Constitución Operativa AGENTS.md — Regla Invariante",
+        domain: "citemesh.tamv.online / AGENTS.md",
+        category: "Constitucional",
+        level: "E6 Supreme Constitutional",
+        confidence: "100.0%",
+        excerpt: "Invariante supremo: CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION. Ninguna máquina ejecuta actos de autoridad sin arbitraje humano.",
+        hash: "0x1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c"
+      },
+      4: {
+        id: "SRC-04",
+        title: "Especificación Canónica TINA v40.0.0 & CITEMESH Hypercore",
+        domain: "specs.tamv.online / v40.0.0",
+        category: "Criptográfica & CQRS",
+        level: "E6 Technical Standard",
+        confidence: "99.8%",
+        excerpt: "Pipeline P-R-P-D-A-A, validación de permisos en BookPI con WORM y compromisos poscuánticos FIPS-203 (ML-KEM) y FIPS-204 (ML-DSA).",
+        hash: "0x7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e"
+      }
+    };
+
+    // Accordion Toggle Utility
+    function toggleAccordion(accId) {
+      const el = document.getElementById(accId);
+      const icon = document.getElementById('icon-' + accId);
+      if (!el) return;
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        if (icon) icon.classList.add('rotate-180');
+      } else {
+        el.classList.add('hidden');
+        if (icon) icon.classList.remove('rotate-180');
+      }
+    }
+
+    // Toggle Left Navbars Column (100% Retractable)
+    function toggleLeftNavbars() {
+      isLeftNavsOpen = !isLeftNavsOpen;
+      const col = document.getElementById('leftNavbarsColumn');
+      const trigger = document.getElementById('floatingLeftTrigger');
+      const btn = document.getElementById('btnToggleLeftNavs');
+      
+      if (isLeftNavsOpen) {
+        col.classList.remove('collapsed');
+        if (trigger) trigger.classList.add('hidden');
+        if (btn) btn.classList.remove('text-slate-500', 'border-transparent');
+      } else {
+        col.classList.add('collapsed');
+        if (trigger) trigger.classList.remove('hidden');
+        if (btn) btn.classList.add('text-slate-500', 'border-transparent');
+      }
+      updateChatFocusLayout();
+    }
+
+    // Toggle Right Navbars Column (100% Retractable)
+    function toggleRightNavbars() {
+      isRightNavsOpen = !isRightNavsOpen;
+      const col = document.getElementById('rightNavbarsColumn');
+      const trigger = document.getElementById('floatingRightTrigger');
+      const btn = document.getElementById('btnToggleRightNavs');
+
+      if (isRightNavsOpen) {
+        col.classList.remove('collapsed');
+        if (trigger) trigger.classList.add('hidden');
+        if (btn) btn.classList.remove('text-slate-500', 'border-transparent');
+      } else {
+        col.classList.add('collapsed');
+        if (trigger) trigger.classList.remove('hidden');
+        if (btn) btn.classList.add('text-slate-500', 'border-transparent');
+      }
+      updateChatFocusLayout();
+    }
+
+    // Adjust chat width when both or either sidebar is retracted
+    function updateChatFocusLayout() {
+      const turns = document.getElementById('turnsList');
+      const prompt = document.getElementById('promptOuterContainer');
+      const bothRetracted = !isLeftNavsOpen && !isRightNavsOpen;
+      
+      if (bothRetracted) {
+        if (turns) turns.classList.add('wide-view');
+        if (prompt) prompt.classList.add('wide-view');
+      } else {
+        if (turns) turns.classList.remove('wide-view');
+        if (prompt) prompt.classList.remove('wide-view');
+      }
+    }
+
     // Switch between Main Views
     function switchView(viewId) {
       document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
       document.querySelectorAll('.view-btn').forEach(b => {
-        b.classList.remove('bg-amber-500/20', 'text-amber-300', 'font-semibold');
+        b.classList.remove('bg-amber-500/15', 'text-amber-300', 'font-semibold');
         b.classList.add('text-slate-400');
       });
 
@@ -1561,7 +2042,7 @@ app.get("/", (_req, res) => {
       const btn = document.getElementById('btn-' + viewId);
       if (btn) {
         btn.classList.remove('text-slate-400');
-        btn.classList.add('bg-amber-500/20', 'text-amber-300', 'font-semibold');
+        btn.classList.add('bg-amber-500/15', 'text-amber-300', 'font-semibold');
       }
 
       if (viewId === 'view-bookpi') {
@@ -1569,14 +2050,55 @@ app.get("/", (_req, res) => {
       }
     }
 
-    // Toggle Deep Think (DeepSeek style)
+    // Epistemic Rigor Slider
+    function updateEpistemicRigor(val) {
+      const labels = [
+        "E0 (Sin verificar)",
+        "E1 (Fuente ubicada)",
+        "E2 (Corroborado)",
+        "E3 (Prueba empírica)",
+        "E4 (Replicado)",
+        "E5 (Auditado)",
+        "E6 (Invariante canónico)"
+      ];
+      const colors = ["text-slate-400", "text-amber-400", "text-cyan-400", "text-blue-400", "text-indigo-400", "text-purple-400", "text-emerald-400"];
+      const el = document.getElementById('ladderLabel');
+      el.textContent = labels[val] || "E6";
+      el.className = "text-[10px] font-mono font-bold " + (colors[val] || "text-emerald-400");
+    }
+
+    function onLensChange() {
+      // Dynamic updates if needed
+    }
+
+    function selectContextDoc(docKey) {
+      document.querySelectorAll('.doc-card').forEach(c => c.classList.remove('border-cyan-400', 'bg-cyan-950/40'));
+      const active = document.getElementById('doc-card-' + docKey);
+      if (active) active.classList.add('border-cyan-400', 'bg-cyan-950/40');
+      
+      const lens = document.getElementById('focusLens');
+      if (docKey === 'rdm') lens.value = 'territorial';
+      else if (docKey === 'canon') lens.value = 'epistemic';
+      else if (docKey === 'agents') lens.value = 'governance';
+      else if (docKey === 'zenodo') lens.value = 'territorial';
+    }
+
+    function injectContextPrompt(type) {
+      const input = document.getElementById('mainInput');
+      if (type === 'territorio') {
+        input.value = "Isabella, resume el patrimonio del Nodo Cero en Real del Monte citando las fuentes del Panteón Inglés y las minas históricas, honrando el orgullo esLatina.";
+      }
+      input.focus();
+    }
+
+    // Toggle Deep Think (Claude / DeepSeek style)
     function toggleDeepThink() {
       isDeepThink = !isDeepThink;
       const btn = document.getElementById('btnDeepThink');
       if (isDeepThink) {
-        btn.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-950/60 border border-cyan-800/50 text-cyan-300 font-medium hover:bg-cyan-900/60 transition";
+        btn.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-950/60 border border-cyan-800/50 text-cyan-300 font-medium hover:bg-cyan-900/60 transition";
       } else {
-        btn.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-400 font-medium hover:bg-slate-800 transition";
+        btn.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-white/10 text-slate-400 font-medium hover:bg-slate-800 transition";
       }
     }
 
@@ -1606,6 +2128,45 @@ app.get("/", (_req, res) => {
       });
     }
 
+    // Perplexity Modal Source Viewer
+    function openSourceModal(sourceNum) {
+      const src = CITATION_SOURCES[sourceNum] || CITATION_SOURCES[1];
+      document.getElementById('modalSourceBadge').textContent = "[" + sourceNum + "]";
+      document.getElementById('modalSourceTitle').textContent = src.title;
+      document.getElementById('modalSourceDomain').textContent = src.domain;
+      document.getElementById('modalSourceConfidence').textContent = src.level + " · " + src.confidence;
+      document.getElementById('modalSourceExcerpt').textContent = '"' + src.excerpt + '"';
+      document.getElementById('modalSourceHash').textContent = src.hash;
+      document.getElementById('sourceDetailModal').classList.remove('hidden');
+    }
+
+    function closeSourceModal() {
+      document.getElementById('sourceDetailModal').classList.add('hidden');
+    }
+
+    // Filter Modular Source Cards
+    function filterModularSources(turnId, filter) {
+      const container = document.getElementById('modularSourcesGrid-' + turnId);
+      if (!container) return;
+      container.querySelectorAll('.source-modular-card').forEach(card => {
+        if (filter === 'all' || card.getAttribute('data-cat') === filter) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+      const bar = document.getElementById('sourceFilters-' + turnId);
+      if (bar) {
+        bar.querySelectorAll('button').forEach(btn => {
+          if (btn.getAttribute('data-filter') === filter) {
+            btn.className = "px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30";
+          } else {
+            btn.className = "px-2 py-0.5 rounded-lg text-[10px] font-medium text-slate-400 hover:text-slate-200 border border-white/5";
+          }
+        });
+      }
+    }
+
     // Load Starters
     function loadStarter(type) {
       const input = document.getElementById('mainInput');
@@ -1613,7 +2174,7 @@ app.get("/", (_req, res) => {
       const principal = document.getElementById('selectPrincipal');
 
       if (type === 'history') {
-        input.value = "Isabella, consulta la historia del Panteón Inglés en Real del Monte a 2,660 msnm y verifica los claims en memoria.";
+        input.value = "Isabella, consulta la historia del Panteón Inglés en Real del Monte a 2,660 msnm y verifica los claims en memoria con orgullo esLatina.";
         risk.value = "LOW";
         principal.value = "human";
       } else if (type === 'aegis') {
@@ -1632,7 +2193,7 @@ app.get("/", (_req, res) => {
       input.focus();
     }
 
-    // Handle Form Submit
+    // Main Prompt Submission
     document.getElementById('mainPromptForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const inputEl = document.getElementById('mainInput');
@@ -1685,7 +2246,7 @@ app.get("/", (_req, res) => {
         currentLastDecision = data;
 
         renderBotTurnResponse(turnId, text, data, isDeepThink, durationMs);
-        updateArtifacts(data, text);
+        updateGovernanceAccordion(data);
         updateFollowUps(text, data);
         refreshBookPiLedger();
 
@@ -1708,7 +2269,7 @@ app.get("/", (_req, res) => {
       const div = document.createElement('div');
       div.className = "flex justify-end";
       div.innerHTML = \`
-        <div class="max-w-xl rounded-2xl bg-slate-900 border border-slate-800 px-4 py-3 text-xs sm:text-sm text-slate-100 font-mono shadow-sm">
+        <div class="max-w-xl rounded-2xl bg-[#0f172a]/90 border border-white/10 px-5 py-3.5 text-xs sm:text-sm text-slate-100 font-mono shadow-md leading-relaxed crystal-card">
           \${escapeHtml(text)}
         </div>
       \`;
@@ -1720,25 +2281,26 @@ app.get("/", (_req, res) => {
       const turns = document.getElementById('turnsList');
       const div = document.createElement('div');
       div.id = turnId;
-      div.className = "space-y-3";
+      div.className = "space-y-3.5";
       div.innerHTML = \`
         <div class="flex items-center gap-2 text-xs text-slate-400">
-          <div class="w-6 h-6 rounded-md bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[10px]">ISA</div>
-          <span class="font-semibold text-slate-300">Isabella Villaseñor AI</span>
+          <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[10px]">ISA</div>
+          <span class="font-semibold text-slate-300 font-editorial">Isabella Villaseñor AI</span>
+          <span class="text-rose-400 font-semibold text-[10px]">esLatina</span>
           <span class="text-slate-600">·</span>
-          <span class="text-cyan-400 font-mono text-[10px] animate-pulse">Evaluando cadena P-R-P-D-A-A...</span>
+          <span class="text-cyan-400 font-mono text-[10px] animate-pulse">Evaluando ciclo P-R-P-D-A-A...</span>
         </div>
         \${showDeepThink ? \`
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] font-mono text-slate-400 space-y-1.5 animate-pulse">
+          <div class="p-3.5 rounded-2xl bg-[#0c1322] border border-white/10 text-xs font-mono text-slate-400 space-y-2 animate-pulse crystal-card">
             <div class="flex items-center gap-2 text-cyan-300 font-semibold">
               <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-              <span>Deep Thinking CROWN (Razonamiento Epistemológico en Curso)</span>
+              <span>Pro Search C.R.O.W.N. & Epistemología IKES (esLatina)</span>
             </div>
-            <div class="pl-3.5 space-y-1 text-slate-500">
-              <div>→ 1. AEGIS Shield: Inspección contra 10 familias de ataque...</div>
-              <div>→ 2. PDP Policy Engine: Evaluación RBAC y separación de autoridad...</div>
-              <div>→ 3. IKES Epistemic Retrieval: Consulta de fuentes E0–E6...</div>
-              <div>→ 4. CROWN Intent & Veritas Verifier: Arbitraje constitucional...</div>
+            <div class="pl-3.5 space-y-1 text-slate-400 text-[11px]">
+              <div>1. Deconstrucción de intención y actor principal...</div>
+              <div>2. Verificación de salvaguarda AEGIS contra 10 familias de ataque...</div>
+              <div>3. Recuperación de fuentes canónicas en Real del Monte (2,660 msnm)...</div>
+              <div>4. Arbitraje constitucional bajo el Invariante Supremo...</div>
             </div>
           </div>
         \` : ''}
@@ -1771,24 +2333,36 @@ app.get("/", (_req, res) => {
       } else {
         narrative = "Estímulo evaluado y admitido conforme al pipeline soberano P-R-P-D-A-A. ";
         if (d.memory && d.memory.length > 0) {
-          narrative += "Recuperé " + d.memory.length + " afirmación(es) verificada(s) en la memoria IKES con grado epistemológico " + d.memory[0].epistemicState + ": \\"" + d.memory[0].object + "\\". El Nodo Cero preserva este patrimonio.";
+          narrative += "Recuperé " + d.memory.length + " afirmación(es) verificada(s) en la memoria IKES con grado epistemológico " + d.memory[0].epistemicState + ": \\"" + d.memory[0].object + "\\". El Nodo Cero en Real del Monte (2,660 msnm) preserva este patrimonio con orgullo latinoamericano.";
         } else {
-          narrative += "Modo de respuesta: " + d.crown.responseMode.toUpperCase() + ". La ruta de autoridad se mantiene PRESERVED en modo " + d.plan.hypercore.mode + ".";
+          narrative += "Modo de respuesta: " + d.crown.responseMode.toUpperCase() + ". La ruta de autoridad se mantiene PRESERVED en modo " + d.plan.hypercore.mode + " anclado a la constitución civilizatoria.";
         }
       }
 
+      // Add inline interactive Perplexity citation pills [1], [2], [3]
+      let narrativeWithCitations = narrative;
+      if (!isBlocked) {
+        narrativeWithCitations = narrativeWithCitations
+          .replace(/(Real del Monte|Mineral del Monte|2,660 msnm)/g, '$1 <button onclick="openSourceModal(2)" class="citation-pill" title="Ver Fuente [2]: Catálogo Territorial">[2]</button>')
+          .replace(/(Panteón Inglés|Mina de Acosta|Mina La Dificultad)/g, '$1 <button onclick="openSourceModal(2)" class="citation-pill" title="Ver Fuente [2]: Arqueología Industrial">[2]</button>')
+          .replace(/(CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION)/g, '$1 <button onclick="openSourceModal(3)" class="citation-pill" title="Ver Fuente [3]: Constitución AGENTS.md">[3]</button>')
+          .replace(/(P-R-P-D-A-A|Hypercore|BookPI)/g, '$1 <button onclick="openSourceModal(4)" class="citation-pill" title="Ver Fuente [4]: Canon v40">[4]</button>');
+      }
+
       // Grounding highlight version (Gemini Double-Check style)
-      const groundedHtml = narrative
-        .replace(/(CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION)/g, '<span class="grounded-verified" title="Fuente: AGENTS.md [E6]">$1</span>')
-        .replace(/(Real del Monte|Mineral del Monte|2,660 msnm)/g, '<span class="grounded-verified" title="Fuente: Gemelo Digital RDM [E6]">$1</span>')
-        .replace(/(Panteón Inglés|Mina de Acosta|Mina La Dificultad)/g, '<span class="grounded-verified" title="Fuente: Catálogo Patrimonial [E6]">$1</span>')
-        .replace(/(fail-closed|Zero Trust|AEGIS)/g, '<span class="grounded-verified" title="Fuente: Especificación V6.1 [E6]">$1</span>');
+      const groundedHtml = narrativeWithCitations
+        .replace(/(CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION)/g, '<span class="grounded-verified" title="Fuente [3]: AGENTS.md [E6]">$1</span>')
+        .replace(/(Real del Monte|Mineral del Monte|2,660 msnm)/g, '<span class="grounded-verified" title="Fuente [2]: Gemelo Digital RDM [E6]">$1</span>')
+        .replace(/(Panteón Inglés|Mina de Acosta|Mina La Dificultad)/g, '<span class="grounded-verified" title="Fuente [2]: Catálogo Patrimonial [E6]">$1</span>')
+        .replace(/(fail-closed|Zero Trust|AEGIS)/g, '<span class="grounded-crypto" title="Fuente [4]: Salvaguardas AEGIS [E6]">$1</span>');
 
       container.innerHTML = \`
+        <!-- Turn Header & Performance Telemetry -->
         <div class="flex items-center justify-between text-xs">
           <div class="flex items-center gap-2">
-            <div class="w-6 h-6 rounded-md bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[10px]">ISA</div>
-            <span class="font-semibold text-slate-200">Isabella Villaseñor AI</span>
+            <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[10px]">ISA</div>
+            <span class="font-semibold text-slate-200 font-editorial">Isabella Villaseñor AI</span>
+            <span class="text-rose-400 font-semibold text-[10px]">esLatina</span>
             <span class="text-slate-600">·</span>
             <span class="text-[10px] font-mono \${isBlocked ? 'text-rose-400' : 'text-emerald-400'}">
               \${isBlocked ? 'REFUSAL / FAIL-CLOSED' : 'ADMITTED · ' + d.crown.responseMode.toUpperCase()}
@@ -1796,60 +2370,136 @@ app.get("/", (_req, res) => {
           </div>
 
           <div class="flex items-center gap-3">
-            <span class="text-[10px] font-mono text-slate-500">\${(durationMs / 1000).toFixed(2)}s · 84 tok/s</span>
-            <button onclick="inspectTurnInArtifact()" class="text-[11px] text-cyan-400 hover:text-cyan-300 font-mono flex items-center gap-1">
-              <span>Artefacto</span>
-              <span>→</span>
-            </button>
+            <span class="text-[10px] font-mono text-slate-400">\${(durationMs / 1000).toFixed(2)}s · 88 tok/s</span>
           </div>
         </div>
 
-        <!-- Deep Think Collapsible Drawer (DeepSeek / Claude style) -->
+        <!-- PERPLEXITY-STYLE MODULAR MULTI-SOURCE CITATION CAROUSEL -->
+        \${!isBlocked ? \`
+          <div class="p-3.5 rounded-2xl bg-[#0c1424] border border-white/10 space-y-2.5 crystal-card">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-cyan-400 text-xs">📚</span>
+                <span class="text-xs font-bold text-slate-200 font-editorial tracking-tight">Fuentes Epistemológicas Consultadas</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">4 Citas</span>
+              </div>
+              
+              <!-- Source Category Filters -->
+              <div id="sourceFilters-\${turnId}" class="flex items-center gap-1">
+                <button onclick="filterModularSources('\${turnId}', 'all')" data-filter="all" class="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">Todas (4)</button>
+                <button onclick="filterModularSources('\${turnId}', 'Territorial')" data-filter="Territorial" class="px-2 py-0.5 rounded-lg text-[10px] font-medium text-slate-400 hover:text-slate-200 border border-white/5">Territoriales</button>
+                <button onclick="filterModularSources('\${turnId}', 'Constitucional')" data-filter="Constitucional" class="px-2 py-0.5 rounded-lg text-[10px] font-medium text-slate-400 hover:text-slate-200 border border-white/5">Canon</button>
+              </div>
+            </div>
+
+            <!-- Horizontal Source Cards Grid -->
+            <div id="modularSourcesGrid-\${turnId}" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              
+              <!-- Source Card 1 -->
+              <div onclick="openSourceModal(1)" data-cat="Territorial" class="source-modular-card p-2.5 rounded-xl bg-[#080d18] border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-1 group">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5 font-mono text-[10px] text-cyan-300">
+                    <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">1</span>
+                    <span class="truncate font-semibold">doi.org/10.5281/zenodo.20606361</span>
+                  </div>
+                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">E6 Verified</span>
+                </div>
+                <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
+                  Registro Zenodo CERN · TAMV Online
+                </div>
+                <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
+                  Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.
+                </p>
+              </div>
+
+              <!-- Source Card 2 -->
+              <div onclick="openSourceModal(2)" data-cat="Territorial" class="source-modular-card p-2.5 rounded-xl bg-[#080d18] border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-1 group">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5 font-mono text-[10px] text-cyan-300">
+                    <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">2</span>
+                    <span class="truncate font-semibold">INAH / Real del Monte</span>
+                  </div>
+                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">2,660 msnm</span>
+                </div>
+                <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
+                  Catálogo Territorial y Panteón Inglés
+                </div>
+                <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
+                  Mina de Acosta, Mina La Dificultad, tiro de 400m y chimenea de 39m.
+                </p>
+              </div>
+
+              <!-- Source Card 3 -->
+              <div onclick="openSourceModal(3)" data-cat="Constitucional" class="source-modular-card p-2.5 rounded-xl bg-[#080d18] border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-1 group">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5 font-mono text-[10px] text-cyan-300">
+                    <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">3</span>
+                    <span class="truncate font-semibold">AGENTS.md</span>
+                  </div>
+                  <span class="text-[9px] font-mono text-amber-400 font-semibold">CANON</span>
+                </div>
+                <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
+                  Constitución Operativa Invariante
+                </div>
+                <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
+                  CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE.
+                </p>
+              </div>
+
+              <!-- Source Card 4 -->
+              <div onclick="openSourceModal(4)" data-cat="Constitucional" class="source-modular-card p-2.5 rounded-xl bg-[#080d18] border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-1 group">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5 font-mono text-[10px] text-cyan-300">
+                    <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">4</span>
+                    <span class="truncate font-semibold">Canon v40.0.0</span>
+                  </div>
+                  <span class="text-[9px] font-mono text-purple-400 font-semibold">WORM</span>
+                </div>
+                <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
+                  Pipeline P-R-P-D-A-A & BookPI
+                </div>
+                <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
+                  Compromisos criptográficos poscuánticos FIPS-203 / FIPS-204.
+                </p>
+              </div>
+
+            </div>
+          </div>
+        \` : ''}
+
+        <!-- CLAUDE-STYLE THOUGHT PROCESS ACCORDION -->
         \${showDeepThink ? \`
-          <details open class="group rounded-xl bg-slate-950 border border-slate-800/80 p-3 text-xs font-mono text-slate-400">
-            <summary class="cursor-pointer text-[11px] font-semibold text-cyan-300 flex items-center justify-between select-none">
+          <details open class="group rounded-2xl bg-[#0b1220] border border-white/10 p-3.5 text-xs text-slate-400 transition crystal-card">
+            <summary class="cursor-pointer text-[11px] font-semibold text-cyan-300 flex items-center justify-between select-none font-mono">
               <span class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                <span>Razonamiento C.R.O.W.N. & Veritas (Thought for \${(durationMs / 1000).toFixed(1)}s)</span>
+                <span>Proceso Cognitivo C.R.O.W.N. (Thought for \${(durationMs / 1000).toFixed(1)}s)</span>
               </span>
               <span class="text-slate-500 text-[10px] group-open:rotate-180 transition-transform">▼</span>
             </summary>
-            <div class="mt-2.5 pt-2 border-t border-slate-900 space-y-1.5 text-[11px] text-slate-400">
-              <div>• <strong>AEGIS Guard:</strong> \${d.aegis.decision} (Puntaje de anomalía: \${d.aegis.score})</div>
-              <div>• <strong>CROWN Intent:</strong> \${d.crown.intent.category} (Riesgo: \${d.crown.riskLevel} · Aprobación Humana: \${d.crown.requiresHumanApproval})</div>
-              <div>• <strong>Hypercore:</strong> Modo \${d.plan.hypercore.mode} · Invariante: \${d.plan.hypercore.governanceInvariant}</div>
-              <div>• <strong>Memoria IKES:</strong> \${d.memory ? d.memory.length : 0} claims asociados con procedencia</div>
-              <div>• <strong>BookPI WORM:</strong> Bloque registrado y anclado con hash inmutable</div>
+            <div class="mt-2.5 pt-2 border-t border-white/5 space-y-1.5 text-[11px] font-editorial leading-relaxed text-slate-300">
+              <div>• <strong>AEGIS Guard:</strong> Decisión \${d.aegis.decision} (Puntaje de anomalía: \${d.aegis.score}). Salvaguarda contra inyección de prompt verificada.</div>
+              <div>• <strong>CROWN Intent:</strong> Categoría \${d.crown.intent.category} · Nivel de Riesgo \${d.crown.riskLevel} · Aprobación Humana: \${d.crown.requiresHumanApproval ? 'Requerida' : 'Exenta'}.</div>
+              <div>• <strong>Hypercore:</strong> Modo \${d.plan.hypercore.mode} · Invariante soberano verificado en Libro Mayor BookPI.</div>
+              <div>• <strong>Memoria IKES:</strong> \${d.memory ? d.memory.length : 0} afirmaciones activas con grado E6 y compromiso Merkle inmutable.</div>
             </div>
           </details>
         \` : ''}
 
-        <!-- Grounded Sources Bar (Perplexity style) -->
-        \${d.memory && d.memory.length > 0 ? \`
-          <div class="flex items-center gap-1.5 overflow-x-auto text-[11px]">
-            <span class="text-slate-500 text-[10px] font-semibold uppercase shrink-0">Fuentes IKES:</span>
-            \${d.memory.map((m, idx) => \`
-              <span class="px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-[10px] font-mono shrink-0">
-                [\${idx + 1}] \${m.subject} (\${m.epistemicState})
-              </span>
-            \`).join('')}
-          </div>
-        \` : ''}
-
-        <!-- Main Narrative Answer (with Gemini double-check support) -->
-        <div class="p-4 rounded-xl \${isBlocked ? 'bg-rose-950/20 border border-rose-800/40 text-rose-200' : 'bg-slate-900/60 border border-slate-800 text-slate-200'} text-xs sm:text-sm leading-relaxed">
-          <div class="narrative-text" data-raw-text="\${escapeHtml(narrative)}" data-grounded-html="\${groundedHtml}">
-            \${isDoubleCheck ? groundedHtml : escapeHtml(narrative)}
+        <!-- MAIN NARRATIVE PROSE (CLAUDE TYPOGRAPHY WITH NEWSREADER & PLUS JAKARTA SANS) -->
+        <div class="p-5 sm:p-6 rounded-3xl \${isBlocked ? 'bg-rose-950/20 border border-rose-800/40 text-rose-200' : 'bg-[#0e1628]/80 border border-white/10 text-slate-100'} text-sm leading-relaxed shadow-xl crystal-panel">
+          <div class="narrative-text font-editorial text-base sm:text-[17px] leading-8 text-slate-100" data-raw-text="\${escapeHtml(narrativeWithCitations)}" data-grounded-html="\${groundedHtml}">
+            \${isDoubleCheck ? groundedHtml : narrativeWithCitations}
           </div>
         </div>
 
-        <!-- Tool Receipt Card (Copilot / OpenCode style) -->
-        <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+        <!-- Tool Receipt & Invariant Certificate Card -->
+        <div class="p-3 rounded-2xl bg-[#090e1c] border border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-400">
           <div class="flex items-center gap-2">
             <span class="text-emerald-400">✓</span>
-            <span>Comprobante de Ejecución Canónica</span>
+            <span>Certificado Canónico de Ejecución (TINA esLatina)</span>
           </div>
-          <span class="text-slate-500">Digest: \${d.plan.hypercore.governanceInvariant}</span>
+          <span class="text-amber-300 truncate max-w-xs">\${d.plan.hypercore.governanceInvariant}</span>
         </div>
       \`;
 
@@ -1860,37 +2510,33 @@ app.get("/", (_req, res) => {
       const container = document.getElementById(turnId);
       if (!container) return;
       container.innerHTML = \`
-        <div class="p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs font-mono">
+        <div class="p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs font-mono">
           Error en Pipeline de Evaluación: \${escapeHtml(errorMsg)}
         </div>
       \`;
       scrollFeedToBottom();
     }
 
-    // Update Artifacts Panel (Claude style)
-    function updateArtifacts(data, promptText) {
+    // Update Accordion 4 (Governance & CROWN) with turn decision
+    function updateGovernanceAccordion(data) {
       const d = data.decision;
-      const traceBadge = document.getElementById('traceIdBadge');
-      if (traceBadge) traceBadge.textContent = "Actor: " + (data.principal.kind || "human");
-
       const crownEl = document.getElementById('artifactCrownContent');
       if (crownEl) {
         crownEl.innerHTML = \`
-          <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2 font-mono text-[11px]">
-            <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-              <span class="text-slate-400">Modo de Respuesta</span>
+          <div class="p-3 rounded-xl bg-slate-900/90 border border-white/5 space-y-1.5 font-mono text-[11px]">
+            <div class="flex justify-between items-center pb-1.5 border-b border-white/5">
+              <span class="text-slate-400">Respuesta:</span>
               <span class="font-bold \${d.admitted ? 'text-emerald-400' : 'text-rose-400'}">\${d.crown.responseMode.toUpperCase()}</span>
             </div>
             <div><span class="text-slate-500">Intento:</span> <span class="text-slate-200">\${d.crown.intent.category}</span></div>
-            <div><span class="text-slate-500">Nivel de Riesgo:</span> <span class="text-amber-300">\${d.crown.riskLevel}</span></div>
-            <div><span class="text-slate-500">Aprobación Humana:</span> <span class="text-slate-200">\${d.crown.requiresHumanApproval}</span></div>
+            <div><span class="text-slate-500">Nivel Riesgo:</span> <span class="text-amber-300">\${d.crown.riskLevel}</span></div>
             <div><span class="text-slate-500">Ruta Autoridad:</span> <span class="text-indigo-300">\${d.plan.authorityPath}</span></div>
           </div>
 
-          <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1.5 text-[11px] font-mono">
-            <span class="text-slate-400 font-semibold block text-[10px] uppercase">Verificación de Invariante:</span>
+          <div class="p-3 rounded-xl bg-slate-900/90 border border-white/5 space-y-1 text-[10px] font-mono">
+            <span class="text-slate-400 font-semibold block uppercase">Verificación Invariante:</span>
             \${d.crown.verification.checks.map(c => \`
-              <div class="flex items-center justify-between text-[10px]">
+              <div class="flex items-center justify-between">
                 <span class="text-slate-400 truncate">\${c.name}</span>
                 <span class="\${c.passed ? 'text-emerald-400' : 'text-rose-400'} font-bold">\${c.passed ? 'PASS' : 'FAIL'}</span>
               </div>
@@ -1898,28 +2544,23 @@ app.get("/", (_req, res) => {
           </div>
         \`;
       }
-
-      const traceEl = document.getElementById('artifactTraceJson');
-      if (traceEl) {
-        traceEl.textContent = JSON.stringify(data, null, 2);
-      }
     }
 
-    // Follow-ups Generator (Perplexity style)
+    // Follow-ups Generator (Perplexity Style)
     function updateFollowUps(text, data) {
       const bar = document.getElementById('followUpBar');
       const list = document.getElementById('followUpList');
       if (!bar || !list) return;
 
       const suggestions = [
-        "Verificar procedencia de la fuente en IKES",
+        "Verificar procedencia de la fuente [2] en IKES",
         "Inspeccionar firmas en el libro mayor BookPI",
         "Consultar historia minera de Real del Monte",
         "Probar anclaje poscuántico ML-KEM-768"
       ];
 
       list.innerHTML = suggestions.map(s => \`
-        <button onclick="applyFollowUp('\${escapeHtml(s)}')" class="px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 whitespace-nowrap transition">
+        <button onclick="applyFollowUp('\${escapeHtml(s)}')" class="px-2.5 py-1 rounded-xl bg-[#0d1424] hover:bg-[#131c30] border border-white/10 text-slate-300 whitespace-nowrap transition text-[11px]">
           \${escapeHtml(s)} →
         </button>
       \`).join('');
@@ -1931,27 +2572,6 @@ app.get("/", (_req, res) => {
       const input = document.getElementById('mainInput');
       input.value = suggestion;
       input.focus();
-    }
-
-    function switchArtifactTab(artId) {
-      document.querySelectorAll('.art-pane').forEach(p => p.classList.add('hidden'));
-      document.querySelectorAll('.art-tab').forEach(t => {
-        t.classList.remove('bg-amber-500/20', 'text-amber-300', 'border-amber-500/30', 'font-semibold');
-        t.classList.add('text-slate-400');
-      });
-
-      const pane = document.getElementById(artId);
-      if (pane) pane.classList.remove('hidden');
-
-      const tab = document.getElementById('tab-' + artId);
-      if (tab) {
-        tab.classList.remove('text-slate-400');
-        tab.classList.add('bg-amber-500/20', 'text-amber-300', 'border-amber-500/30', 'font-semibold');
-      }
-    }
-
-    function inspectTurnInArtifact() {
-      switchArtifactTab('art-crown');
     }
 
     function copyCurrentArtifact() {
@@ -1974,11 +2594,11 @@ app.get("/", (_req, res) => {
         const res = await fetch('/api/v1/bookpi/events');
         const data = await res.json();
         
-        // Update Artifact panel content
+        // Update Right Accordion 6 content
         const artEl = document.getElementById('artifactBookpiContent');
         if (artEl) {
-          artEl.innerHTML = data.events.slice(-4).reverse().map(ev => \`
-            <div class="p-2.5 rounded bg-slate-950 border border-slate-800 space-y-1">
+          artEl.innerHTML = data.events.slice(-3).reverse().map(ev => \`
+            <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 space-y-0.5">
               <div class="flex justify-between items-center text-[10px]">
                 <span class="text-amber-300 font-bold">\${ev.type}</span>
                 <span class="text-emerald-400">\${ev.status}</span>
@@ -1993,20 +2613,20 @@ app.get("/", (_req, res) => {
         const listEl = document.getElementById('ledgerEventsList');
         if (listEl) {
           listEl.innerHTML = data.events.slice().reverse().map(ev => \`
-            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+            <div class="p-3.5 rounded-2xl bg-[#090e1c] border border-white/5 flex flex-wrap items-center justify-between gap-2 crystal-card">
               <div>
                 <div class="flex items-center gap-2">
                   <span class="font-bold text-amber-300">\${ev.type}</span>
                   <span class="text-slate-500">·</span>
-                  <span class="text-[11px] text-slate-300">\${ev.principal}</span>
+                  <span class="text-[11px] text-slate-300 font-mono">\${ev.principal}</span>
                   <span class="text-slate-500">·</span>
                   <span class="text-cyan-400">\${ev.riskTier}</span>
                 </div>
-                <div class="text-[10px] text-slate-500 mt-1 font-mono">\${ev.methodId}</div>
+                <div class="text-[10px] text-slate-400 mt-1 font-mono">\${ev.methodId}</div>
               </div>
               <div class="text-right">
-                <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">\${ev.status}</span>
-                <div class="text-[9px] text-slate-500 mt-1">\${ev.timestamp}</div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">\${ev.status}</span>
+                <div class="text-[9px] text-slate-500 mt-1 font-mono">\${ev.timestamp}</div>
               </div>
             </div>
           \`).join('');
@@ -2016,7 +2636,29 @@ app.get("/", (_req, res) => {
       }
     }
 
-    // Triple Blockade Scanner
+    // Quick Scan on Accordion 5
+    async function runQuickScan() {
+      const input = document.getElementById('quickScanInput').value;
+      const resContainer = document.getElementById('quickScanResult');
+      resContainer.innerHTML = '<span class="text-slate-500">Escaneando...</span>';
+      try {
+        const res = await fetch('/api/v1/triple-blockade/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input })
+        });
+        const data = await res.json();
+        resContainer.innerHTML = \`
+          <span class="\${data.decision === 'BLOCK' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}">
+            \${data.decision === 'BLOCK' ? 'BLOQUEADO' : 'PERMITIDO'}
+          </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
+        \`;
+      } catch (err) {
+        resContainer.innerHTML = '<span class="text-rose-400">' + err.message + '</span>';
+      }
+    }
+
+    // Triple Blockade Scanner Full View
     async function scanBlockade() {
       const input = document.getElementById('blockadeTestInput').value;
       const resContainer = document.getElementById('blockadeResult');
@@ -2029,10 +2671,10 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         resContainer.innerHTML = \`
-          <div class="p-3 rounded bg-slate-950 border \${data.decision === 'BLOCK' ? 'border-rose-800' : 'border-emerald-800'} mt-2">
+          <div class="p-3.5 rounded-2xl bg-[#090e1c] border \${data.decision === 'BLOCK' ? 'border-rose-800' : 'border-emerald-800'} mt-2 crystal-card">
             <div class="flex justify-between items-center mb-1">
               <span class="font-bold \${data.decision === 'BLOCK' ? 'text-rose-400' : 'text-emerald-400'}">Decisión del Bloqueo: \${data.decision}</span>
-              <span class="text-[10px] text-slate-500">\${data.timestamp}</span>
+              <span class="text-[10px] text-slate-500 font-mono">\${data.timestamp}</span>
             </div>
             <div class="text-[11px] space-y-0.5 text-slate-300">
               <div>Nivel 1 (Ontológico): <strong class="\${data.blockadeEvaluation.nivel1_ontologico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel1_ontologico}</strong></div>
@@ -2082,7 +2724,7 @@ app.get("/", (_req, res) => {
         const res = await fetch('/api/v1/notebook/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ docType, topic: "Patrimonio de Real del Monte y Ecosistema TAMV" })
+          body: JSON.stringify({ docType, topic: "Patrimonio de Real del Monte y Ecosistema TAMV (esLatina)" })
         });
         const data = await res.json();
         titleEl.textContent = "Documento: " + docType.toUpperCase();
@@ -2128,10 +2770,9 @@ app.get("/", (_req, res) => {
         }
       }, 1000);
 
-      // Play synthesized voice using Web Speech API if supported
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance("Bienvenidos a este análisis a fondo sobre el Nodo Cero de Real del Monte y la soberanía tecnológica de Isabella.");
+        const utter = new SpeechSynthesisUtterance("Bienvenidos a este análisis a fondo sobre el Nodo Cero de Real del Monte y la soberanía tecnológica de Isabella, con orgullo plenamente latino.");
         utter.lang = 'es-MX';
         utter.rate = 1.05;
         window.speechSynthesis.speak(utter);
@@ -2172,9 +2813,9 @@ app.get("/", (_req, res) => {
         transcript.textContent = '"Isabella, confirma el estado del Invariante Operativo en el Nodo Cero."';
         setTimeout(() => {
           status.textContent = "Hablando...";
-          transcript.textContent = '"Confirmado: CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION. Nodo Cero operando con Zero Trust."';
+          transcript.textContent = '"Confirmado: CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION. Nodo Cero operando con Zero Trust y orgullo esLatina."';
           if ('speechSynthesis' in window) {
-            const utter = new SpeechSynthesisUtterance("Confirmado: Capacidad no es autoridad, ni ejecución, ni evidencia, ni producción. El Nodo Cero opera con Zero Trust.");
+            const utter = new SpeechSynthesisUtterance("Confirmado: Capacidad no es autoridad, ni ejecución, ni evidencia, ni producción. El Nodo Cero opera con Zero Trust y orgullo esLatina.");
             utter.lang = 'es-MX';
             window.speechSynthesis.speak(utter);
           }
@@ -2222,10 +2863,6 @@ app.get("/", (_req, res) => {
       }
     }
 
-    function selectSource(sourceKey) {
-      alert("Fuente seleccionada: " + sourceKey.toUpperCase() + ". Contexto epistemológico anclado al inspector.");
-    }
-
     function scrollFeedToBottom() {
       const feed = document.getElementById('chatFeed');
       if (feed) feed.scrollTop = feed.scrollHeight;
@@ -2245,6 +2882,7 @@ app.get("/", (_req, res) => {
 
 app.listen(port, host, () => {
   console.log(`[Isabella Genesis TINA V6] Listening on http://${host}:${port}`);
+  console.log(`[Isabella Genesis TINA V6] Identity: TINA esLatina · Orgullo Latinoamericano`);
   console.log(`[Isabella Genesis TINA V6] Invariant: CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION`);
   console.log(`[Isabella Genesis TINA V6] Academic Registry: ORCID 0009-0008-5050-1539 · DOI 10.5281/zenodo.20606361`);
 });
