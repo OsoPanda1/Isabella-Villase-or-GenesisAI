@@ -945,7 +945,20 @@ src/
 │   ├── ikes.ts
 │   ├── vector.ts
 │   ├── retrieval.ts
-│   └── persistence.ts
+│   ├── persistence.ts
+│   └── knowledge-entry.ts     # IKES_SPEC: entrada canónica KNO + pipeline
+├── sanitization/              # SANITIZATION_POLICY: pipeline + fingerprints
+├── governance/                # políticas operativas (ver §31)
+│   ├── evidence-manifest.ts
+│   ├── git-governance.ts
+│   ├── lsp-validation.ts
+│   ├── sync-manager.ts
+│   ├── deployment-gates.ts
+│   ├── verifier.ts
+│   ├── quality-gates.ts
+│   ├── file-schema.ts
+│   └── lifecycle.ts
+├── plugins/                   # Isabella Diff Observatory (read-only)
 ├── inference/
 │   ├── types.ts
 │   ├── router.ts
@@ -981,7 +994,11 @@ test/
 ├── memory/
 ├── skills/
 ├── veritas/
-└── deployment/
+├── deployment/
+├── sanitization/
+├── governance/
+├── plugins/
+└── territory/
 ```
 
 ---
@@ -1186,6 +1203,74 @@ La regla sigue siendo:
 `CAPABILITY -> CONSENT/AUTHORITY -> SECURITY -> EVIDENCE -> EXECUTION -> VERITAS -> AUDIT`
 
 Estas piezas son infraestructura de gobierno y runtime. No constituyen por sí mismas entrenamiento de un modelo fundacional, aprendizaje autónomo, serving GPU ni despliegue distribuido.
+
+
+---
+
+# V6.5 — Librerías canónicas implementadas (IKES, sanitización, gobernanza)
+
+Se implementaron de forma nativa, tipada y operativa las especificaciones canónicas
+que describen las librerías de Isabella. Cada módulo es determinista, sin efectos
+externos por defecto y con pruebas propias. La especificación en `docs/spec/canonical/`
+es la fuente de verdad; el código la materializa sin convertir una capacidad técnica
+en una afirmación de producción.
+
+## Módulos y contratos
+
+| Especificación | Módulo | Contrato implementado |
+| --- | --- | --- |
+| `SANITIZATION_POLICY.md` | `src/sanitization/` | Pipeline de 9 etapas, cuarentena de secretos, PII enmascarada, fingerprints físico/estructural/semántico y clasificación de duplicados sin borrado por similitud. |
+| `IKES_SPEC.md` | `src/memory/knowledge-entry.ts` | Entrada canónica `KNO-XXXXXXXX`, estados epistemológicos y temporales, pipeline de 12 etapas y regla de preservación. |
+| `EVIDENCE_MANIFEST_SCHEMA.md` | `src/governance/evidence-manifest.ts` | Manifest `EVM-XXXXXXXX`, completitud y gate para declarar `stable`. |
+| `GIT_POLICY.md` | `src/governance/git-governance.ts` | Decide (no ejecuta) operaciones destructivas/externas; rechaza borrar rama actual, worktrees sucios y ramas no fusionadas. |
+| `LSP_VALIDATION.md` | `src/governance/lsp-validation.ts` | `open_file`, `save_file`, `wait_for_diagnostics`, `diagnostics_for`; frescura `version >= v`; solo `FRESH_NO_DIAGNOSTICS` es `TECHNICALLY_CLEAN`. |
+| `SYNC_SPEC.md` | `src/governance/sync-manager.ts` | `Lock`, `RLock`, `Semaphore`, `BoundedSemaphore`, `Condition`, `Event`, `Barrier`; mutación serializada por `entity_id`; lifecycle `INITIAL→STARTED→STOPPING→SHUTDOWN`; tokens con scope/expiración/revocación; reconciliación previa a release. |
+| `DEPLOYMENT_POLICY.md` | `src/governance/deployment-gates.ts` | Gates `build→rollback`, separación spec/app/IKES y bloqueo de valores DNS de ejemplo. |
+| `VERIFIER_SPEC.md` | `src/governance/verifier.ts` | Estados `PASS/PASS_WITH_WARNINGS/FAIL/INCONCLUSIVE/NOT_APPLICABLE` con alcance acotado. |
+| `QUALITY_GATES.md` | `src/governance/quality-gates.ts` | Los 15 gates canónicos; fail-closed antes de promoción. |
+| `CONTRIBUTING.md` | `src/governance/file-schema.ts` | Encabezado obligatorio, transparencia radical y detección de contenido prohibido. |
+| `TAMV_INTEGRATION.md` | `src/territory/tamv-integration.ts` | Mapa de madurez por módulo y detección de sobreclamación. |
+| `isabella-diff.*` | `src/plugins/diff-observatory.ts` | Diff Observatory de solo lectura: redacción de secretos, omisión de binarios, señales de riesgo y BookPI solo con metadatos/hashes. |
+
+## Cableado nativo
+
+Los módulos se exponen por el barril raíz (`src/index.ts`) y por el runtime
+(`IsabellaGenesisRuntime`): `sanitize`, `admitKnowledge`, `mutateEntity`, `issueToken`,
+`evaluateGit`, `assessDeployment`, `verifyAgentApp`, `evaluateQuality`, `planLifecycle`
+y `reconcile`. También se registran como capacidades del Hyper Skill Fabric
+(`hsf.sanitization.pipeline`, `hsf.knowledge.admission`, `hsf.git.governance`,
+`hsf.quality.gates`, `hsf.deployment.gates`, `hsf.agent.verifier`, `hsf.lifecycle.plan`,
+`hsf.lsp.validation`) y se exponen vía API:
+
+```text
+POST /api/v1/sanitization/scan
+POST /api/v1/knowledge/admit
+POST /api/v1/governance/git
+POST /api/v1/governance/quality-gates
+POST /api/v1/governance/deployment
+POST /api/v1/governance/verify-agent-app
+POST /api/v1/governance/lifecycle-plan
+POST /api/v1/diff/observe
+```
+
+## Invariantes preservados
+
+- **Ningún módulo ejecuta acciones destructivas**: deciden y proponen; la ejecución
+  requiere policy gate y aprobación humana.
+- **Fail-closed**: sin evidencia, sin gate o sin reconciliación no hay `release`.
+- **Preservar antes que borrar**: solo el artefacto idéntico o el duplicado verificado
+  permiten eliminación automática.
+- **No sobreclamación**: un diagnóstico LSP limpio o un test verde son evidencia
+  técnica acotada, no verdad científica ni certificación de producción.
+- **Correcciones de línea base**: se corrigió la constante generadora bech32m de LITLE
+  (`0x2a1462b3`) y errores de tipado preexistentes que el error de sintaxis ocultaba.
+
+## Pruebas
+
+`test/sanitization/`, `test/governance/`, `test/plugins/` y `test/territory/` cubren
+los contratos anteriores. La validación (`npm run validate` = typecheck + test + build)
+debe ejecutarse en CI; la implementación del código no constituye evidencia de una
+ejecución CI exitosa.
 
 
 ---

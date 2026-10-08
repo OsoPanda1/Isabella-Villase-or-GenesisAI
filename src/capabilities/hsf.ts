@@ -218,8 +218,10 @@ export function consensus(results: readonly ExpertAssessment[]): ConsensusResult
   const buckets = new Map<string, ExpertAssessment[]>();
   for (const result of results) buckets.set(result.verdict, [...(buckets.get(result.verdict) ?? []), result]);
   const ranked = [...buckets.entries()].sort((a, b) => b[1].length - a[1].length);
-  const [verdict, group] = ranked[0];
-  const confidence = group.reduce((sum, r) => sum + Math.max(0, Math.min(1, r.confidence)), 0) / group.length;
+  const top = ranked[0];
+  if (!top) return { verdict: "NO_CONSENSUS", confidence: 0, participants: results.length, dissent: [] };
+  const [verdict, group] = top;
+  const confidence = group.reduce((sum: number, r) => sum + Math.max(0, Math.min(1, r.confidence)), 0) / group.length;
   return {
     verdict,
     confidence,

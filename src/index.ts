@@ -37,3 +37,15 @@ export * from "./protocols";
 export * from "./modules";
 
 export * from "./capabilities";
+export * from "./sanitization";
+export * from "./governance";
+export * from "./territory/tamv-integration";
+export * from "./plugins";
+// Desambiguación de barril: crown y capabilities exportan nombres homónimos con
+// semánticas distintas (contrato de gate vs. contrato HSF). El re-export explícito
+// resuelve la ambigüedad del `export *`; los alias conservan ambos contratos.
+export type { CapabilityDescriptor, VerificationResult } from "./capabilities";
+export type { CapabilityDescriptor as CrownCapabilityDescriptor } from "./crown";
+export type { VerificationResult as CrownVerificationResult } from "./crown";
+export type { CapabilityDescriptor as HsfCapabilityDescriptor } from "./capabilities";
+export type { VerificationResult as HsfVerificationResult } from "./capabilities";

@@ -13,6 +13,7 @@ import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./cro
 import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
 import { bookPiSecret } from "./security/secrets";
 import { createAtlasStoreFromEnv } from "./atlas";
+import { createDiffObservatory, sanitizeDiffSnapshot, snapshotMetadataHash } from "./plugins";
 
 const app = express();
 const port = 3000;
@@ -1106,6 +1107,123 @@ app.get("/api/v1/territory/rdm", (_req, res) => {
       { id: "mp-04", name: "Museo del Paste", status: "Biocultural Activo", year: 2012, significance: "Patrimonio gastronómico heredado de Cornualles" },
     ],
   });
+});
+
+// --- GOVERNED KNOWLEDGE & GATES (IKES / SANITIZATION / QUALITY / DEPLOYMENT / LIFECYCLE) ---
+
+// Sanitize a document before indexing (deterministic, no external effects).
+app.post("/api/v1/sanitization/scan", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    if (typeof body.id !== "string" || typeof body.content !== "string") {
+      res.status(400).json({ success: false, error: "id y content son requeridos" });
+      return;
+    }
+    const result = runtime.sanitize({
+      id: body.id,
+      content: body.content,
+      declaredFormat: typeof body.declaredFormat === "string" ? body.declaredFormat : undefined,
+      declaredEncoding: typeof body.declaredEncoding === "string" ? body.declaredEncoding : undefined,
+      license: typeof body.license === "string" ? body.license : undefined,
+      provenance: body.provenance && typeof body.provenance === "object" ? body.provenance : undefined,
+    });
+    res.json({ success: true, sanitized: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Admit governed knowledge (IKES): sanitization → identity → evidence → policy gate → index.
+app.post("/api/v1/knowledge/admit", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    if (typeof body.entityId !== "string" || typeof body.provenanceId !== "string" || typeof body.content !== "string") {
+      res.status(400).json({ success: false, error: "entityId, provenanceId y content son requeridos" });
+      return;
+    }
+    const result = runtime.admitKnowledge({
+      raw: { id: body.id ?? body.entityId, content: body.content, license: body.license, provenance: body.provenance },
+      entityId: body.entityId,
+      provenanceId: body.provenanceId,
+      claims: Array.isArray(body.claims) ? body.claims : [],
+      policyGateGranted: body.policyGateGranted === true,
+    });
+    res.json({ success: result.entry.released, ...result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Git governance: decide (never execute) destructive/external operations.
+app.post("/api/v1/governance/git", (req, res) => {
+  try {
+    const verdict = runtime.evaluateGit(req.body as Parameters<typeof runtime.evaluateGit>[0]);
+    res.json({ success: true, verdict });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Canonical quality gates (15) before promotion.
+app.post("/api/v1/governance/quality-gates", (req, res) => {
+  try {
+    const report = runtime.evaluateQuality(req.body as Parameters<typeof runtime.evaluateQuality>[0]);
+    res.json({ success: report.passed, report });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Deployment gates (build → rollback) with real-DNS validation.
+app.post("/api/v1/governance/deployment", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const assessment = runtime.assessDeployment(body.target, body.gates ?? {}, body.opts);
+    res.json({ success: assessment.deployable, assessment });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Agent SDK verifier (scoped evidence, not universal certification).
+app.post("/api/v1/governance/verify-agent-app", (req, res) => {
+  try {
+    const report = runtime.verifyAgentApp(req.body as Parameters<typeof runtime.verifyAgentApp>[0]);
+    res.json({ success: report.overall !== "FAIL", report });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Issue lifecycle plan (inspect → propose; execution stays behind approval).
+app.post("/api/v1/governance/lifecycle-plan", (req, res) => {
+  try {
+    const plan = runtime.planLifecycle(req.body as Parameters<typeof runtime.planLifecycle>[0]);
+    res.json({ success: true, plan });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Diff Observatory: read-only, redacted workspace diff with BookPI metadata only.
+app.post("/api/v1/diff/observe", (req, res) => {
+  try {
+    const snapshot = req.body?.snapshot;
+    if (!snapshot || !Array.isArray(snapshot.files)) {
+      res.status(400).json({ success: false, error: "snapshot con files es requerido" });
+      return;
+    }
+    const observatory = createDiffObservatory({
+      workspace: { root: typeof snapshot.workspace === "string" ? snapshot.workspace : "workspace", readDiff: async () => snapshot },
+      transcript: {},
+      ui: { registerCommand: () => {}, registerPane: () => {} },
+    });
+    const result = sanitizeDiffSnapshot(snapshot);
+    observatory.dispose();
+    res.json({ success: true, snapshot: result, metadataHash: snapshotMetadataHash(result) });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 // --- MAIN WEB INTERFACE (IMMERSIVE 3D CRYSTAL CLEAR + IRIDESCENT NEON GLOW + 3 LEFT ACCORDIONS + 3 RIGHT ACCORDIONS) ---
