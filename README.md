@@ -1432,3 +1432,105 @@ La suite es de contrato/mocks; **no demuestra conectividad con un proyecto Supab
 7. observabilidad de latencia, errores y timeouts de persistencia.
 
 El resultado actual debe clasificarse como **puerto de infraestructura + adaptador Supabase integrado al runtime**, no como un Atlas online completamente desplegado.
+
+
+---
+
+# IsabellaEngine v2 — Mediación cognitiva TAMV-ready
+
+La evolución de Isabella se incorpora al runtime canónico GenesisAI como un motor de mediación cognitiva, no como un segundo runtime.
+
+```text
+CLIENT
+  │
+  ▼
+CROWN / AEGIS
+  │
+  ▼
+Genesis Runtime
+  │
+  ├── IsabellaEngine v2
+  │     ├── LatentSpaceManifold
+  │     ├── HeptafederatedValidator
+  │     ├── EntropyMitigator
+  │     └── Isabella Ledger
+  │
+  ├── IKES / Memory
+  ├── VERITAS
+  ├── Tools / Skills
+  └── AtlasPersistencePort
+```
+
+## Capacidades implementadas
+
+src/isabella/engine.ts incorpora espacio latente conceptual, proyección OOD, siete federaciones, validación heptafederada, análisis de entropía de Shannon, mitigación entrópica, contra-auditoría cognitiva, simulación epistemológica, ledger operativo, API chat() compatible con integración progresiva y snapshot operacional del engine.
+
+La versión integrada es determinista. Se eliminó la aleatoriedad del diseño original: los vectores conceptuales y scores federados se derivan mediante SHA-256. Esto permite reproducibilidad, testing, comparación entre nodos y auditoría.
+
+## Interconexión con Genesis
+
+El runtime expone:
+
+```ts
+runtime.isabella
+runtime.mediateIsabella(...)
+runtime.evaluateIsabellaEntropy(...)
+runtime.isabellaLatencySnapshot()
+```
+
+La API pública dispone de:
+
+```text
+POST /api/v1/isabella/mediate
+POST /api/v1/isabella/entropy
+GET  /api/v1/isabella/status
+```
+
+La ruta /api/v1/isabella/mediate no ejecuta Isabella directamente desde HTTP. Primero construye el principal, verifica autoridad balanceada y pasa por runtime.evaluate(), donde CROWN y AEGIS tienen oportunidad de admitir o bloquear la operación. Sólo después se ejecuta la mediación.
+
+Esto preserva:
+
+```text
+CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
+```
+
+## Latencia y observabilidad
+
+La mediación local no requiere una llamada a un modelo externo. Las operaciones de espacio latente, hashing, entropía y evaluación federada son CPU-locales y están diseñadas para minimizar I/O.
+
+Cada mediación emite request_latency_ms con stage=isabella-mediation y profile=<profile>.
+
+GET /api/v1/isabella/status expone versión, hash documental, entradas del ledger, conceptos, dimensiones del manifold y p50/p95/p99 de latencia junto con tasa de error.
+
+“Latencia casi cero” no se declara como propiedad garantizada. El sistema mide la latencia real y permite establecer SLO después de observar cargas reales. CROWN, AEGIS, red, persistencia o inferencia externa pueden dominar el tiempo total.
+
+## Evolución respecto al código conceptual suministrado
+
+Se preservan LatentSpaceManifold, HeptafederatedValidator, EntropyMitigator, ContraAuditoriaResult, EpistemicSimulationResult, LedgerEntry, perfiles de Isabella, OOD, heptafederación, entropía, contra-auditoría y simulación epistemológica.
+
+Se introducen controles de producción: validación de dimensiones y umbrales, rechazo de masa probabilística inválida, identificadores deterministas, vectores reproducibles, scores reproducibles, instrumentación de latencia, integración con autoridad Genesis y pruebas automatizadas.
+
+## Límite epistemológico
+
+Los scores heptafederados implementados actualmente son heurísticos/deterministas derivados del contenido, no verificaciones externas de una federación real. OOD no es todavía un embedding de un modelo fundacional; el manifold no es un vector database; la consonancia no constituye una prueba científica; el ledger local no sustituye BookPI; y el hash documental no demuestra por sí mismo autenticidad de una fuente.
+
+La evolución correcta es conectar estas primitivas con evidencia real, IKES, Veritas y BookPI sin convertir una heurística en una afirmación de verdad.
+
+## Integración con Atlas
+
+El engine no duplica persistencia. Las operaciones pueden proyectarse posteriormente a AtlasPersistencePort o BookPI cuando exista un punto de dominio explícito.
+
+```text
+IsabellaEngine → decisión/mediación cognitiva
+Genesis        → autoridad y orquestación
+BookPI         → provenance/audit
+LITLE          → evidencia/certificación
+AtlasStore     → persistencia/online/XR/signaling
+Telemetry      → latencia/SLO/operación
+```
+
+## Pruebas
+
+ test/isabellaEngine.test.ts cubre determinismo de la evaluación heptafederada, entropía, rechazo de vectores probabilísticos inválidos, ledger y estabilidad de evaluaciones repetidas.
+
+La validación final de typecheck, suite completa y build debe hacerse mediante CI; la implementación del código no constituye evidencia de una ejecución CI exitosa.
