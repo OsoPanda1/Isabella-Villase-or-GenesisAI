@@ -17,17 +17,33 @@ export function registerCapability(gate: CapabilityGate, descriptor: CapabilityD
   if (gate.descriptors.has(descriptor.methodId)) throw new Error(`CROWN: capability already registered: ${descriptor.methodId}`);
   gate.descriptors.set(descriptor.methodId, descriptor);
 }
-export interface CapabilityRequest { principal: Principal; approval?: ApprovalRef; requireRegistered?: boolean; }
+export interface CapabilityRequest {
+  principal: Principal;
+  approval?: ApprovalRef;
+  action: string;
+  resource: string;
+  contextHash?: string;
+  policyVersion?: string;
+}
 export function callGate(gate: CapabilityGate, methodId: string, req: CapabilityRequest): CapabilityVerdict {
   const descriptor = gate.descriptors.get(methodId);
   if (!descriptor) return { granted: false, reason: "capacidad no registrada (DENY)" };
   const hasRole = descriptor.allowedRoles.length === 0 || req.principal.roles.some((r) => descriptor.allowedRoles.includes(r));
   if (!hasRole) return { granted: false, reason: "el principal no tiene rol autorizado para esta capacidad" };
   if (descriptor.humanApprovalRequired || descriptor.riskTier === "HIGH" || descriptor.riskTier === "CRITICAL") {
-    if (!req.approval || req.approval.decision !== "ALLOW" || !verifyHumanApproval(req.approval, {
-      methodId, action: req.approval.action, principalId: req.approval.principalId,
-    })) {
-      return { granted: false, reason: "capacidad requiere aprobación humana criptográficamente válida" };
+    if (
+      !req.approval ||
+      req.approval.decision !== "ALLOW" ||
+      !verifyHumanApproval(req.approval, {
+        methodId,
+        action: req.action,
+        resource: req.resource,
+        principalId: req.principal.id,
+        contextHash: req.contextHash,
+        policyVersion: req.policyVersion,
+      })
+    ) {
+      return { granted: false, reason: "capacidad requiere aprobación humana ligada al contexto real de la solicitud" };
     }
     return { granted: true, reason: `capacidad invocada con aprobación humana ${req.approval.approver}`, evidenceRef: req.approval.evidenceId };
   }
