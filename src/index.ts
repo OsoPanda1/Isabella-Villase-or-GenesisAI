@@ -35,3 +35,5 @@ export * from "./isabella";
 export * from "./quantum";
 export * from "./protocols";
 export * from "./modules";
+
+export * from "./capabilities";
