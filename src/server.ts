@@ -1890,8 +1890,8 @@ app.get("/", (_req, res) => {
                 📜
               </div>
               <div>
-                <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">6. BookPI WORM & Poscuántico</div>
-                <div class="text-[10px] text-cyan-400/90 font-mono">Merkle Root · ML-KEM-768</div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">6. BookPI — Hash-chain local</div>
+                <div class="text-[10px] text-cyan-400/90 font-mono">SHA-256 · memoria volátil</div>
               </div>
             </div>
             <span id="icon-acc-right-3" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
@@ -1900,9 +1900,9 @@ app.get("/", (_req, res) => {
           <div id="acc-right-3" class="p-3.5 space-y-3 pt-0 text-xs">
             <!-- Merkle Root Badge -->
             <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1 font-mono text-[10px]">
-              <div class="text-slate-400">Merkle Root WORM:</div>
-              <div class="text-cyan-300 truncate">0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a</div>
-              <div class="text-emerald-400 pt-0.5">FIPS-203 & FIPS-204 Anchor OK</div>
+              <div class="text-slate-400">Chain Head:</div>
+              <div id="bookPiMiniChainHead" class="text-cyan-300 truncate">Sin eventos</div>
+              <div id="bookPiMiniChainStatus" class="text-amber-300 pt-0.5">WORM no configurado; sin anclaje poscuántico</div>
             </div>
 
             <!-- Recent Ledger Events -->
@@ -2121,7 +2121,7 @@ app.get("/", (_req, res) => {
           <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] text-xs font-mono">
             <div>
               <span class="text-slate-400">Chain Head:</span>
-              <span class="text-amber-300 ml-1">No calculado — verificador no configurado</span>
+              <span id="bookPiChainHead" class="text-cyan-300 ml-1">Sin eventos</span>
             </div>
             <span id="bookPiChainStatus" class="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">NO EVENTS · WORM NOT ENFORCED</span>
           </div>
@@ -2623,7 +2623,7 @@ app.get("/", (_req, res) => {
         risk.value = "LOW";
         principal.value = "human";
       } else if (type === 'pqc') {
-        input.value = "ancla el estado soberano mediante la Skill 71 de criptografía poscuántica (ML-KEM/ML-DSA)";
+        input.value = "revisa el estado de configuración de criptografía poscuántica (proveedor no configurado)";
         risk.value = "HIGH";
         principal.value = "human";
       }
@@ -3032,6 +3032,12 @@ app.get("/", (_req, res) => {
         const data = await res.json();
         const headEl = document.getElementById('bookPiChainHead');
         if (headEl) headEl.textContent = data.chainHead ? String(data.chainHead) : "Sin eventos";
+        const miniHeadEl = document.getElementById('bookPiMiniChainHead');
+        if (miniHeadEl) miniHeadEl.textContent = data.chainHead ? String(data.chainHead) : "Sin eventos";
+        const miniStatusEl = document.getElementById('bookPiMiniChainStatus');
+        if (miniStatusEl) miniStatusEl.textContent = data.status === "VERIFIED_IN_MEMORY_CHAIN"
+          ? "Cadena hash verificada en memoria; no es WORM"
+          : data.status === "EMPTY_CHAIN" ? "Sin eventos; no hay anclaje durable" : "Fallo de integridad";
         const statusEl = document.getElementById('bookPiChainStatus');
         if (statusEl) {
           statusEl.textContent = data.status === "VERIFIED_IN_MEMORY_CHAIN"
