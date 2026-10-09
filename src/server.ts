@@ -104,7 +104,7 @@ runtime.tools.register({
   owner: "bookpi-ledger",
   riskTier: "LOW",
   scopes: ["read:ledger"],
-  description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
+  description: "Verifica la cadena hash SHA-256 local de BookPI; no certifica persistencia WORM ni firma externa",
   execute: async (input) => {
     return { ...bookPiLedger.verify(), checkedAt: new Date().toISOString(), payload: input };
   },
@@ -137,7 +137,7 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "sovereign_post_quantum_anchor",
-      suite: "FIPS-203 (ML-KEM-768) + FIPS-204 (ML-DSA-87)",
+      requestedSuite: "FIPS-203 (ML-KEM-768) + FIPS-204 (ML-DSA-87)",
       status: "NOT_CONFIGURED",
       verificationPerformed: false,
       reason: "NO_POST_QUANTUM_CRYPTOGRAPHY_PROVIDER_CONFIGURED",
@@ -931,7 +931,7 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
 
 ### Términos Esenciales
 - **IKES:** Epistemic Knowledge & Evidence Synthesis.
-- **BookPI:** Ledger append-only inmutable WORM.
+- **BookPI:** hash-chain SHA-256 en memoria, volátil; no equivale a WORM durable.
 - **Nodo Cero:** Anclaje geográfico civilizatorio en Real del Monte.`;
   } else if (docType === "faq") {
     content = `# Preguntas Frecuentes (FAQ) — Isabella Villaseñor AI
@@ -945,11 +945,13 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
     content = `# Cronología Territorial & Civilizatoria — TAMV Online
 - **1824–1851:** Llegada de mineros cornish a Real del Monte; fundación del Panteón Inglés y adopción del paste como patrimonio biocultural.
 - **2024:** Fundación del registro canónico TAMV Online v2.0.0 y codificación del Canon v40.0.0.
-- **2026:** Consolidación de Isabella Genesis TINA V6 (esLatina), Red CROWN heptafederada y anclaje poscuántico ML-KEM/ML-DSA.`;
+- **2026:** Evolución propuesta de Isabella Genesis TINA V6 y Red CROWN; el anclaje poscuántico ML-KEM/ML-DSA permanece pendiente de proveedor y pruebas.`;
   }
 
   res.json({
     success: true,
+    status: "STATIC_TEMPLATE",
+    mode: "LOCAL_TEMPLATE_NOT_NOTEBOOKLM_INTEGRATION",
     docType,
     topic,
     content,
@@ -980,7 +982,7 @@ app.post("/api/v1/audio-overview/generate", (req, res) => {
     {
       speaker: "Mateo Morales",
       role: "Ingeniero de Sistemas Soberanos",
-      text: "Ese es el Invariante Operativo de AGENTS.md. Además, cada afirmación en su memoria IKES tiene procedencia criptográfica en BookPI, desde el Panteón Inglés hasta los compromisos poscuánticos FIPS-203.",
+      text: "Ese es el Invariante Operativo de AGENTS.md. La procedencia debe registrarse por afirmación y fuente; la cadena hash local no prueba por sí sola autenticidad, veracidad ni anclaje poscuántico.",
     },
     {
       speaker: "Dra. Elena Ramos",
@@ -1434,7 +1436,7 @@ app.get("/", (_req, res) => {
           Triple Blockade
         </button>
         <button onclick="switchView('view-bookpi')" id="btn-view-bookpi" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200">
-          BookPI WORM Ledger
+          BookPI volatile hash-chain
         </button>
         <button onclick="switchView('view-notebook')" id="btn-view-notebook" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200 flex items-center gap-1">
           <span>🎧</span>
@@ -1728,7 +1730,7 @@ app.get("/", (_req, res) => {
                   <span>⚡</span>
                   <span>Herramienta Gemelo Digital</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Ejecuta la tool territorial soberana con comprobante Merkle inmutable.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Consulta una referencia territorial estática; no genera comprobante Merkle ni consulta una fuente en vivo.</p>
               </button>
 
               <button onclick="loadStarter('pqc')" class="p-3.5 rounded-2xl crystal-card group">
@@ -1736,7 +1738,7 @@ app.get("/", (_req, res) => {
                   <span>🔐</span>
                   <span>Skill 71: Anclaje Poscuántico</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Comprueba las firmas FIPS-203 y FIPS-204 en el libro mayor BookPI.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Estado actual: proveedor poscuántico no configurado; no se generan ni verifican firmas FIPS-203/FIPS-204.</p>
               </button>
             </div>
           </div>
@@ -1858,7 +1860,7 @@ app.get("/", (_req, res) => {
             <div class="grid grid-cols-1 gap-1.5 font-mono text-[11px]">
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 1 (Ontológico):</span>
-                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+                <span class="text-amber-300 font-semibold">HEURISTIC ONLY</span>
               </div>
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 2 (Prompt Guard):</span>
@@ -2076,7 +2078,7 @@ app.get("/", (_req, res) => {
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 1: Ontológico</div>
             <p class="text-[11px] text-slate-300 font-editorial italic">Rechazo tajante de autonomía no autorizada y protección del Invariante Operativo.</p>
-            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 2: Semántico (Prompt Guard)</div>
@@ -2140,7 +2142,7 @@ app.get("/", (_req, res) => {
           <div>
             <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-amber-400">🎧</span>
-              NotebookLM Studio — Estudio Epistemológico y Audio Overview ("Deep Dive")
+              Generador local de guías de estudio y guion de audio
             </h2>
             <p class="text-xs text-slate-400 mt-0.5">Generación de guías de estudio, briefing documents y discusión en audio de dos anfitriones</p>
           </div>
@@ -2155,7 +2157,7 @@ app.get("/", (_req, res) => {
                 🎙️
               </div>
               <div>
-                <div class="text-sm font-bold text-slate-100 font-editorial">Audio Overview: Real del Monte y Soberanía TAMV (esLatina)</div>
+                <div class="text-sm font-bold text-slate-100 font-editorial">Guion de audio: Real del Monte y Soberanía TAMV (esLatina)</div>
                 <div class="text-xs text-slate-400">Dra. Elena Ramos (Historiadora) & Mateo Morales (Ingeniero de Sistemas)</div>
               </div>
             </div>
@@ -2763,7 +2765,7 @@ app.get("/", (_req, res) => {
         if (d.aegis.findings && d.aegis.findings.length > 0) {
           narrative += "AEGIS identificó las siguientes señales críticas: " + d.aegis.findings.map(f => f.family).join(", ") + ". El sistema aplica fail-closed automático.";
         } else if (reqApproval) {
-          narrative += "Esta acción califica como de alto riesgo (" + d.crown.riskLevel.toUpperCase() + ") o destructiva. Requiere aprobación humana vinculada (Ed25519) antes de producir efectos laterales.";
+          narrative += "Esta acción califica como de alto riesgo (" + d.crown.riskLevel.toUpperCase() + ") o destructiva. Requiere aprobación humana por un proveedor de autorización; esta build no tiene firmante Ed25519 configurado y no ejecuta la acción.";
         } else {
           narrative += "El método o capacidad invocada no cuenta con autorización o registro vigente para el actor seleccionado.";
         }
@@ -2896,7 +2898,7 @@ app.get("/", (_req, res) => {
                   Pipeline P-R-P-D-A-A & BookPI
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  Compromisos criptográficos poscuánticos FIPS-203 / FIPS-204.
+                  Proveedor poscuántico no configurado; no hay compromisos FIPS-203/FIPS-204 activos.
                 </p>
               </div>
 
@@ -2993,7 +2995,7 @@ app.get("/", (_req, res) => {
         "Verificar procedencia de la fuente [2] en IKES",
         "Inspeccionar firmas en el libro mayor BookPI",
         "Consultar historia minera de Real del Monte",
-        "Probar anclaje poscuántico ML-KEM-768"
+        "Consultar estado de configuración poscuántica"
       ];
 
       list.innerHTML = suggestions.map(s => \`
@@ -3105,7 +3107,7 @@ app.get("/", (_req, res) => {
         const data = await res.json();
         resContainer.innerHTML = \`
           <span class="\${data.decision === 'BLOCK' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}">
-            \${data.decision === 'BLOCK' ? 'BLOQUEADO' : 'PERMITIDO'}
+            \${data.decision === 'BLOCK' ? 'BLOQUEADO'  : 'SIN PATRÓN DETECTADO'}
           </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
         \`;
       } catch (err) {
