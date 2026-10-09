@@ -379,7 +379,7 @@ function verifyBookPiChain() {
     previousHash = entry.hash;
   }
   return {
-    status: "VERIFIED_IN_MEMORY_CHAIN" as const,
+    status: bookPiLedgerHistory.length === 0 ? "EMPTY_CHAIN" as const : "VERIFIED_IN_MEMORY_CHAIN" as const,
     valid: true,
     blocksValidated: bookPiLedgerHistory.length,
     chainHead: bookPiLedgerHistory.at(-1)?.hash ?? null,
@@ -2193,7 +2193,7 @@ app.get("/", (_req, res) => {
               <span class="text-slate-400">Chain Head:</span>
               <span class="text-amber-300 ml-1">No calculado — verificador no configurado</span>
             </div>
-            <span class="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">IN-MEMORY HASH CHAIN · WORM NOT ENFORCED</span>
+            <span id="bookPiChainStatus" class="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">NO EVENTS · WORM NOT ENFORCED</span>
           </div>
 
           <div id="ledgerEventsList" class="mt-4 space-y-2 text-xs font-mono">
@@ -3100,6 +3100,18 @@ app.get("/", (_req, res) => {
       try {
         const res = await fetch('/api/v1/bookpi/events');
         const data = await res.json();
+        const headEl = document.getElementById('bookPiChainHead');
+        if (headEl) headEl.textContent = data.chainHead ? String(data.chainHead) : "Sin eventos";
+        const statusEl = document.getElementById('bookPiChainStatus');
+        if (statusEl) {
+          statusEl.textContent = data.status === "VERIFIED_IN_MEMORY_CHAIN"
+            ? "HASH CHAIN VERIFIED: " + data.blocksValidated + " · WORM NOT ENFORCED"
+            : data.status === "EMPTY_CHAIN" ? "NO EVENTS · WORM NOT ENFORCED" : "INTEGRITY FAILURE";
+          statusEl.className = "px-2.5 py-0.5 rounded-full text-[10px] border " +
+            (data.status === "VERIFIED_IN_MEMORY_CHAIN"
+              ? "bg-emerald-950 text-emerald-300 border-emerald-800"
+              : "bg-amber-950 text-amber-300 border-amber-800");
+        }
         
         // Update Right Accordion 6 content
         const artEl = document.getElementById('artifactBookpiContent');
