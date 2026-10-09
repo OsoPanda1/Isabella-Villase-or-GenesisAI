@@ -50,6 +50,25 @@ describe("sanitization pipeline", () => {
     expect(result.findings.map((finding) => finding.kind)).toContain("license_not_allowlisted");
   });
 
+  it("requires manual review for restrictive or copyleft licenses", () => {
+    for (const license of ["CC-BY-NC-4.0", "CC-BY-ND-4.0", "GPL-3.0-only", "AGPL-3.0-only"]) {
+      const result = sanitizeDocument({ ...base, id: "license-review", license });
+      expect(result.status).toBe("REJECTED");
+      expect(result.findings.map((finding) => finding.kind)).toContain("license_requires_review");
+    }
+  });
+
+  it("does not claim to decode non-UTF-8 encodings", () => {
+    const result = sanitizeDocument({ ...base, id: "latin-document", declaredEncoding: "latin1" });
+    expect(result.status).toBe("REJECTED");
+    expect(result.findings.map((finding) => finding.kind)).toContain("control_chars");
+  });
+
+  it("normalizes safe identifiers before returning them", () => {
+    const result = sanitizeDocument({ ...base, id: "  doc-normalized  " });
+    expect(result.id).toBe("doc-normalized");
+  });
+
   it("does not expose matched malware snippets in findings", () => {
     const result = sanitizeDocument({
       ...base,
