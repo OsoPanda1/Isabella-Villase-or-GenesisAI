@@ -18,6 +18,7 @@ import { hashSourceContent } from "./memory/ikes";
 import { bookPiLedger } from "./bookpi";
 import { createAtlasStoreFromEnv } from "./atlas";
 import { createDiffObservatory, sanitizeDiffSnapshot, snapshotMetadataHash } from "./plugins";
+import { MemoryProposalQueue } from "./memory/proposals";
 
 const app = express();
 const port = 3000;
@@ -405,6 +406,7 @@ app.get("/api/v1/status", (_req, res) => {
 
 // Epistemic Memory (IKES) search
 app.get("/api/v1/memory", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   const query = typeof req.query.q === "string" ? req.query.q : "TAMV";
   const results = runtime.memory.retrieve(query);
   res.json({
@@ -415,18 +417,7 @@ app.get("/api/v1/memory", (req, res) => {
 });
 
 // Public claims enter a bounded review queue; they do not mutate canonical IKES memory.
-interface PendingMemoryProposal {
-  id: string;
-  subject: string;
-  predicate: string;
-  object: string;
-  sourceUri: string | null;
-  proposalHash: string;
-  submittedAt: string;
-  status: "PENDING_HUMAN_REVIEW";
-}
-const pendingMemoryProposals: PendingMemoryProposal[] = [];
-const MAX_PENDING_MEMORY_PROPOSALS = 500;
+const memoryProposalQueue = new MemoryProposalQueue(500, 1000);
 
 app.post("/api/v1/memory/ingest", (req, res) => {
   if (!enforceRateLimit(req, res, publicProposalLimiter, "memory-proposal")) return;
@@ -434,41 +425,7 @@ app.post("/api/v1/memory/ingest", (req, res) => {
     const body = req.body ?? {};
     const { subject, predicate, object } = body;
     const sourceUri = typeof body.sourceUri === "string" && body.sourceUri.trim() ? body.sourceUri.trim() : null;
-    if (![subject, predicate, object].every((value) => typeof value === "string" && value.trim())) {
-      res.status(400).json({ success: false, error: "subject, predicate y object son requeridos" });
-      return;
-    }
-    if (subject.length > 300 || predicate.length > 160 || object.length > 5000 || (sourceUri && sourceUri.length > 2048)) {
-      res.status(413).json({ success: false, error: "PROPOSAL_SIZE_LIMIT_EXCEEDED" });
-      return;
-    }
-    if (sourceUri) {
-      let parsedUri: URL;
-      try { parsedUri = new URL(sourceUri); } catch {
-        res.status(400).json({ success: false, error: "SOURCE_URI_INVALID" });
-        return;
-      }
-      if (parsedUri.protocol !== "https:") {
-        res.status(400).json({ success: false, error: "SOURCE_URI_MUST_USE_HTTPS" });
-        return;
-      }
-    }
-    if (pendingMemoryProposals.length >= MAX_PENDING_MEMORY_PROPOSALS) {
-      res.status(429).json({ success: false, error: "PROPOSAL_REVIEW_QUEUE_FULL" });
-      return;
-    }
-    const proposal = {
-      id: `proposal-${randomUUID()}`,
-      subject: subject.trim(),
-      predicate: predicate.trim(),
-      object: object.trim(),
-      sourceUri,
-      submittedAt: new Date().toISOString(),
-      status: "PENDING_HUMAN_REVIEW" as const,
-    };
-    const proposalHash = hashSourceContent(JSON.stringify(proposal));
-    const stored: PendingMemoryProposal = { ...proposal, proposalHash };
-    pendingMemoryProposals.push(stored);
+    const stored = memoryProposalQueue.submit({ subject, predicate, object, sourceUri });
     res.status(202).json({
       success: true,
       status: stored.status,
@@ -476,25 +433,46 @@ app.post("/api/v1/memory/ingest", (req, res) => {
       proposalHash: stored.proposalHash,
       canonicalMemoryMutated: false,
       sourceVerification: "NOT_PERFORMED",
+      persistence: "IN_MEMORY_ONLY",
       note: "La propuesta queda en una cola volátil de revisión; no es un claim IKES admitido ni evidencia verificada.",
     });
-  } catch {
-    res.status(400).json({ success: false, error: "MEMORY_PROPOSAL_FAILED" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "MEMORY_PROPOSAL_FAILED";
+    const status = message === "PROPOSAL_REVIEW_QUEUE_FULL" ? 429 :
+      /SIZE_LIMIT/.test(message) ? 413 :
+      /SOURCE_URI/.test(message) ? 400 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 app.get("/api/v1/memory/proposals", (req, res) => {
   if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
-  res.json({
-    status: "VOLATILE_REVIEW_QUEUE",
-    count: pendingMemoryProposals.length,
-    proposals: pendingMemoryProposals,
-    persistence: "IN_MEMORY_ONLY",
-  });
+  res.json(memoryProposalQueue.snapshot());
+});
+
+app.post("/api/v1/memory/proposals/:proposalId/resolve", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  try {
+    const body = req.body ?? {};
+    if (body.decision !== "REJECT" && body.decision !== "REQUEST_EVIDENCE") {
+      res.status(400).json({ success: false, error: "PROPOSAL_DECISION_NOT_ALLOWED" });
+      return;
+    }
+    const resolution = memoryProposalQueue.resolve(
+      req.params.proposalId,
+      body.decision,
+      typeof body.note === "string" ? body.note : "",
+    );
+    res.json({ success: true, resolution, canonicalMemoryMutated: false, persistence: "IN_MEMORY_ONLY" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "MEMORY_PROPOSAL_RESOLUTION_FAILED";
+    res.status(message === "PROPOSAL_NOT_FOUND" ? 404 : 400).json({ success: false, error: message });
+  }
 });
 
 // BookPI Ledger Events
-app.get("/api/v1/bookpi/events", (_req, res) => {
+app.get("/api/v1/bookpi/events", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   res.json(bookPiLedger.snapshot());
 });
 
@@ -773,7 +751,8 @@ app.get("/api/v1/hsf/status", async (_req, res) => {
     contract: "isabella.hsf.v1",
     capabilities: runtime.capabilities.list(),
     health: await runtime.capabilities.health(),
-    tasks: runtime.executionFabric.list(),
+    // Task payloads may contain user data; public status exposes metadata only.
+    tasks: runtime.executionFabric.list().map(({ id, type, scheduledAt, attempts, status }) => ({ id, type, scheduledAt, attempts, status })),
     knowledgeArtifacts: runtime.knowledgeFabric.list().length,
     timestamp: new Date().toISOString(),
   });
@@ -1163,9 +1142,10 @@ app.post("/api/v1/knowledge/admit", (req, res) => {
 
 // Git governance: decide (never execute) destructive/external operations.
 app.post("/api/v1/governance/git", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-git")) return;
   try {
     const verdict = runtime.evaluateGit(req.body as Parameters<typeof runtime.evaluateGit>[0]);
-    res.json({ success: true, verdict });
+    res.json({ success: true, evaluationOnly: true, executionPerformed: false, verdict });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
@@ -1173,9 +1153,18 @@ app.post("/api/v1/governance/git", (req, res) => {
 
 // Canonical quality gates (15) before promotion.
 app.post("/api/v1/governance/quality-gates", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-quality")) return;
   try {
-    const report = runtime.evaluateQuality(req.body as Parameters<typeof runtime.evaluateQuality>[0]);
-    res.json({ success: report.passed, report });
+    const declared = runtime.evaluateQuality(req.body as Parameters<typeof runtime.evaluateQuality>[0]);
+    // The HTTP caller supplies these booleans; this endpoint does not run tests/scans.
+    const report = {
+      ...declared,
+      declaredInputsPass: declared.passed,
+      passed: false,
+      verificationPerformed: false,
+      blockers: [...declared.blockers, "independent_runtime_evidence_not_connected"],
+    };
+    res.status(202).json({ success: false, status: "DECLARATIVE_ONLY", report });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
@@ -1183,10 +1172,19 @@ app.post("/api/v1/governance/quality-gates", (req, res) => {
 
 // Deployment gates (build → rollback) with real-DNS validation.
 app.post("/api/v1/governance/deployment", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-deployment")) return;
   try {
     const body = req.body ?? {};
-    const assessment = runtime.assessDeployment(body.target, body.gates ?? {}, body.opts);
-    res.json({ success: assessment.deployable, assessment });
+    const declared = runtime.assessDeployment(body.target, body.gates ?? {}, body.opts);
+    const assessment = {
+      ...declared,
+      declaredGatesPass: declared.deployable,
+      deployable: false,
+      verificationPerformed: false,
+      evidenceMode: "CALLER_SUPPLIED_GATE_STATUSES",
+      blockers: [...declared.blockers, "independent_ci_and_deployment_evidence_not_connected"],
+    };
+    res.status(202).json({ success: false, status: "DECLARATIVE_ONLY", assessment });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
@@ -1194,9 +1192,19 @@ app.post("/api/v1/governance/deployment", (req, res) => {
 
 // Agent SDK verifier (scoped evidence, not universal certification).
 app.post("/api/v1/governance/verify-agent-app", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-verifier")) return;
   try {
-    const report = runtime.verifyAgentApp(req.body as Parameters<typeof runtime.verifyAgentApp>[0]);
-    res.json({ success: report.overall !== "FAIL", report });
+    const declared = runtime.verifyAgentApp(req.body as Parameters<typeof runtime.verifyAgentApp>[0]);
+    // All fields arrive from the HTTP caller; no repository scan or command execution occurs here.
+    const report = {
+      ...declared,
+      overall: declared.overall === "FAIL" ? "FAIL" as const : "INCONCLUSIVE" as const,
+      findings: declared.findings.map((finding) => finding.state === "PASS"
+        ? { ...finding, state: "INCONCLUSIVE" as const, detail: "caller assertion only; not independently scanned" }
+        : finding),
+      scope: "declaración de cliente; no se descargó ni ejecutó el repositorio",
+    };
+    res.status(202).json({ success: false, status: "NOT_INDEPENDENTLY_VERIFIED", verificationPerformed: false, report });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
@@ -1204,9 +1212,10 @@ app.post("/api/v1/governance/verify-agent-app", (req, res) => {
 
 // Issue lifecycle plan (inspect → propose; execution stays behind approval).
 app.post("/api/v1/governance/lifecycle-plan", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-lifecycle")) return;
   try {
     const plan = runtime.planLifecycle(req.body as Parameters<typeof runtime.planLifecycle>[0]);
-    res.json({ success: true, plan });
+    res.json({ success: true, status: "PROPOSAL_ONLY", executionPerformed: false, plan });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
@@ -1214,6 +1223,7 @@ app.post("/api/v1/governance/lifecycle-plan", (req, res) => {
 
 // Diff Observatory: read-only, redacted workspace diff with BookPI metadata only.
 app.post("/api/v1/diff/observe", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "diff-observe")) return;
   try {
     const snapshot = req.body?.snapshot;
     if (!snapshot || !Array.isArray(snapshot.files)) {
@@ -1227,7 +1237,7 @@ app.post("/api/v1/diff/observe", (req, res) => {
     });
     const result = sanitizeDiffSnapshot(snapshot);
     observatory.dispose();
-    res.json({ success: true, snapshot: result, metadataHash: snapshotMetadataHash(result) });
+    res.json({ success: true, source: "CALLER_SUPPLIED_SNAPSHOT", filesystemRead: false, snapshot: result, metadataHash: snapshotMetadataHash(result) });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
