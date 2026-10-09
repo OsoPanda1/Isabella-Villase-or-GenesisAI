@@ -2,10 +2,18 @@
 
 > **Trusted Intelligence, Native & Adaptive** — runtime cognitivo gobernado, auditable y federable.
 
-**Repositorio:** Isabella-Villase-or-GenesisAI  
-**Rama de evolución:** `genesis-v6-sovereign-evolution`  
-**Clasificación actual:** infraestructura de runtime cognitivo gobernado / foundation pre-productivo avanzado.  
-**No es:** un modelo fundacional, una certificación de IA, una AGI ni una plataforma de producción completa.
+**Repositorio canónico:** Isabella-Villase-or-GenesisAI  
+**Corte de revisión:** 9 de octubre de 2026  
+**Clasificación auditada:** runtime cognitivo gobernado modular en fase preproductiva.  
+**Rama de evolución en revisión:** `feature/canonical-libraries-governance`  
+**Estado de CI:** no declarar verde hasta verificar los checks del SHA final de esta rama.  
+**No es:** un modelo fundacional propio, AGI, certificación jurídica, certificación de seguridad ni una plataforma de producción completa.
+
+**Regla de veracidad:** `CONTRACT ≠ IMPLEMENTED ≠ TESTED ≠ VERIFIED ≠ DEPLOYED ≠ CERTIFIED`. Las simulaciones y proveedores no configurados no pueden producir estados `VERIFIED`, `COMPLIANT`, `ANCHORED` o `SYNCED`.
+
+- Auditoría de evolución del ecosistema: [docs/ECOSYSTEM_EVOLUTION_AUDIT_2026-10-09.md](docs/ECOSYSTEM_EVOLUTION_AUDIT_2026-10-09.md)
+- Configuración segura: [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)
+- Política de seguridad: [SECURITY.md](SECURITY.md)
 
 ---
 
@@ -67,6 +75,22 @@ POST /api/v1/hsf/invoke
 La implementación actual proporciona contratos y proveedores locales de referencia. PostgreSQL, Qdrant, Neo4j, Redis, Temporal, Kubernetes, MCP y otros proveedores se incorporarán detrás de estos contratos; no se presentan como conectados mientras no exista evidencia de integración real.
 
 Documentación: `docs/ISABELLA_HYPER_SKILL_FABRIC.md`.
+
+## Evolución de seguridad y gobernanza — 9 de octubre de 2026
+
+La rama de evolución incorpora contratos nativos de sanitización, conocimiento canónico IKES, gates de despliegue, manifiestos de evidencia, gobernanza Git, ciclo de vida y observación de diffs. La auditoría detectó y corrigió riesgos en los límites entre simulación y verificación:
+
+- El contenido que activa cuarentena por secretos no se devuelve; el detalle del hallazgo no revela el fragmento sensible.
+- Los documentos sin licencia o procedencia declarada no se admiten como conocimiento.
+- IKES valida el formato del hash SHA-256, fecha y URI, y rechaza reutilizar un identificador de fuente con otro hash.
+- Las rutas de escritura de memoria y admisión requieren `GENESIS_ADMIN_API_TOKEN`; HSF requiere `HSF_API_TOKEN`. Los roles declarados por el cliente no se aceptan como autoridad.
+- La ingesta calcula el hash del contenido aportado, pero **no descarga ni autentica automáticamente el recurso remoto**. La procedencia se etiqueta `USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED`.
+- El pipeline IKES bloquea el release sin claim, evidencia, auditoría, commit Git válido e índice confirmado. Como no hay índice durable conectado en este runtime, una propuesta no se presenta como conocimiento liberado.
+- BookPI, HSM/criptografía poscuántica, sincronización del gemelo digital, RLS y cumplimiento normativo permanecen `NOT_CONFIGURED`, `NOT_VERIFIED` o `NOT_ASSESSED` hasta que exista un adaptador real y evidencia reproducible.
+
+**Licencias:** el `LICENSE` de este repositorio es MIT. Otros repositorios Isabella pueden declarar licencias híbridas con restricciones separadas para código, marca, documentación y activos propietarios. No se importan automáticamente archivos de otra licencia al árbol MIT; se exige revisar la licencia del archivo, dependencias y derechos sobre datos/marca.
+
+La implementación no equivale a certificación ni a readiness de producción. La validación requerida es `npm run typecheck`, `npm test` y `npm run build` en el SHA exacto que se pretenda liberar.
 
 ## 1. ¿Qué es Isabella Genesis TINA?
 
