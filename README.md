@@ -2,6 +2,17 @@
 
 > **Trusted Intelligence, Native & Adaptive** — runtime cognitivo gobernado, auditable y federable.
 
+**Clasificación auditada (8 oct 2026):** runtime cognitivo gobernado modular, en fase preproductiva.  
+**Runtime canónico:** Isabella Villaseñor GenesisAI. Los demás componentes y repositorios se integran como módulos, protocolos, skills, adaptadores, proveedores, persistencia o infraestructura.  
+**Estado de verificación:** no se declara CI verde, despliegue productivo, certificación jurídica, cumplimiento normativo, criptografía poscuántica activa ni superioridad competitiva sin evidencia específica del commit y entorno correspondiente.
+
+> **Regla de veracidad:** `CONTRACT ≠ IMPLEMENTED ≠ TESTED ≠ INTEGRATED ≠ PRODUCTION ≠ CERTIFIED`. Los fixtures, simulaciones y respuestas de ejemplo deben etiquetarse como tales; nunca deben producir `VERIFIED`, `COMPLIANT`, `ANCHORED` o `SYNCED` sin verificación real.
+
+Auditoría detallada: [docs/AUDIT_GENESIS_V6_2026-10-08.md](docs/AUDIT_GENESIS_V6_2026-10-08.md).  
+Política de seguridad: [SECURITY.md](SECURITY.md).
+
+> **Trusted Intelligence, Native & Adaptive** — runtime cognitivo gobernado, auditable y federable.
+
 **Repositorio:** Isabella-Villase-or-GenesisAI  
 **Rama de evolución:** `genesis-v6-sovereign-evolution`  
 **Clasificación actual:** infraestructura de runtime cognitivo gobernado / foundation pre-productivo avanzado.  
@@ -746,13 +757,13 @@ Los porcentajes siguientes son una **métrica interna de madurez de implementaci
 
 ### Avance global de implementación
 
-**≈ 60%**
+**No cuantificado con evidencia suficiente**
 
 Este valor es un índice de ingeniería interno, no una medida universal.
 
 ### Readiness productivo
 
-**≈ 43%**
+**No cuantificado con evidencia suficiente**
 
 La diferencia existe porque tener código implementado no implica disponer de:
 
@@ -1105,15 +1116,17 @@ sin evidencia específica que lo demuestre.
 Requisitos:
 
 - Node.js >= 22
-- pnpm 10.22.0
+- npm
+
+Este repositorio no incluye actualmente un lockfile npm. Para reproducibilidad, debe generarse y versionarse un `package-lock.json` antes de exigir `npm ci` en CI.
 
 Ejecutar:
 
 ```bash
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm build
+npm install
+npm run typecheck
+npm test
+npm run build
 ```
 
 El resultado de estos comandos debe tratarse como evidencia del commit concreto ejecutado; este README no convierte su existencia en una afirmación de que todos los runs históricos hayan sido exitosos.
