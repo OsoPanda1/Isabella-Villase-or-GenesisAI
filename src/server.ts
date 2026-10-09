@@ -477,7 +477,16 @@ app.get("/api/v1/bookpi/events", (req, res) => {
   // The public dashboard needs integrity metadata, not principal identities.
   res.json({
     ...snapshot,
-    events: snapshot.events.map(({ principal: _principal, ...event }) => event),
+    events: snapshot.events.map((event) => ({
+      id: event.id,
+      timestamp: event.timestamp,
+      type: event.type,
+      methodId: event.methodId,
+      riskTier: event.riskTier,
+      status: event.status,
+      previousHash: event.previousHash,
+      hash: event.hash,
+    })),
     principalRedacted: true,
     visibility: "PUBLIC_REDACTED_AUDIT",
   });
