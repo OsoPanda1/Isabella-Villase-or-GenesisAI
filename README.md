@@ -83,10 +83,10 @@ La rama de evolución incorpora contratos nativos de sanitización, conocimiento
 - El contenido que activa cuarentena por secretos no se devuelve; el detalle del hallazgo no revela el fragmento sensible.
 - Los documentos sin licencia o procedencia declarada no se admiten como conocimiento.
 - IKES valida el formato del hash SHA-256, fecha y URI, y rechaza reutilizar un identificador de fuente con otro hash.
-- Las rutas de escritura de memoria y admisión requieren `GENESIS_ADMIN_API_TOKEN`; HSF requiere `HSF_API_TOKEN`. Los roles declarados por el cliente no se aceptan como autoridad.
+- Las rutas administrativas de admisión requieren `GENESIS_ADMIN_API_TOKEN`; HSF requiere `HSF_API_TOKEN`. Las propuestas públicas quedan en una cola volátil de revisión y no mutan IKES. Los roles declarados por el cliente no se aceptan como autoridad. Los endpoints públicos aplican rate limits locales por proceso.
 - La ingesta calcula el hash del contenido aportado, pero **no descarga ni autentica automáticamente el recurso remoto**. La procedencia se etiqueta `USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED`.
 - El pipeline IKES bloquea el release sin claim, evidencia, auditoría, commit Git válido e índice confirmado. Como no hay índice durable conectado en este runtime, una propuesta no se presenta como conocimiento liberado.
-- BookPI, HSM/criptografía poscuántica, sincronización del gemelo digital, RLS y cumplimiento normativo permanecen `NOT_CONFIGURED`, `NOT_VERIFIED` o `NOT_ASSESSED` hasta que exista un adaptador real y evidencia reproducible.
+- BookPI dispone de una cadena SHA-256 en memoria verificada durante la vida del proceso, pero no de WORM durable; HSM/criptografía poscuántica, sincronización del gemelo digital, RLS y cumplimiento normativo permanecen `NOT_CONFIGURED`, `NOT_VERIFIED` o `NOT_ASSESSED` hasta que exista un adaptador real y evidencia reproducible.
 
 **Licencias:** el `LICENSE` de este repositorio es MIT. Otros repositorios Isabella pueden declarar licencias híbridas con restricciones separadas para código, marca, documentación y activos propietarios. No se importan automáticamente archivos de otra licencia al árbol MIT; se exige revisar la licencia del archivo, dependencias y derechos sobre datos/marca.
 
