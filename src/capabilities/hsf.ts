@@ -73,11 +73,16 @@ export class CapabilityRegistry {
 }
 
 export interface CapabilityGatewayPolicy {
-  authorize(capabilityId: string, context: CapabilityContext, input: unknown): Promise<{ granted: boolean; reason: string }>;
+  authorize(
+    capabilityId: string,
+    context: CapabilityContext,
+    input: unknown,
+    descriptor?: CapabilityDescriptor,
+  ): Promise<{ granted: boolean; reason: string }>;
 }
 
 export class FailClosedCapabilityPolicy implements CapabilityGatewayPolicy {
-  async authorize(capabilityId: string, context: CapabilityContext, _input: unknown) {
+  async authorize(capabilityId: string, context: CapabilityContext, _input: unknown, descriptor?: CapabilityDescriptor) {
     if (!capabilityId || !context.requestId || !context.traceId || !context.principalId || !context.role || !context.policyVersion) {
       return { granted: false, reason: "HSF_CONTEXT_INCOMPLETE" };
     }
@@ -86,6 +91,10 @@ export class FailClosedCapabilityPolicy implements CapabilityGatewayPolicy {
     }
     if (!["operator", "admin"].includes(context.role)) {
       return { granted: false, reason: "HSF_ROLE_NOT_ALLOWED" };
+    }
+    if (descriptor && ["HIGH", "CRITICAL"].includes(descriptor.riskTier) &&
+      context.metadata?.humanApprovalVerified !== "true") {
+      return { granted: false, reason: "HSF_HUMAN_APPROVAL_REQUIRED" };
     }
     return { granted: true, reason: "GENESIS_GOVERNANCE_ADMITTED" };
   }
@@ -107,13 +116,17 @@ export class CapabilityGateway {
     } catch {
       return { requestId, traceId: context.traceId, capabilityId, version: "unknown", status: "rejected", startedAt, completedAt: new Date().toISOString(), latencyMs: Date.now() - started, error: "HSF_UNKNOWN_CAPABILITY" };
     }
-    const authorization = await this.policy.authorize(capabilityId, context, input);
+    const authorization = await this.policy.authorize(capabilityId, context, input, provider.descriptor);
     if (!authorization.granted) {
       return { requestId, traceId: context.traceId, capabilityId, version: provider.descriptor.version, status: "rejected", startedAt, completedAt: new Date().toISOString(), latencyMs: Date.now() - started, error: authorization.reason };
     }
     const status = await provider.health();
-    if (status === "unavailable") {
-      return { requestId, traceId: context.traceId, capabilityId, version: provider.descriptor.version, status: "unavailable", startedAt, completedAt: new Date().toISOString(), latencyMs: Date.now() - started, error: "HSF_PROVIDER_UNAVAILABLE" };
+    if (status !== "ready") {
+      return {
+        requestId, traceId: context.traceId, capabilityId, version: provider.descriptor.version,
+        status: "unavailable", startedAt, completedAt: new Date().toISOString(), latencyMs: Date.now() - started,
+        error: status === "degraded" ? "HSF_PROVIDER_DEGRADED_FAIL_CLOSED" : "HSF_PROVIDER_UNAVAILABLE",
+      };
     }
     try {
       const output = await provider.execute(input, context);
