@@ -21,42 +21,68 @@ import { randomUUID } from "node:crypto";
 /* Primitivas de coordinación asíncronas                              */
 /* ------------------------------------------------------------------ */
 
-/** Lock (mutex) reentrante opcional. */
+/** Lock FIFO con timeout real, eliminación de waiters expirados y handoff atómico. */
 export class Lock {
   private locked = false;
-  private readonly queue: Array<() => void> = [];
+  private readonly queue: Array<{
+    ownerId: string;
+    resolve: () => void;
+    timer: ReturnType<typeof setTimeout>;
+  }> = [];
   private owner: string | null = null;
   private depth = 0;
 
   constructor(private readonly reentrant = false) {}
 
   async acquire(timeoutMs = 5000, ownerId: string = randomUUID()): Promise<string> {
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 0) throw new Error("SYNC: lock timeout must be >= 0");
     if (this.reentrant && this.locked && this.owner === ownerId) {
       this.depth += 1;
       return ownerId;
     }
-    const deadline = Date.now() + timeoutMs;
-    while (this.locked) {
-      if (Date.now() >= deadline) throw new Error("SYNC: lock acquire timeout");
-      await new Promise<void>((resolve) => this.queue.push(resolve));
+    if (!this.locked && this.queue.length === 0) {
+      this.locked = true;
+      this.owner = ownerId;
+      this.depth = 1;
+      return ownerId;
     }
-    this.locked = true;
-    this.owner = ownerId;
-    this.depth = 1;
-    return ownerId;
+    return new Promise<string>((resolve, reject) => {
+      let waiter!: { ownerId: string; resolve: () => void; timer: ReturnType<typeof setTimeout> };
+      const timer = setTimeout(() => {
+        const index = this.queue.indexOf(waiter);
+        if (index >= 0) this.queue.splice(index, 1);
+        reject(new Error("SYNC: lock acquire timeout"));
+      }, timeoutMs);
+      waiter = {
+        ownerId,
+        timer,
+        resolve: () => {
+          clearTimeout(timer);
+          this.locked = true;
+          this.owner = ownerId;
+          this.depth = 1;
+          resolve(ownerId);
+        },
+      };
+      this.queue.push(waiter);
+    });
   }
 
   release(ownerId?: string): void {
     if (!this.locked) throw new Error("SYNC: lock not held");
-    if (this.reentrant && ownerId !== undefined && ownerId === this.owner && this.depth > 1) {
+    if (ownerId !== undefined && ownerId !== this.owner) throw new Error("SYNC: lock owner mismatch");
+    if (this.reentrant && this.depth > 1) {
       this.depth -= 1;
+      return;
+    }
+    const next = this.queue.shift();
+    if (next) {
+      next.resolve();
       return;
     }
     this.locked = false;
     this.owner = null;
     this.depth = 0;
-    const next = this.queue.shift();
-    if (next) next();
   }
 
   isLocked(): boolean {
@@ -257,7 +283,11 @@ export interface SyncScope {
 }
 
 export function scopeKey(scope: SyncScope): string {
-  return `${scope.tenantId}/${scope.workspace}/${scope.service}`;
+  const parts = [scope.tenantId, scope.workspace, scope.service];
+  if (parts.some((part) => typeof part !== "string" || !part.trim() || part.length > 256)) {
+    throw new Error("SYNC: tenant/workspace/service scope required");
+  }
+  return parts.map((part) => `${part.length}:${part}`).join("|") + "|";
 }
 
 /**
@@ -378,6 +408,9 @@ export interface ReconciliationReport {
  */
 export function reconcileBeforeRelease(state: ReconciliationState): ReconciliationReport {
   const divergent: string[] = [];
+  for (const key of ["git", "index", "bookpi"] as const) {
+    if (typeof state[key] !== "string" || !state[key].trim()) divergent.push(`${key}:missing`);
+  }
   if (state.git !== state.index) divergent.push("git≠index");
   if (state.index !== state.bookpi) divergent.push("index≠bookpi");
   if (state.git !== state.bookpi) divergent.push("git≠bookpi");
