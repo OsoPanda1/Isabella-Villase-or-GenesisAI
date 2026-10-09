@@ -56,6 +56,33 @@ function hash(value: unknown): string {
   return createHash("sha256").update((JSON.stringify(value) ?? ""), "utf8").digest("hex");
 }
 
+
+const CLAIM_HASH_FIELDS = [
+  "subject", "predicate", "object", "sourceIds", "evidenceIds",
+  "epistemicState", "temporalState", "validFrom", "validUntil", "license", "provenance",
+] as const;
+
+function claimContentHash(claim: Pick<KnowledgeClaim, (typeof CLAIM_HASH_FIELDS)[number]>): string {
+  return hash({
+    subject: claim.subject,
+    predicate: claim.predicate,
+    object: claim.object,
+    sourceIds: [...claim.sourceIds],
+    evidenceIds: [...claim.evidenceIds],
+    epistemicState: claim.epistemicState,
+    temporalState: claim.temporalState,
+    validFrom: claim.validFrom,
+    validUntil: claim.validUntil,
+    license: claim.license,
+    provenance: { ...claim.provenance },
+  });
+}
+
+/** Recomputes the canonical claim payload hash; it does not authenticate the source. */
+export function verifyKnowledgeClaimIntegrity(claim: KnowledgeClaim): boolean {
+  return /^[a-f0-9]{64}$/i.test(claim.contentHash) && claim.contentHash === claimContentHash(claim);
+}
+
 function freezeClaim(claim: KnowledgeClaim): KnowledgeClaim {
   return Object.freeze({
     ...claim,
@@ -123,7 +150,7 @@ export class IKESEngine {
     const record: KnowledgeClaim = {
       ...merged,
       claimId,
-      contentHash: hash(merged),
+      contentHash: claimContentHash(merged),
       version: existing ? existing.version + 1 : 1,
     };
     const frozen = freezeClaim(record);
@@ -153,7 +180,7 @@ export class IKESEngine {
         : "E2_CORROBORATED",
       version: claim.version + 1,
     };
-    next.contentHash = hash({ ...next, contentHash: undefined });
+    next.contentHash = claimContentHash(next);
     const frozen = freezeClaim(next);
     this.claims.set(claimId, frozen);
     return frozen;
