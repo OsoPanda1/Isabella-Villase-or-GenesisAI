@@ -35,6 +35,26 @@ describe("agent sdk verifier", () => {
     expect(report.findings.some((finding) => finding.state === "INCONCLUSIVE")).toBe(true);
   });
 
+  it("returns PASS only when each required check has explicit evidence", () => {
+    const report = verifyAgentSdkApp({
+      isAgentSdkApp: true,
+      sdkVersion: "1.0.0",
+      pythonVersion: "3.12",
+      hasRequirements: true,
+      hasEnvExample: true,
+      hasGitignore: true,
+      secretPatternsFound: 0,
+      importErrors: [],
+      syntaxErrors: [],
+      mcpConfigured: true,
+      subagentsDeclared: 1,
+      documentationPresent: true,
+      reviewedChecks: { prompts: true, models: true, permissions: true, errors: true },
+    });
+    expect(report.overall).toBe("PASS");
+    expect(report.findings.every((finding) => finding.state === "PASS")).toBe(true);
+  });
+
   it("fails on secrets and warns on missing pins", () => {
     const fail = verifyAgentSdkApp({ isAgentSdkApp: true, secretPatternsFound: 2, syntaxErrors: [], importErrors: [] });
     expect(fail.overall).toBe("FAIL");
