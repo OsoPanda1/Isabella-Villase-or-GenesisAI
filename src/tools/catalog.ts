@@ -66,7 +66,9 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
       const isFalseCertainty = /100% seguro|certeza absoluta sin evidencia|garantizo infalible/i.test(lower);
       const blocked = isBypass || isJailbreak;
       return {
-        decision: blocked ? "BLOCK" : "NO_PATTERN_MATCH",
+        decision: blocked ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+        patternMatchDetected: blocked,
+        actionBlocked: false,
         authorizationGranted: false,
         assessmentMode: "HEURISTIC_PATTERN_SCAN",
         score: blocked ? 0.98 : 0.02,
