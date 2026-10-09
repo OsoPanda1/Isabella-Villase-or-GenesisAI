@@ -68,9 +68,10 @@ export class Lock {
     });
   }
 
-  release(ownerId?: string): void {
+  release(ownerId: string): void {
     if (!this.locked) throw new Error("SYNC: lock not held");
-    if (ownerId !== undefined && ownerId !== this.owner) throw new Error("SYNC: lock owner mismatch");
+    if (typeof ownerId !== "string" || ownerId.length === 0) throw new Error("SYNC: lock owner required");
+    if (ownerId !== this.owner) throw new Error("SYNC: lock owner mismatch");
     if (this.reentrant && this.depth > 1) {
       this.depth -= 1;
       return;
