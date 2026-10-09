@@ -170,7 +170,7 @@ Las funciones se agrupan por capacidad. Una función descrita aquí sólo se con
 - Denegar capacidades desconocidas.
 - Mantener separación entre capacidad y autoridad.
 
-**Estado: 86% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -191,7 +191,7 @@ Funciones:
 
 La confianza heurística se etiqueta como heurística; no se presenta como probabilidad calibrada.
 
-**Estado: 86% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -222,7 +222,7 @@ Las señales críticas producen bloqueo.
 
 **Límite:** el detector actual es principalmente basado en reglas; no equivale a un sistema ML de detección adversarial completo.
 
-**Estado: 78% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -271,7 +271,7 @@ Pendiente:
 - pipeline RAG completo;
 - provenance persistente extremo a extremo.
 
-**Estado: 54% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -319,7 +319,7 @@ Tampoco están implementados todavía:
 - entrenamiento nativo;
 - MoE físico con expertos ejecutables.
 
-**Estado: 58% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -382,7 +382,7 @@ status
 
 Esto convierte una llamada de herramienta en un acto trazable.
 
-**Estado: 72% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 **Importante:** actualmente el catálogo de tools no equivale a cientos de integraciones productivas. Las herramientas deben registrarse explícitamente.
 
@@ -429,7 +429,7 @@ Una skill que exige evidencia y recibe cero señales queda bloqueada.
 
 Una skill HIGH/CRITICAL sin aprobación humana válida queda bloqueada.
 
-**Estado: 68% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -487,7 +487,7 @@ No equivale todavía a:
 - proof-carrying generation;
 - verifier fan-out distribuido.
 
-**Estado: 52% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -554,7 +554,7 @@ En este repositorio existe una implementación de BookPI orientada a eventos y c
 - anclaje externo;
 - auditoría independiente.
 
-**Estado: 62% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -594,7 +594,7 @@ Pendiente para producción:
 - resolución de conflictos entre jurisdicciones;
 - federación multi-región real.
 
-**Estado: 45% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -614,7 +614,7 @@ El lifecycle se orienta por evidencia y evita convertir hashes o metadatos en �
 
 Estados y transiciones deben mantenerse ligados a evidencia verificable.
 
-**Estado: 62% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -644,7 +644,7 @@ Pendiente:
 - trazas distribuidas;
 - almacenamiento de series temporales.
 
-**Estado: 42% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -684,7 +684,7 @@ Pendiente:
 - evaluación de modelos;
 - evaluación epistemológica a gran escala.
 
-**Estado: 48% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -717,7 +717,7 @@ Pendiente:
 - multi-region;
 - disaster recovery probado.
 
-**Estado: 40% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -727,24 +727,24 @@ Los porcentajes de versiones anteriores eran estimaciones internas sin una rúbr
 
 | Categoría | Avance |
 |---|---:|
-| Governance / Authority | **86%** |
-| CROWN | **86%** |
-| Security / AEGIS | **78%** |
-| Identity | **76%** |
-| Tools | **72%** |
-| Skills | **68%** |
-| Evolution | **62%** |
-| BookPI | **62%** |
-| Inference | **58%** |
-| Memory / RAG | **54%** |
-| Veritas | **52%** |
-| Evaluation | **48%** |
-| Federation | **45%** |
-| Observability | **42%** |
-| Deployment | **40%** |
-| Native ML | **0%** |
-| GPU Serving | **0%** |
-| Distributed Workers | **0%** |
+| Governance / Authority | No cuantificado con evidencia suficiente |
+| CROWN | No cuantificado con evidencia suficiente |
+| Security / AEGIS | No cuantificado con evidencia suficiente |
+| Identity | No cuantificado con evidencia suficiente |
+| Tools | No cuantificado con evidencia suficiente |
+| Skills | No cuantificado con evidencia suficiente |
+| Evolution | No cuantificado con evidencia suficiente |
+| BookPI | No cuantificado con evidencia suficiente |
+| Inference | No cuantificado con evidencia suficiente |
+| Memory / RAG | No cuantificado con evidencia suficiente |
+| Veritas | No cuantificado con evidencia suficiente |
+| Evaluation | No cuantificado con evidencia suficiente |
+| Federation | No cuantificado con evidencia suficiente |
+| Observability | No cuantificado con evidencia suficiente |
+| Deployment | No cuantificado con evidencia suficiente |
+| Native ML | No cuantificado con evidencia suficiente |
+| GPU Serving | No cuantificado con evidencia suficiente |
+| Distributed Workers | No cuantificado con evidencia suficiente |
 
 ### Avance global de implementación
 
