@@ -60,6 +60,11 @@ export const STALE_UPVOTE_THRESHOLD = 15;
 export interface LifecycleIssue {
   number: number;
   labels: readonly string[];
+  /** Issue text is required to preserve the sensitive-content human gate. */
+  title?: string;
+  body?: string;
+  /** Explicit upstream sensitivity flag takes precedence over text heuristics. */
+  sensitive?: boolean;
   updatedAt: string;
   createdAt: string;
   locked?: boolean;
@@ -162,7 +167,7 @@ export function evaluateTriage(input: TriageInput, now = new Date()): TriageDeci
   const hasRepro = /\b(?:steps to reproduce|reproduction|repro)\b/.test(text);
   const hasInfo = /\b(?:version|os|logs|error)\b/.test(text);
   const looksInvalid = /\b(?:not about|unrelated|spam|advertisement)\b/.test(text);
-  const controversial = /\b(?:security|vulnerability|legal|gdpr|breach)\b/.test(text);
+  const controversial = /\b(?:security|vulnerability|legal|gdpr|breach|privacy|personal data|credential|secret|ransomware|seguridad|vulnerabilidad|privacidad|datos personales|filtraci[oó]n|credenciales)\b/.test(text);
 
   if (looksInvalid) {
     if (!existing.has("invalid")) add.push("invalid");
@@ -237,11 +242,12 @@ export function planLifecycleRun(input: LifecycleRunInput): LifecycleRunPlan {
   const humanGate: number[] = [];
 
   for (const issue of input.issues) {
-    const triage = evaluateTriage({ title: "", body: "", labels: issue.labels }, now);
-    if (triage.requiresHumanGate) humanGate.push(issue.number);
-    if (evaluateStale(issue, now).markStale) markStale.push(issue.number);
+    const triage = evaluateTriage({ title: issue.title ?? "", body: issue.body ?? "", labels: issue.labels }, now);
+    const requiresHumanGate = issue.sensitive === true || triage.requiresHumanGate;
+    if (requiresHumanGate) humanGate.push(issue.number);
+    if (evaluateStale(issue, now).markStale && !requiresHumanGate) markStale.push(issue.number);
     for (const label of issue.labels) {
-      if (!policyFor(label)) continue;
+      if (!policyFor(label) || requiresHumanGate) continue;
       const labelledAt = issue.updatedAt;
       if (evaluateClosure(issue, label, labelledAt, now).close) {
         proposeClose.push({ issue: issue.number, label });
