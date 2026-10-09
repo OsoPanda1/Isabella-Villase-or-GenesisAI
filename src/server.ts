@@ -3441,7 +3441,7 @@ app.post("/api/v1/litle/attest", (req, res) => {
     const body = req.body ?? {};
     const evidence = Array.isArray(body.evidence) ? body.evidence : [];
     if (!Number.isInteger(Number(body.year)) || Number(body.year) < 2000 || Number(body.year) > 2100 ||
-      typeof body.namespace !== "string" || !/^[A-Za-z0-9._:-]{1,64}$/.test(body.namespace) ||
+      typeof body.namespace !== "string" || body.namespace.length > 64 || !/^[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)*$/.test(body.namespace) ||
       !["BK", "RQ", "DS", "PL", "AR", "MD", "SW", "EX", "DP"].includes(body.workType) ||
       evidence.length === 0 || evidence.length > 100) {
       res.status(400).json({ success: false, error: "LITLE_YEAR_NAMESPACE_WORKTYPE_OR_EVIDENCE_INVALID" });
