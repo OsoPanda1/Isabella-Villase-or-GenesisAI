@@ -1607,7 +1607,7 @@ app.get("/", (_req, res) => {
               </div>
               <div>
                 <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">2. Acervo IKES & Fuentes</div>
-                <div class="text-[10px] text-cyan-400/90 font-mono">Memoria Verificada · Escala E0–E6</div>
+                <div class="text-[10px] text-cyan-400/90 font-mono">Memoria IKES · estados E0–E6 (no todas verificadas)</div>
               </div>
             </div>
             <span id="icon-acc-left-2" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
@@ -1618,13 +1618,13 @@ app.get("/", (_req, res) => {
             <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1.5">
               <div class="flex justify-between items-center">
                 <span class="text-[10px] uppercase font-bold text-slate-400 font-mono">Rigor Epistemológico</span>
-                <span id="ladderLabel" class="text-[10px] font-mono font-bold text-emerald-400">E6 (Invariante)</span>
+                <span id="ladderLabel" class="text-[10px] font-mono font-bold text-amber-300">E0 (No verificado)</span>
               </div>
-              <input type="range" id="epistemicRigorSlider" min="0" max="6" value="6" oninput="updateEpistemicRigor(this.value)" class="w-full accent-cyan-400 bg-slate-950 h-1.5 rounded-lg cursor-pointer">
+              <input type="range" id="epistemicRigorSlider" min="0" max="6" value="0" oninput="updateEpistemicRigor(this.value)" class="w-full accent-cyan-400 bg-slate-950 h-1.5 rounded-lg cursor-pointer">
               <div class="flex justify-between text-[9px] text-slate-500 font-mono">
                 <span>E0 (Sin verificar)</span>
                 <span>E3 (Prueba)</span>
-                <span>E6 (Invariante)</span>
+                <span>E6 (Establecido con evidencia)</span>
               </div>
             </div>
 
@@ -1633,7 +1633,7 @@ app.get("/", (_req, res) => {
               <div onclick="selectContextDoc('canon')" id="doc-card-canon" class="doc-card p-2 rounded-xl bg-slate-900/70 border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-0.5">
                 <div class="flex items-center justify-between text-[11px] font-semibold text-slate-200">
                   <span class="truncate">Canon v40.0.0 & CITEMESH</span>
-                  <span class="text-[9px] font-mono text-emerald-400">E6</span>
+                  <span class="text-[9px] font-mono text-amber-300">E0 NOT FETCHED</span>
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1">Pipeline soberano P-R-P-D-A-A y reglas de separación.</p>
               </div>
@@ -2536,7 +2536,7 @@ app.get("/", (_req, res) => {
       ];
       const colors = ["text-slate-400", "text-amber-400", "text-cyan-400", "text-blue-400", "text-indigo-400", "text-purple-400", "text-emerald-400"];
       const el = document.getElementById('ladderLabel');
-      el.textContent = labels[val] || "E6";
+      el.textContent = labels[val] || "E0 (Sin verificar)";
       el.className = "text-[10px] font-mono font-bold " + (colors[val] || "text-emerald-400");
     }
 
@@ -2936,7 +2936,7 @@ app.get("/", (_req, res) => {
               <div>• <strong>AEGIS Guard:</strong> Decisión \${d.aegis.decision} (Puntaje de anomalía: \${d.aegis.score}). Salvaguarda contra inyección de prompt verificada.</div>
               <div>• <strong>CROWN Intent:</strong> Categoría \${d.crown.intent.category} · Nivel de Riesgo \${d.crown.riskLevel} · Aprobación Humana: \${d.crown.requiresHumanApproval ? 'Requerida' : 'Exenta'}.</div>
               <div>• <strong>Hypercore:</strong> Modo \${d.plan.hypercore.mode} · Invariante soberano verificado en Libro Mayor BookPI.</div>
-              <div>• <strong>Memoria IKES:</strong> \${d.memory ? d.memory.length : 0} afirmaciones activas con grado E6 y compromiso Merkle inmutable.</div>
+              <div>• <strong>Memoria IKES:</strong> \${d.memory ? d.memory.length : 0} afirmaciones recuperadas con estado registrado; no se infiere E6 ni existe compromiso Merkle.</div>
             </div>
           </details>
         \` : ''}
