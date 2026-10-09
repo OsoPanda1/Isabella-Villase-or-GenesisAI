@@ -56,7 +56,7 @@ const EXAMPLE_IP = /^(?:0\.0\.0\.0|127\.0\.0\.1|192\.0\.2\.\d+|198\.51\.100\.\d+
 
 /**
  * Evalúa los gates de despliegue. Fail-closed: cualquier gate fallido o ausente
- * bloquea el despliegue. Los gates críticos no pueden quedar `skipped`.
+ * bloquea el despliegue. Ningún gate requerido puede quedar `skipped`.
  */
 export function assessDeployment(
   target: DeploymentTarget,
