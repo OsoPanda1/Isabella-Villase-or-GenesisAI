@@ -108,6 +108,7 @@ describe("sync manager", () => {
     expect(tokenIsValid(token, new Date("2026-01-01T00:00:00.500Z"))).toBe(true);
     expect(tokenIsValid(token, new Date("2026-01-01T01:00:00Z"))).toBe(false);
     expect(tokenIsValid(revokeToken(token), new Date("2026-01-01T00:00:00.500Z"))).toBe(false);
+    expect(tokenIsValid(token, new Date("2026-01-01T00:00:00.500Z"))).toBe(false);
   });
 
   it("does not reconcile empty markers or alias different scopes", () => {
