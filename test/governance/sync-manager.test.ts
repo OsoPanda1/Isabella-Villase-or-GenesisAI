@@ -4,6 +4,7 @@ import {
   Semaphore,
   BoundedSemaphore,
   Event,
+  Condition,
   Barrier,
   RLock,
   EntityMutationManager,
@@ -56,6 +57,16 @@ describe("sync manager", () => {
     const barrier = new Barrier(2);
     await expect(barrier.wait(5)).rejects.toThrow(/generation aborted/);
     await Promise.all([barrier.wait(100), barrier.wait(100)]);
+  });
+
+  it("cleans timed-out event waiters and wakes condition waiters", async () => {
+    await expect(new Event().wait(5)).rejects.toThrow(/event wait timeout/);
+    const condition = new Condition();
+    let ready = false;
+    const waiting = condition.waitFor(() => ready, 1000);
+    ready = true;
+    condition.notifyAll();
+    await expect(waiting).resolves.toBeUndefined();
   });
 
   it("event, barrier and reentrant lock behave", async () => {
