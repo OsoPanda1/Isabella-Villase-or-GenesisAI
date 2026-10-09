@@ -1185,7 +1185,8 @@ app.post("/api/v1/knowledge/admit", (req, res) => {
         sourceIds: [sourceId],
         evidenceIds: [sourceId],
         temporalState: "current" as const,
-        provenance: { source: sourceId, verification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED" },
+        license: body.license,
+        provenance: { verification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED" },
       },
     };
     // Prepare only: a blocked admission must not leak into canonical IKES retrieval.
