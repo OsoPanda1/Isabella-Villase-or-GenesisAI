@@ -86,7 +86,7 @@ export class IKESEngine {
     if (!proposal || !Array.isArray(proposal.evidenceIds) || proposal.evidenceIds.length === 0) {
       throw new Error("IKES_EVIDENCE_REQUIRED");
     }
-    if (!Array.isArray(proposal.claim.sourceIds)) throw new Error("IKES_SOURCE_IDS_REQUIRED");
+    if (!Array.isArray(proposal.claim.sourceIds) || proposal.claim.sourceIds.length === 0) throw new Error("IKES_SOURCE_IDS_REQUIRED");
     const missingEvidence = proposal.evidenceIds.filter((id) => !this.sources.has(id));
     if (missingEvidence.length > 0) throw new Error(`IKES: evidence not registered: ${missingEvidence.join(",")}`);
     const missingSources = proposal.claim.sourceIds.filter((id) => !this.sources.has(id));
@@ -142,10 +142,12 @@ export class IKESEngine {
     if (evidenceIds.some((id) => !this.sources.has(id))) {
       throw new Error("IKES: no se puede corroborar con evidencia inexistente.");
     }
+    const newEvidenceIds = [...new Set(evidenceIds)].filter((id) => !claim.evidenceIds.includes(id));
+    if (newEvidenceIds.length === 0) throw new Error("IKES_CORROBORATION_REQUIRES_NEW_EVIDENCE");
     const next: KnowledgeClaim = {
       ...claim,
-      sourceIds: [...new Set([...claim.sourceIds, ...evidenceIds])],
-      evidenceIds: [...new Set([...claim.evidenceIds, ...evidenceIds])],
+      sourceIds: [...new Set([...claim.sourceIds, ...newEvidenceIds])],
+      evidenceIds: [...new Set([...claim.evidenceIds, ...newEvidenceIds])],
       epistemicState: epistemicRank(claim.epistemicState) >= epistemicRank("E2_CORROBORATED")
         ? claim.epistemicState
         : "E2_CORROBORATED",
