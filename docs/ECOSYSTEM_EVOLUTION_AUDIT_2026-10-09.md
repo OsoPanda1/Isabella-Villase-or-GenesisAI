@@ -41,6 +41,12 @@ Una arquitectura híbrida futura debe separar al menos:
 
 La licencia de software no otorga por sí sola autorización para procesar datos personales ni certifica cumplimiento jurídico.
 
+## Controles adicionales de exposición pública
+
+- Las propuestas de conocimiento públicas se almacenan en una cola volátil limitada y no ingresan a IKES. La admisión canónica requiere token administrativo, contenido aportado, licencia y procedencia.
+- Los endpoints públicos tienen límites de frecuencia locales por proceso. En producción debe añadirse rate limiting de borde y una estrategia distribuida.
+- La generación de guías usa plantillas locales; el endpoint de audio devuelve un guion, no un archivo de audio ni una integración con NotebookLM.
+
 ## Límites de esta auditoría
 
 - No se ha acreditado despliegue productivo ni cumplimiento normativo.
