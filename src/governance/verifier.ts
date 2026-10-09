@@ -103,7 +103,8 @@ export function verifyAgentSdkApp(input: VerifierInput): VerifierReport {
     input.documentationPresent === true ? "present" : input.documentationPresent === false ? "missing documentation" : "documentation not checked");
 
   for (const check of ["prompts", "models", "permissions", "errors"] as const) {
-    add(check, reviewed(check), input.reviewedChecks?.[check] === undefined ? "review evidence not supplied" : input.reviewedChecks[check] ? "reviewed and passed" : "review failed");
+    const checkEvidence = input.reviewedChecks?.[check];
+    add(check, reviewed(check), checkEvidence === undefined ? "review evidence not supplied" : checkEvidence ? "reviewed and passed" : "review failed");
   }
 
   const failed = findings.some((finding) => finding.state === "FAIL");
