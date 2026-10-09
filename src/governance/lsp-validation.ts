@@ -37,6 +37,7 @@ interface DocumentState {
   version: number;
   content: string;
   diagnostics: readonly LspDiagnostic[];
+  diagnosticsReceived: boolean;
 }
 
 /**
@@ -49,7 +50,7 @@ export class LspValidationAdapter {
   /** didOpen → version 0. */
   openFile(file: string, content = ""): number {
     if (!file.trim()) throw new Error("LSP: file required");
-    this.documents.set(file, { version: 0, content, diagnostics: [] });
+    this.documents.set(file, { version: 0, content, diagnostics: [], diagnosticsReceived: false });
     return 0;
   }
 
@@ -58,7 +59,7 @@ export class LspValidationAdapter {
     const current = this.documents.get(file);
     if (!current) throw new Error(`LSP: file not open: ${file}`);
     const version = current.version + 1;
-    this.documents.set(file, { version, content, diagnostics: [] });
+    this.documents.set(file, { version, content, diagnostics: [], diagnosticsReceived: false });
     return version;
   }
 
@@ -67,7 +68,8 @@ export class LspValidationAdapter {
     const current = this.documents.get(file);
     if (!current) throw new Error(`LSP: file not open: ${file}`);
     if (version < current.version) return; // resultado obsoleto, se descarta
-    this.documents.set(file, { ...current, version, diagnostics: Object.freeze([...diagnostics]) });
+    if (!Number.isInteger(version) || version < 0 || !Array.isArray(diagnostics)) throw new Error("LSP: invalid diagnostics payload");
+    this.documents.set(file, { ...current, version, diagnostics: Object.freeze([...diagnostics]), diagnosticsReceived: true });
   }
 
   /** Espera diagnósticos frescos hasta el timeout. Un timeout NO implica archivo limpio. */
@@ -84,7 +86,7 @@ export class LspValidationAdapter {
   /** Resultado de diagnósticos con evaluación de frescura respecto a `minVersion`. */
   diagnosticsFor(file: string, minVersion = 0): LspDiagnosticsResult {
     const current = this.documents.get(file);
-    if (!current || current.version < minVersion) {
+    if (!current || current.version < minVersion || !current.diagnosticsReceived) {
       return { file, version: current?.version ?? -1, freshness: "NO_FRESH_DATA", verdict: "INCONCLUSIVE", diagnostics: Object.freeze([]) };
     }
     const diagnostics = Object.freeze([...current.diagnostics]);
