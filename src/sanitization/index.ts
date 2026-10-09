@@ -347,7 +347,9 @@ export type DuplicateVerdict =
  */
 export function classifyDuplicateRelationship(a: DocumentFingerprints, b: DocumentFingerprints): DuplicateVerdict {
   if (a.physical === b.physical) return "IDENTICAL_ARTIFACT";
-  if (a.structural === b.structural && a.semantic === b.semantic) return "VERIFIED_DUPLICATE";
+
+  // Structural and semantic fingerprints are intentionally lossy summaries.
+  // Their equality cannot prove byte identity or justify deletion.
   if (a.structural === b.structural) return "LIKELY_UPDATE";
   if (a.semantic === b.semantic) return "ENRICHMENT";
   return "DISTINCT";
