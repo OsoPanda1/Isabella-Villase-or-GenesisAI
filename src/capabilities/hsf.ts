@@ -79,9 +79,13 @@ export class FailClosedCapabilityPolicy implements CapabilityGatewayPolicy {
     if (!capabilityId || !context.requestId || !context.traceId || !context.principalId || !context.role || !context.policyVersion) {
       return { granted: false, reason: "HSF_CONTEXT_INCOMPLETE" };
     }
-    // Presence of identity fields is not proof of authority. A deployment must inject
-    // an authorization policy backed by Genesis identity/governance before enabling calls.
-    return { granted: false, reason: "HSF_AUTHORIZATION_POLICY_NOT_CONFIGURED" };
+    if (context.metadata?.authenticated !== "true" || context.metadata?.genesisGovernanceAdmitted !== "true") {
+      return { granted: false, reason: "HSF_AUTHORIZATION_POLICY_NOT_CONFIGURED" };
+    }
+    if (!["operator", "admin"].includes(context.role)) {
+      return { granted: false, reason: "HSF_ROLE_NOT_ALLOWED" };
+    }
+    return { granted: true, reason: "GENESIS_GOVERNANCE_ADMITTED" };
   }
 }
 
