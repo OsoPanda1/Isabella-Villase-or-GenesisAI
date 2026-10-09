@@ -232,14 +232,18 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
   const declaredEncoding = raw.declaredEncoding ?? "utf-8";
   // This function receives a JavaScript string; it does not decode arbitrary
   // byte encodings. Only UTF-8 declarations can be represented honestly here.
-  const encodingNameOk = declaredEncoding.length <= 32 &&
-    /^[a-z0-9._-]+$/i.test(declaredEncoding) &&
-    ["utf-8", "utf8"].includes(declaredEncoding.toLowerCase());
+  const encodingLabelValid = declaredEncoding.length <= 32 && /^[a-z0-9._-]+$/i.test(declaredEncoding);
+  const encodingSupported = encodingLabelValid && ["utf-8", "utf8"].includes(declaredEncoding.toLowerCase());
+  const encodingNameOk = encodingLabelValid && encodingSupported;
   const encodingOk = controlChars.length === 0 && encodingNameOk;
-  if (!encodingOk) {
+  if (controlChars.length > 0) {
     findings.push({ stage: "encoding", kind: "control_chars", severity: "MEDIUM", evidence: `${controlChars.length} control chars` });
   }
-  if (!encodingNameOk) findings.push({ stage: "encoding", kind: "invalid_encoding_metadata", severity: "MEDIUM", evidence: "[REDACTED]" });
+  if (!encodingLabelValid) {
+    findings.push({ stage: "encoding", kind: "invalid_encoding_metadata", severity: "MEDIUM", evidence: "[REDACTED]" });
+  } else if (!encodingSupported) {
+    findings.push({ stage: "encoding", kind: "unsupported_encoding", severity: "MEDIUM", evidence: "[REDACTED]" });
+  }
   report.push({ stage: "encoding", ok: encodingOk, detail: encodingOk ? `encoding=${declaredEncoding}` : "encoding metadata or control characters invalid" });
 
   // 4. metadata / content (normalización NFKC)
