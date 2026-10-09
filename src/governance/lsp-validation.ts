@@ -67,9 +67,10 @@ export class LspValidationAdapter {
   pushDiagnostics(file: string, version: number, diagnostics: readonly LspDiagnostic[]): void {
     const current = this.documents.get(file);
     if (!current) throw new Error(`LSP: file not open: ${file}`);
-    if (version < current.version) return; // resultado obsoleto, se descarta
     if (!Number.isInteger(version) || version < 0 || !Array.isArray(diagnostics)) throw new Error("LSP: invalid diagnostics payload");
-    this.documents.set(file, { ...current, version, diagnostics: Object.freeze([...diagnostics]), diagnosticsReceived: true });
+    if (version < current.version) return; // resultado obsoleto, se descarta
+    if (version > current.version) throw new Error("LSP_DIAGNOSTICS_VERSION_AHEAD_OF_DOCUMENT");
+    this.documents.set(file, { ...current, diagnostics: Object.freeze([...diagnostics]), diagnosticsReceived: true });
   }
 
   /** Espera diagnósticos frescos hasta el timeout. Un timeout NO implica archivo limpio. */
