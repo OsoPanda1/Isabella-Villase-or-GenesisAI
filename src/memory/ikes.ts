@@ -136,7 +136,6 @@ export class IKESEngine {
       validFrom: base.validFrom,
       validUntil: base.validUntil,
       license: base.license,
-      provenance: base.provenance,
     };
     const claimId = "clm_" + hash(identity).slice(0, 24);
     const existing = this.claims.get(claimId);
@@ -146,7 +145,7 @@ export class IKESEngine {
       evidenceIds: [...new Set([...(existing?.evidenceIds ?? []), ...base.evidenceIds])],
       epistemicState: existing?.epistemicState ?? base.epistemicState,
       temporalState: existing?.temporalState ?? base.temporalState,
-      provenance: { ...base.provenance, ...(existing?.provenance ?? {}) },
+      provenance: { ...(existing?.provenance ?? {}), ...base.provenance },
     };
     const record: KnowledgeClaim = {
       ...merged,
