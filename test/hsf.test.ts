@@ -16,6 +16,19 @@ describe("HSF", () => {
     expect(result.status).toBe("executed");
   });
 
+  it("freezes registered capability descriptors against external mutation", () => {
+    const registry = new CapabilityRegistry();
+    registry.register({
+      descriptor: { id: "stable.descriptor", version: "1.0.0", domain: "integration", description: "stable", riskTier: "LOW", requiresAuthority: true },
+      health: () => "ready",
+      execute: async () => ({ ok: true }),
+    });
+    const descriptor = registry.list()[0];
+    expect(descriptor).toBeDefined();
+    expect(Object.isFrozen(descriptor)).toBe(true);
+    expect(Object.isFrozen(registry.get("stable.descriptor").descriptor)).toBe(true);
+  });
+
   it("denies invocation without server-authenticated governance metadata", async () => {
     const registry = new CapabilityRegistry();
     registry.register({
