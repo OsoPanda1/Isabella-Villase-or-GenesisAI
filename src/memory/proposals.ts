@@ -31,7 +31,10 @@ export class MemoryProposalQueue {
   private readonly pending: PendingMemoryProposal[] = [];
   private readonly resolutions: MemoryProposalResolution[] = [];
 
-  constructor(private readonly maxPending = 500, private readonly maxResolutions = 1000) {}
+  constructor(private readonly maxPending = 500, private readonly maxResolutions = 1000) {
+    if (!Number.isSafeInteger(maxPending) || maxPending < 1) throw new Error("PROPOSAL_MAX_PENDING_INVALID");
+    if (!Number.isSafeInteger(maxResolutions) || maxResolutions < 1) throw new Error("PROPOSAL_MAX_RESOLUTIONS_INVALID");
+  }
 
   submit(input: MemoryProposalInput, now = new Date()): PendingMemoryProposal {
     const { subject, predicate, object } = input;
