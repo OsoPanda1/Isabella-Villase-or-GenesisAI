@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { CapabilityGateway, CapabilityRegistry, InMemoryMemoryFabric, KnowledgeFabric, consensus, verifyClaim } from "../src/capabilities";
+import type { CapabilityGatewayPolicy } from "../src/capabilities";
+import { IsabellaGenesisRuntime } from "../src/genesis/runtime";
 
 describe("HSF", () => {
+  it("registers canonical HSF capabilities during Genesis runtime initialization", () => {
+    const runtime = new IsabellaGenesisRuntime();
+    const ids = runtime.capabilities.list().map((capability) => capability.id);
+    expect(ids).toContain("hsf.memory.fabric");
+    expect(ids).toContain("hsf.execution.fabric");
+    expect(ids).toContain("hsf.knowledge.fabric");
+    expect(ids.length).toBeGreaterThanOrEqual(10);
+  });
+
+
   it("invokes a registered capability", async () => {
     const registry = new CapabilityRegistry();
     registry.register({
@@ -9,7 +21,8 @@ describe("HSF", () => {
       health: () => "ready",
       execute: async (input) => ({ ok: true, input }),
     });
-    const result = await new CapabilityGateway(registry).invoke("test.capability", { value: 7 }, {
+    const allowForTest: CapabilityGatewayPolicy = { authorize: async () => ({ granted: true, reason: "TEST_POLICY" }) };
+    const result = await new CapabilityGateway(registry, allowForTest).invoke("test.capability", { value: 7 }, {
       requestId: "req-1", traceId: "trace-1", principalId: "p", role: "operator", policyVersion: "test",
       metadata: { authenticated: "true", genesisGovernanceAdmitted: "true" },
     });
@@ -121,6 +134,17 @@ describe("HSF", () => {
       requestId: "req-1", traceId: "trace-1", principalId: "p", role: "operator", policyVersion: "test",
     });
     expect(result.status).toBe("rejected");
+    const registered = new CapabilityRegistry();
+    registered.register({
+      descriptor: { id: "registered", version: "1.0.0", domain: "integration", description: "test", riskTier: "LOW", requiresAuthority: true },
+      health: () => "ready",
+      execute: async () => "should not run",
+    });
+    const denied = await new CapabilityGateway(registered).invoke("registered", {}, {
+      requestId: "req-2", traceId: "trace-2", principalId: "p", role: "operator", policyVersion: "test",
+    });
+    expect(denied.status).toBe("rejected");
+    expect(denied.error).toBe("HSF_AUTHORIZATION_POLICY_NOT_CONFIGURED");
     const memory = new InMemoryMemoryFabric();
     const a = memory.write({ text: "Genesis knowledge", namespace: "genesis", relations: [] });
     const b = memory.write({ text: "Genesis knowledge", namespace: "genesis", relations: [] });

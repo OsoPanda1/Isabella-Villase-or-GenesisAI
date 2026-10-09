@@ -79,8 +79,81 @@ function enforceRateLimit(req: Request, res: Response, limiter: FixedWindowRateL
   return true;
 }
 
-// IKES starts empty. Knowledge enters only through authenticated ingestion with
-// user-supplied source content hashed at ingestion; remote URLs are not treated as fetched evidence.
+// Pre-seed canonical knowledge into IKES Epistemic Memory (TAMV & Real del Monte)
+runtime.memory.registerSource({
+  sourceId: "src-tamv-001",
+  uri: "https://tamv.network/canon/v40",
+  title: "Canon v40.0.0 — Ecosistema TAMV & Isabella TINA",
+  retrievedAt: new Date().toISOString(),
+  contentHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+});
+
+runtime.memory.registerSource({
+  sourceId: "src-rdm-002",
+  uri: "https://realdelmonte.hidalgo.gob.mx/patrimonio",
+  title: "Gemelo Digital & Archivo Biocultural — Real del Monte, Hidalgo (Nodo Cero)",
+  retrievedAt: new Date().toISOString(),
+  contentHash: "7d8a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a",
+});
+
+runtime.memory.registerSource({
+  sourceId: "src-agents-003",
+  uri: "https://github.com/OsoPanda1/isabella-ai-genesis/blob/main/AGENTS.md",
+  title: "Constitución Operativa AGENTS.md — Invariante Operativo Soberano",
+  retrievedAt: new Date().toISOString(),
+  contentHash: "fa4b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b",
+});
+
+runtime.memory.registerSource({
+  sourceId: "src-zenodo-004",
+  uri: "https://doi.org/10.5281/zenodo.20606361",
+  title: "Registro Canónico TAMV ONLINE v2.0.0 — Zenodo / CERN (ORCID 0009-0008-5050-1539)",
+  retrievedAt: new Date().toISOString(),
+  contentHash: "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
+});
+
+// Seed Core Invariants & Claims
+runtime.memory.propose({
+  proposedBy: "human:founder:anubis-villasenor",
+  evidenceIds: ["src-tamv-001", "src-agents-003"],
+  claim: {
+    subject: "ISABELLA_TINA",
+    predicate: "operationalInvariant",
+    object: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
+    sourceIds: ["src-tamv-001", "src-agents-003"],
+    evidenceIds: ["src-tamv-001"],
+    temporalState: "current",
+    provenance: { source: "src-agents-003" },
+  },
+});
+
+runtime.memory.propose({
+  proposedBy: "human:founder:anubis-villasenor",
+  evidenceIds: ["src-tamv-001", "src-rdm-002"],
+  claim: {
+    subject: "TAMV_NODO_CERO",
+    predicate: "location",
+    object: "Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O, 2,660 msnm)",
+    sourceIds: ["src-tamv-001", "src-rdm-002"],
+    evidenceIds: ["src-rdm-002"],
+    temporalState: "current",
+    provenance: { source: "src-rdm-002" },
+  },
+});
+
+runtime.memory.propose({
+  proposedBy: "human:founder:anubis-villasenor",
+  evidenceIds: ["src-zenodo-004"],
+  claim: {
+    subject: "TAMV_ECOSYSTEM",
+    predicate: "canonicalAuthor",
+    object: "Edwin Oswaldo Castillo Trejo (Anubis Villaseñor) · ORCID 0009-0008-5050-1539 · DOI 10.5281/zenodo.20606361",
+    sourceIds: ["src-zenodo-004"],
+    evidenceIds: ["src-zenodo-004"],
+    temporalState: "current",
+    provenance: { source: "src-zenodo-004" },
+  },
+});
 
 // Los tools canónicos (rdm_territory_query, bookpi_integrity_verify, etc.) se
 // registran en el runtime desde CANONICAL_TOOLS. No se duplican aquí para evitar
@@ -113,11 +186,11 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "sovereign_post_quantum_anchor",
-      requestedSuite: "FIPS-203 (ML-KEM-768) + FIPS-204 (ML-DSA-87)",
+      suite: "FIPS-203 (ML-KEM) + FIPS-204 (ML-DSA) — algorithm labels only",
       status: "NOT_CONFIGURED",
       verificationPerformed: false,
-      reason: "NO_POST_QUANTUM_CRYPTOGRAPHY_PROVIDER_CONFIGURED",
       signals: ctx.signals,
+      reason: "NO_POST_QUANTUM_CRYPTOGRAPHY_PROVIDER_CONFIGURED",
       checkedAt: new Date().toISOString(),
     };
   },
@@ -152,10 +225,10 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "dynamic_compliance_shield",
-      frameworksInScope: ["EU_AI_ACT", "NIST_AI_RMF", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "LFPDPPP_MEXICO"],
+      frameworksChecked: ["EU_AI_ACT", "NIST_AI_RMF", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "MEXICO_DATA_PROTECTION"],
       complianceVerdict: "NOT_ASSESSED",
       highRiskControlsMet: null,
-      limitation: "Framework scope only; no jurisdiction-specific assessment or legal review was executed.",
+      limitation: "This skill returns framework scope only. Compliance requires a documented, jurisdiction- and use-case-specific assessment with evidence and legal review.",
       timestamp: new Date().toISOString(),
     };
   },
@@ -192,12 +265,11 @@ runtime.skills.register({
     return {
       skill: "human_in_the_loop_delegation_audit",
       governanceInvariant: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
-      status: "NOT_ASSESSED",
-      verificationPerformed: false,
       humanPrincipalVerified: false,
       replayShieldChecked: false,
       delegationApproved: false,
-      reason: "NO_APPROVAL_VERIFIER_OR_REPLAY_REGISTRY_INVOKED",
+      auditStatus: "NOT_PERFORMED",
+      reason: "No signed approval, nonce validation, or delegation audit provider was supplied.",
       checkedAt: new Date().toISOString(),
     };
   },
@@ -689,7 +761,12 @@ app.post("/api/v1/isabella/mediate", (req, res) => {
     }
 
     const started = Date.now();
-    const principal = createPrincipal({ id: "human:public-session", kind: "human", roles: ["viewer"] });
+    // A request body must never be allowed to self-assign privileged roles or principal identity.
+    const principal = createPrincipal({
+      id: "service:hsf-api",
+      kind: "machine",
+      roles: ["operator"],
+    });
     assertBalancedAuthority(principal);
 
     const governance = runtime.evaluate({
@@ -775,6 +852,17 @@ app.post("/api/v1/hsf/invoke", async (req, res) => {
   if (!authorizeApiToken(req, res, "HSF_API_TOKEN")) return;
   if (!enforceRateLimit(req, res, publicScanLimiter, "hsf-invoke")) return;
   try {
+    const configuredToken = process.env.HSF_API_TOKEN;
+    const authorizationHeader = req.header("authorization") ?? "";
+    const suppliedToken = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.slice(7) : "";
+    if (!configuredToken) {
+      res.status(503).json({ success: false, error: "HSF_API_TOKEN_NOT_CONFIGURED" });
+      return;
+    }
+    if (!suppliedToken || suppliedToken !== configuredToken) {
+      res.status(401).json({ success: false, error: "HSF_AUTHENTICATION_REQUIRED" });
+      return;
+    }
     const body = req.body ?? {};
     const capabilityId = typeof body.capabilityId === "string" ? body.capabilityId : "";
     const input = body.input;

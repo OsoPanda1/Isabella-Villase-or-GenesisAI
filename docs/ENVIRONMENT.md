@@ -23,10 +23,19 @@ Los tokens de servicio son un límite de servicio, no sustituyen una integració
 
 Usa proyectos separados por entorno, mínimo privilegio, migraciones revisadas y pruebas de RLS. Sin esquema y políticas verificados, el sistema no debe presentar datos de producción.
 
+## Inventario Atlas en GitHub (opcional)
+
+- `GITHUB_OWNER`
+- `ATLAS_READ_TOKEN`: token de lectura opcional para inventario de repositorios privados autorizados.
+- `INCLUDE_FORKS`: por defecto `false`.
+- `MAX_REPOS`: por defecto `500`.
+
+Usa el mínimo de permisos de repositorio necesarios. El `GITHUB_TOKEN` del workflow es para escritura en el repositorio actual; no reutilices un token personal amplio para publicar.
+
 ## Puente cuántico opcional
 
 - `PENNYLANE_BRIDGE_ENDPOINT`
-- `PENNYLANE_BRIDGE_TIMEOUT_MS`
+- `PENNYLANE_BRIDGE_TIMEOUT_MS`: por defecto 5000 ms en el puente TypeScript.
 
 Una URL configurada no demuestra que el proveedor esté sano ni que exista un QPU conectado. Sin endpoint o backend válido, la ejecución debe permanecer como no configurada/no disponible.
 
@@ -37,10 +46,10 @@ Variables que usan módulos existentes según configuración:
 - `GEMINI_API_KEY`
 - `MODEL_API_KEY`
 - `INFERENCE_API_KEY`
-- `ISABELLA_APPROVAL_KEY_ID`: identifier for the signing key.
-- `ISABELLA_APPROVAL_TRUSTED_APPROVER_ID`: exact authenticated human principal ID bound to that trusted signing key.
-- `ISABELLA_APPROVAL_TRUSTED_KEY_ID`: key ID accepted by the verifier; must match the approved public key.
-- `ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM`: separately provisioned Ed25519 public key used to verify approvals. The public key embedded in an approval is not a trust anchor.
+- `ISABELLA_APPROVAL_KEY_ID`: identificador de la clave de firma.
+- `ISABELLA_APPROVAL_TRUSTED_APPROVER_ID`: principal humano autenticado exacto vinculado a la clave de firma confiable.
+- `ISABELLA_APPROVAL_TRUSTED_KEY_ID`: key ID aceptado por el verificador; debe coincidir con la clave pública aprobada.
+- `ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM`: clave pública Ed25519 aprovisionada por separado para verificar aprobaciones. La clave pública embebida en una aprobación no es un ancla de confianza.
 - `ISABELLA_APPROVAL_PRIVATE_KEY_PEM`
 - `BOOKPI_INTEGRITY_SECRET`
 
