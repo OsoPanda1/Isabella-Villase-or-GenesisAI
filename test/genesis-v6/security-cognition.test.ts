@@ -176,7 +176,7 @@ describe("Genesis V6 security and cognition", () => {
       claim: {
         subject: "TAMV", predicate: "status", object: "active",
         sourceIds: ["s-two"], evidenceIds: ["s-two"], temporalState: "current",
-        provenance: { source: "canonical" },
+        provenance: { source: "different-source" },
       },
     });
     expect(reproposed.claimId).toBe(claim.claimId);
