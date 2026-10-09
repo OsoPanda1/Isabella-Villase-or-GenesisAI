@@ -6,7 +6,7 @@ import { issueHumanApproval, verifyHumanApproval, createApprovalReplayRegistry }
 import { callGate, createCapabilityGate } from "../../src/crown/capability";
 import { inspectAegis } from "../../src/security/aegis";
 import { planExecution } from "../../src/intelligence/adaptive-router";
-import { IKESEngine, hashSourceContent } from "../../src/memory/ikes";
+import { IKESEngine, hashSourceContent, verifyKnowledgeClaimIntegrity } from "../../src/memory/ikes";
 import { createEvidence, canPromoteToVerified } from "../../src/evolution/evidence";
 import { generateControls } from "../../src/evolution/catalog";
 
@@ -72,6 +72,7 @@ describe("Genesis V6 security and cognition", () => {
       },
     });
     expect(claim.epistemicState).toBe("E1_SOURCE_FOUND");
+    expect(verifyKnowledgeClaimIntegrity(claim)).toBe(true);
     expect(ikes.retrieve("TAMV")).toHaveLength(1);
   });
 
@@ -138,6 +139,7 @@ describe("Genesis V6 security and cognition", () => {
     expect(() => ikes.corroborate(claim.claimId, ["s-one"])).toThrow(/IKES_CORROBORATION_REQUIRES_NEW_EVIDENCE/);
     const corroborated = ikes.corroborate(claim.claimId, ["s-two"]);
     expect(corroborated.epistemicState).toBe("E2_CORROBORATED");
+    expect(verifyKnowledgeClaimIntegrity(corroborated)).toBe(true);
     const reproposed = ikes.propose({
       proposedBy: "human:h1",
       evidenceIds: ["s-two"],
@@ -149,10 +151,12 @@ describe("Genesis V6 security and cognition", () => {
     });
     expect(reproposed.claimId).toBe(claim.claimId);
     expect(reproposed.epistemicState).toBe("E2_CORROBORATED");
+    expect(verifyKnowledgeClaimIntegrity(reproposed)).toBe(true);
     expect(reproposed.evidenceIds).toEqual(expect.arrayContaining(["s-one", "s-two"]));
 
     const deprecated = ikes.deprecate(claim.claimId);
     expect(deprecated.epistemicState).toBe("DP_DEPRECATED");
+    expect(verifyKnowledgeClaimIntegrity(deprecated)).toBe(true);
     expect(() => ikes.corroborate(claim.claimId, ["s-one"])).toThrow(/IKES_CLAIM_STATE_BLOCKS_CORROBORATION/);
     expect(ikes.retrieve("TAMV")).toHaveLength(0);
     expect(ikes.propose({
