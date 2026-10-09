@@ -902,7 +902,9 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
 
   res.json({
     input,
-    decision: isBlocked ? "BLOCK" : "NO_PATTERN_MATCH",
+    decision: isBlocked ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+    patternMatchDetected: isBlocked,
+    actionBlocked: false,
     authorizationGranted: false,
     assessmentMode: "HEURISTIC_PATTERN_SCAN",
     blockadeEvaluation: {
@@ -1969,7 +1971,7 @@ app.get("/", (_req, res) => {
           <div>
             <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-amber-400">👑</span>
-              Red CROWN — Topología Pentanodal y Nodos Complementarios (12 Nodos Soberanos)
+              Red CROWN — Topología lógica declarada (12 nodos, estado operativo no verificado)
             </h2>
             <p class="text-xs text-slate-400 mt-0.5">Arquitectura de gobernanza distribuida en 7 Federaciones (FED-1 a FED-7)</p>
           </div>
@@ -2101,25 +2103,25 @@ app.get("/", (_req, res) => {
         <div class="pb-3 border-b border-white/[0.08]">
           <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
             <span class="text-rose-500">🛡️</span>
-            Triple Blockade — Barrera de Seguridad Zero Trust
+            Escáner heurístico Triple Blockade (no es una barrera de ejecución)
           </h2>
-          <p class="text-xs text-slate-400 mt-0.5">Tres niveles de salvaguarda constitucional, semántica y de comportamiento</p>
+          <p class="text-xs text-slate-400 mt-0.5">Tres familias de patrones heurísticos; no sustituyen controles de autorización</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 1: Ontológico</div>
-            <p class="text-[11px] text-slate-300 font-editorial italic">Rechazo tajante de autonomía no autorizada y protección del Invariante Operativo.</p>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Patrones de texto para detectar solicitudes de bypass; no bloquea acciones por sí solo.</p>
             <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 2: Semántico (Prompt Guard)</div>
-            <p class="text-[11px] text-slate-300 font-editorial italic">Protección contra 10 familias de ataque (jailbreaks, prompt injection, evasión).</p>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Reglas para algunas cadenas de jailbreak/prompt injection; cobertura incompleta y no validada.</p>
             <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 3: Comportamental</div>
-            <p class="text-[11px] text-slate-300 font-editorial italic">Supervisión del output: rechazo de certezas falsas y preservación de escala E0–E6.</p>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Heurísticas de salida; no verifican verdad factual ni preservan automáticamente la escala E0–E6.</p>
             <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
         </div>
@@ -2823,7 +2825,7 @@ app.get("/", (_req, res) => {
           </div>
 
           <div class="flex items-center gap-3">
-            <span class="text-[10px] font-mono text-slate-400">\${(durationMs / 1000).toFixed(2)}s · </span>
+            <span class="text-[10px] font-mono text-slate-400">\${(durationMs / 1000).toFixed(2)}s</span>
           </div>
         </div>
 
@@ -2855,7 +2857,7 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">1</span>
                     <span class="truncate font-semibold">doi.org/10.5281/zenodo.20606361</span>
                   </div>
-                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">E0 NOT FETCHED</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Referencia declarada: registro Zenodo
@@ -3120,7 +3122,7 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         resContainer.innerHTML = \`
-          <span class="\${data.decision === 'BLOCK' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}">
+          <span class="\${data.decision === 'PATTERN_MATCH' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}">
             \${data.decision === 'BLOCK' ? 'BLOQUEADO'  : 'SIN PATRÓN DETECTADO (NO ES AUTORIZACIÓN)'}
           </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
         \`;
