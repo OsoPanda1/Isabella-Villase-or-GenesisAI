@@ -164,17 +164,29 @@ export class BoundedSemaphore extends Semaphore {
   }
 }
 
-/** Condition: espera hasta que un predicado se cumpla, con timeout. */
+/** Condition: los waiters se retiran al notificar o al agotar su ventana de polling. */
 export class Condition {
   private readonly waiters: Array<() => void> = [];
 
   async waitFor(predicate: () => boolean, timeoutMs = 5000): Promise<void> {
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 0) throw new Error("SYNC: condition timeout must be >= 0");
     const deadline = Date.now() + timeoutMs;
     while (!predicate()) {
-      if (Date.now() >= deadline) throw new Error("SYNC: condition wait timeout");
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new Error("SYNC: condition wait timeout");
       await new Promise<void>((resolve) => {
-        this.waiters.push(resolve);
-        setTimeout(resolve, 5);
+        let settled = false;
+        let timer: ReturnType<typeof setTimeout>;
+        const waiter = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          const index = this.waiters.indexOf(waiter);
+          if (index >= 0) this.waiters.splice(index, 1);
+          resolve();
+        };
+        timer = setTimeout(waiter, Math.min(5, remaining));
+        this.waiters.push(waiter);
       });
     }
   }
@@ -185,7 +197,7 @@ export class Condition {
   }
 }
 
-/** Event: señal de un solo disparo. */
+/** Event: señal de un solo disparo con timeout y cleanup de waiters. */
 export class Event {
   private signalled = false;
   private readonly waiters: Array<() => void> = [];
@@ -201,14 +213,29 @@ export class Event {
 
   async wait(timeoutMs = 5000): Promise<void> {
     if (this.signalled) return;
-    const deadline = Date.now() + timeoutMs;
-    while (!this.signalled) {
-      if (Date.now() >= deadline) throw new Error("SYNC: event wait timeout");
-      await new Promise<void>((resolve) => {
-        this.waiters.push(resolve);
-        setTimeout(resolve, 5);
-      });
-    }
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 0) throw new Error("SYNC: event timeout must be >= 0");
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout>;
+      const remove = (waiter: () => void) => {
+        const index = this.waiters.indexOf(waiter);
+        if (index >= 0) this.waiters.splice(index, 1);
+      };
+      const waiter = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        remove(waiter);
+        resolve();
+      };
+      timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        remove(waiter);
+        reject(new Error("SYNC: event wait timeout"));
+      }, timeoutMs);
+      this.waiters.push(waiter);
+    });
   }
 
   private notifyAll(): void {
