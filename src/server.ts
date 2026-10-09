@@ -1899,7 +1899,7 @@ app.get("/", (_req, res) => {
               </div>
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 3 (Comportamental):</span>
-                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+                <span class="text-amber-300 font-semibold">HEURISTIC ONLY</span>
               </div>
             </div>
 
@@ -2119,7 +2119,7 @@ app.get("/", (_req, res) => {
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 3: Comportamental</div>
             <p class="text-[11px] text-slate-300 font-editorial italic">Supervisión del output: rechazo de certezas falsas y preservación de escala E0–E6.</p>
-            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
         </div>
 
