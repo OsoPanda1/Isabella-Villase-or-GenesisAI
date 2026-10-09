@@ -376,7 +376,7 @@ ISA-374,Testing / verification / evidence,P1,BLOCKED_ENVIRONMENT,Run unit suite,
 ISA-375,Testing / verification / evidence,P0,BLOCKED_ENVIRONMENT,Run security suite,INDIRECTO,package.json,,Suite de seguridad: no existe script; solo typecheck/test/build en package.json.
 ISA-376,Testing / verification / evidence,P1,BLOCKED_ENVIRONMENT,Run integration suite,INDIRECTO,package.json,,
 ISA-377,Testing / verification / evidence,P1,BLOCKED_ENVIRONMENT,Run build,INDIRECTO,package.json,package.json(1),
-ISA-378,Testing / verification / evidence,P0,BLOCKED_ENVIRONMENT,Run production gate,INDIRECTO,package.json,,Production gate: no existe (build roto: falta tsconfig.build.json).
+ISA-378,Testing / verification / evidence,P0,BLOCKED_ENVIRONMENT,Run production gate,INDIRECTO,package.json,,"Build gate funciona (tsconfig.build.json existe, pnpm build OK). Falta gate dedicado de evidencia de produccion/secret-scan."
 ISA-379,Testing / verification / evidence,P0,FALTA_IMPLEMENTACION,Test MoE true execution,FUERTE,,docs/spec/ISABELLA-CANON-v40-source.txt(6);README.md(6);src/genesis/runtime.ts(6);src/server.ts(6),
 ISA-380,Testing / verification / evidence,P0,FALTA_IMPLEMENTACION,Test MoE no-op prevention,FUERTE,,docs/spec/ISABELLA-CANON-v40-source.txt(7);src/server.ts(7);docs/evolution/MASTER-V5-000.md(5);README.md(5),
 ISA-381,Testing / verification / evidence,P0,FALTA_IMPLEMENTACION,Test TINA adapter execution,FUERTE,,src/server.ts(9);README.md(7);docs/evolution/AI-TO-AI-OPERATING-MANUAL.md(6);docs/evolution/STRUCTURAL-TREE-FINAL.md(6),

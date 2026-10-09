@@ -1,6 +1,6 @@
 # Reauditoría de los 500 puntos — Isabella Genesis V6
 
-- **Fecha:** 2026-10-09 · **Repo HEAD:** `06123ca` · **Fuente:** `ISABELLA-GENESIS-500-CHECKLIST` (500 ítems)
+- **Fecha:** 2026-10-09 · **Repo HEAD:** `9868c1a` · **Fuente:** `ISABELLA-GENESIS-500-CHECKLIST` (500 ítems)
 - **Dominios:** 21 · **P0:** 134 · **P1:** 303 · **P2:** 63
 
 ## 1. Método y límites
@@ -76,7 +76,7 @@
 
 ## 5. Hallazgos estructurales (lectura directa)
 
-1. **CI roto en el gate de build:** `.github/workflows/ci.yml` ejecuta `npm run build` → `tsc -p tsconfig.build.json`, y ese archivo **no existe** en el repo → el job `verify` falla (ISA-378, ISA-336).
+1. **CI mínimo y sin reproducibilidad:** build/typecheck/test sí pasan (`tsconfig.build.json` existe, `pnpm build` OK). Riesgo real: el workflow usa `npm install` sin lockfile reproducible (`--frozen-lockfile`), sin secret-scan, sin job de seguridad ni artefactos de evidencia de producción (ISA-378, ISA-336, ISA-325).
 2. **Sin MoE real:** no hay contrato experts/router/gating/top-k/weights/combine; `adaptive-router` es heurístico y `moe:` es solo prefijo de methodId (ISA-001..006).
 3. **PQC solo etiquetas:** ML-KEM/ML-DSA/SLH-DSA declarados como "algorithm labels only" (server.ts:189) y explícitamente NO implementados (triangulated-crypto.ts) (ISA-256).
 4. **Sin frontend/SDK UI:** no hay `components/`; los dominios "Frontend / UI claims" quedan sin evidencia (ISA-451..458 y afines).
@@ -108,7 +108,7 @@
 | ISA-362 | P0 | INDIRECTO | K8s secret references: ausente (no manifiestos). |
 | ISA-368 | P0 | INDIRECTO | Egress allowlist: ausente (no manifiestos). |
 | ISA-375 | P0 | INDIRECTO | Suite de seguridad: no existe script; solo typecheck/test/build en package.json. |
-| ISA-378 | P0 | INDIRECTO | Production gate: no existe (build roto: falta tsconfig.build.json). |
+| ISA-378 | P0 | INDIRECTO | Build gate funciona (tsconfig.build.json existe, pnpm build OK). Falta gate dedicado de evidencia de produccion/secret-scan. |
 | ISA-451 | P0 | INDIRECTO | UI truth MoE: no hay frontend; src/companion y src/isabella son libs backend. |
 | ISA-455 | P0 | INDIRECTO | Simulador API con auth: no hay frontend/simulador. |
 | ISA-457 | P0 | DEBIL | Frontend tenant context: ausente (no frontend). |
@@ -241,7 +241,7 @@
 ## 8. Recomendaciones priorizadas
 
 1. **P0 PQC honesto:** sustituir "labels only" por firma real verificable (p. ej. implementación propia de Ed25519 + capa de incertidumbre documentada para ML-DSA, o integración HSM) — ISA-256, ISA-246.
-2. **Reparar CI:** crear `tsconfig.build.json` (o fijar `build` a `tsc --noEmit`) para que el gate de producción deje de fallar; añadir job de tests con lockfile (`pnpm install --frozen-lockfile`) — ISA-378, ISA-336, ISA-375.
+2. **Reproducibilidad CI:** fijar lockfile (`pnpm install --frozen-lockfile`), añadir job de secret-scan y suite de seguridad, y artefactos de evidencia de producción — ISA-378, ISA-336, ISA-325, ISA-375.
 3. **MoE mínimo verificable:** contrato `MoEContract` con expert registry (hash/versión/licencia), router con logits + top-k determinista y combine ponderado con fallback; pruebas automatizadas — ISA-001..006.
 4. **Webhooks en producción:** ruta `/api/v1/connectors/...` + verify por proveedor + ttl/replay + tenant-mapping + redacción de secretos en logs — ISA-200..217.
 5. **Security hardening:** allowlist de algoritmos JWT, nonce/par en approval, sanitización de headers — ISA-159, ISA-259.
