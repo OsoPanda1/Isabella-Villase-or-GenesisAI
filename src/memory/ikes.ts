@@ -189,7 +189,7 @@ export class IKESEngine {
   deprecate(claimId: string): KnowledgeClaim {
     const claim = this.requireClaim(claimId);
     const next: KnowledgeClaim = { ...claim, temporalState: "superseded", epistemicState: "DP_DEPRECATED", version: claim.version + 1 };
-    next.contentHash = hash({ ...next, contentHash: undefined });
+    next.contentHash = claimContentHash(next);
     const frozen = freezeClaim(next);
     this.claims.set(claimId, frozen);
     return frozen;
