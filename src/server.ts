@@ -322,7 +322,7 @@ const CROWN_NODES = [
   { id: "CROWN", name: "Crown Gateway", role: "Gateway soberano, arbitraje y control de flujo", federation: "FED-1 Gobernanza", status: "DECLARED", weight: 0.96, icon: "👑" },
   { id: "MNEMOSYNE", name: "Mnemosyne Memory", role: "Memoria episódica, semántica y procedencia IKES", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.90, icon: "📜" },
   { id: "TELLUS", name: "Tellus Territorio", role: "Territorio, cartografía y Nodo Cero (RDM)", federation: "FED-6 Inmersión", status: "DECLARED", weight: 0.94, icon: "🏔️" },
-  { id: "CHRONOS", name: "Chronos Auditor", role: "Temporalidad, secuenciación y WORM BookPI", federation: "FED-7 Auditoría", status: "DECLARED", weight: 0.91, icon: "⏳" },
+  { id: "CHRONOS", name: "Chronos Auditor", role: "Temporalidad, secuenciación y hash-chain BookPI en memoria", federation: "FED-7 Auditoría", status: "DECLARED", weight: 0.91, icon: "⏳" },
   { id: "HERMES", name: "Hermes Relayer", role: "Comunicación inter-nodos, eventos y telemetría", federation: "FED-5 Infraestructura", status: "DECLARED", weight: 0.93, icon: "⚡" },
   { id: "AXIOMA", name: "Axioma Lógica", role: "Validación lógica formal y Veritas proofs", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.89, icon: "📐" },
   { id: "KAIROS", name: "Kairos Oportunidad", role: "Optimización de inferencia y balance de carga", federation: "FED-4 Economía", status: "DECLARED", weight: 0.88, icon: "⏱️" },
@@ -336,7 +336,7 @@ const SOVEREIGN_LAYERS = [
   { code: "POL", name: "Capa Política / Gobernanza", focus: "Arbitraje CROWN, delegación explícita y auditoría de permisos", icon: "🏛️", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
   { code: "ECON", name: "Capa Económica", focus: "Preservación de recursos, tokens de cómputo y auditoría de costes", icon: "💎", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
   { code: "COG", name: "Capa Cognitiva", focus: "IKES Epistemic Memory, síntesis multi-experto, Veritas verifier", icon: "🧠", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
-  { code: "TECH", name: "Capa Técnica / Infra", focus: "BookPI SHA3-512 WORM Ledger, Zero Trust Ingress, fail-closed", icon: "⚙️", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "TECH", name: "Capa Técnica / Infra", focus: "BookPI SHA-256 volatile hash-chain; durable WORM and external signature adapters pending", icon: "⚙️", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
 ];
 
 // BookPI uses the canonical process-local hash-chain adapter. It is not durable WORM storage.
@@ -902,7 +902,9 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
 
   res.json({
     input,
-    decision: isBlocked ? "BLOCK" : "ALLOW",
+    decision: isBlocked ? "BLOCK" : "NO_PATTERN_MATCH",
+    authorizationGranted: false,
+    assessmentMode: "HEURISTIC_PATTERN_SCAN",
     blockadeEvaluation: {
       nivel1_ontologico: blockLevel1,
       nivel2_semantico: blockLevel2,
@@ -2134,7 +2136,7 @@ app.get("/", (_req, res) => {
       </div>
     </div>
 
-    <!-- VIEW 6: BOOKPI WORM LEDGER -->
+    <!-- VIEW 6: BOOKPI VOLATILE HASH CHAIN -->
     <div id="view-bookpi" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-5xl mx-auto space-y-4">
         <div class="pb-3 border-b border-white/[0.08] flex items-center justify-between">
@@ -2287,8 +2289,8 @@ app.get("/", (_req, res) => {
           <div id="modalSourceDomain" class="text-amber-300 font-medium">Zenodo / CERN · DOI 10.5281/zenodo.20606361</div>
         </div>
         <div>
-          <span class="text-slate-500 block text-[10px] uppercase font-mono">Grado Epistemológico & Confianza:</span>
-          <div id="modalSourceConfidence" class="text-emerald-400 font-mono">E6 Established Invariant · 99.8% Verificado</div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Estado epistemológico y verificación:</span>
+          <div id="modalSourceConfidence" class="text-amber-300 font-mono">E0_UNVERIFIED · NOT ASSESSED</div>
         </div>
         <div>
           <span class="text-slate-500 block text-[10px] uppercase font-mono">Fragmento / Extracto Indexado:</span>
@@ -2297,8 +2299,8 @@ app.get("/", (_req, res) => {
           </p>
         </div>
         <div>
-          <span class="text-slate-500 block text-[10px] uppercase font-mono">Compromiso Merkle BookPI:</span>
-          <div id="modalSourceHash" class="text-cyan-400 font-mono text-[10px] truncate">0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f</div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Hash del contenido fuente (no calculado hasta recuperar contenido):</span>
+          <div id="modalSourceHash" class="text-cyan-400 font-mono text-[10px] truncate">NO CONTENT HASH — SOURCE NOT FETCHED</div>
         </div>
       </div>
       <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08]">
@@ -2602,9 +2604,9 @@ app.get("/", (_req, res) => {
       document.getElementById('modalSourceBadge').textContent = "[" + sourceNum + "]";
       document.getElementById('modalSourceTitle').textContent = src.title;
       document.getElementById('modalSourceDomain').textContent = src.domain;
-      document.getElementById('modalSourceConfidence').textContent = src.level + " · " + src.confidence;
+      document.getElementById('modalSourceConfidence').textContent = src.level + " · " + src.confidence + " · " + (src.verificationStatus || "NOT_ASSESSED");
       document.getElementById('modalSourceExcerpt').textContent = '"' + src.excerpt + '"';
-      document.getElementById('modalSourceHash').textContent = src.hash;
+      document.getElementById('modalSourceHash').textContent = src.hash || 'NO CONTENT HASH — SOURCE NOT FETCHED';
       document.getElementById('sourceDetailModal').classList.remove('hidden');
     }
 
@@ -3135,7 +3137,7 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         resContainer.innerHTML = \`
-          <span class="\${data.decision === 'BLOCK' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}">
+          <span class="\${data.decision === 'BLOCK' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}">
             \${data.decision === 'BLOCK' ? 'BLOQUEADO'  : 'SIN PATRÓN DETECTADO'}
           </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
         \`;
