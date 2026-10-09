@@ -10,7 +10,7 @@ import { GENESIS_EXPERTS, EXPERT_REGISTRY } from "./cognition/experts";
 import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
 import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
-import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
+import { LitleTrustFabric, parseAny, toCanonical, verifyEvidenceChain, verifyCertificate } from "./litle";
 import { bookPiSecret } from "./security/secrets";
 import { verifyBearerToken } from "./security/api-token";
 import { FixedWindowRateLimiter } from "./security/rate-limit";
@@ -3469,7 +3469,15 @@ app.post("/api/v1/litle/attest", (req, res) => {
       dimensions: body.dimensions,
       aiAssisted: Boolean(body.aiAssisted),
     });
-    res.json({ success: true, attestation: result.attestation, certificate: result.certificate, evidenceRoot: result.evidenceChain.rootHash, profile: result.profile });
+    res.status(201).json({
+      success: true,
+      status: "ATTESTATION_ISSUED_NOT_INDEPENDENTLY_VERIFIED",
+      verificationScope: "server-generated local HMAC plus structural evidence graph; original source bytes and scientific claims are not independently verified",
+      attestation: result.attestation,
+      certificate: result.certificate,
+      evidenceRoot: result.evidenceChain.rootHash,
+      profile: result.profile,
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
@@ -3479,24 +3487,39 @@ app.post("/api/v1/litle/verify", (req, res) => {
   if (!enforceRateLimit(req, res, publicScanLimiter, "litle-verify")) return;
   try {
     const body = req.body ?? {};
-    if (!body.certificate) {
-      res.status(400).json({ success: false, error: "certificate es requerido" });
+    if (!body.certificate || typeof body.certificate !== "object") {
+      res.status(400).json({ success: false, error: "CERTIFICATE_OBJECT_REQUIRED" });
       return;
     }
     const certificateValid = verifyCertificate(body.certificate, bookPiSecret());
     const evidenceValid = body.evidenceChain ? verifyEvidenceChain(body.evidenceChain) : null;
-    const id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
-    const valid = certificateValid && (evidenceValid === null || evidenceValid === true);
+    let id = null;
+    try {
+      id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
+    } catch {
+      id = null;
+    }
+    const idMatchesCertificate = Boolean(id && toCanonical(id) === body.certificate.litleId);
+    const evidenceRootMatches = body.evidenceChain
+      ? evidenceValid === true && body.evidenceChain.rootHash === body.certificate.evidenceRoot
+      : null;
+    const valid = certificateValid && idMatchesCertificate &&
+      (evidenceValid === null || (evidenceValid === true && evidenceRootMatches === true));
+    const status = !certificateValid || !idMatchesCertificate || evidenceValid === false || evidenceRootMatches === false
+      ? "INVALID"
+      : evidenceValid === null ? "CERTIFICATE_VALID_EVIDENCE_NOT_SUPPLIED" : "CERTIFICATE_AND_CHAIN_VALID";
     res.status(valid ? 200 : 422).json({
       success: valid,
-      status: valid ? "VERIFIED_WITH_LOCAL_HMAC" : "INVALID",
+      status,
       certificateValid,
+      idMatchesCertificate,
       evidenceValid,
-      verificationScope: "local HMAC and supplied evidence-chain structure only; not third-party identity or legal certification",
+      evidenceRootMatches,
+      verificationScope: "local HMAC and supplied metadata-chain root only; original source bytes, identity ownership and scientific truth are not independently verified",
       id,
     });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  } catch {
+    res.status(400).json({ success: false, error: "LITLE_VERIFICATION_INPUT_INVALID" });
   }
 });
 
