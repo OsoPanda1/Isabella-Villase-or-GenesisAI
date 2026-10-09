@@ -555,6 +555,7 @@ app.post("/api/v1/cognition/route", async (req, res) => {
     const body = req.body ?? {};
     if (body.modelEngine === "gemini" && !enforceRateLimit(req, res, publicModelLimiter, "public-model")) return;
     const input = typeof body.input === "string" ? body.input.trim() : "";
+    const focusLens = ["territorial", "epistemic", "security", "governance"].includes(body.focusLens) ? body.focusLens : "general";
     if (input.length > 20_000) {
       res.status(413).json({ success: false, error: "COGNITIVE_INPUT_SIZE_LIMIT_EXCEEDED" });
       return;
@@ -602,7 +603,7 @@ app.post("/api/v1/cognition/route", async (req, res) => {
     let generativeNarrative: string | null = null;
     if (decision.admitted && genAi && body.modelEngine === "gemini") {
       try {
-        const sysPrompt = `Eres Isabella Villaseñor GenesisAI, un runtime de IA gobernado. Mantén la separación entre capacidad, autoridad, ejecución, evidencia, aprendizaje y producción. Distingue hechos, inferencias y datos no verificados. No afirmes certificación, ejecución o verificación sin evidencia.`;
+        const sysPrompt = `Eres Isabella Villaseñor GenesisAI, un runtime de IA gobernado. Mantén la separación entre capacidad, autoridad, ejecución, evidencia, aprendizaje y producción. Distingue hechos, inferencias y datos no verificados. No afirmes certificación, ejecución o verificación sin evidencia. Lente solicitado: ${focusLens}. El lente es una preferencia de respuesta y no concede acceso a memoria privada.`;
         const resp = await genAi.models.generateContent({
           model: "gemini-2.5-flash",
           contents: `${sysPrompt}\n\nSolicitud del usuario:\n${input}`,
@@ -2786,7 +2787,7 @@ app.get("/", (_req, res) => {
             methodId,
             action: isDeleteAction ? "data:delete" : "memory:recall",
             resource: isDeleteAction ? "records" : "memory",
-            memoryQuery: focusLens === 'territorial' ? "Real del Monte" : "TAMV",
+            focusLens,
             modelEngine
           })
         });
