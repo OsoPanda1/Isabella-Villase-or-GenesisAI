@@ -131,3 +131,25 @@ npm run build
 ```
 
 No fusionar hasta revisar los resultados reales del SHA final y resolver cualquier fallo.
+
+## Tercera pasada: integridad, autoridad y admisión — 9 de octubre de 2026
+
+### Correcciones adicionales registradas en la rama
+
+1. **Identidad de artefactos y derechos:** la huella usada para preservar documentos incorpora contenido, formato/codificación declarados, licencia y procedencia estable. Coincidencias de huellas estructurales/semánticas no se consideran prueba de duplicado verificado. El borrado automático se restringe a artefactos idénticos según esa identidad ampliada.
+2. **IKES monotónico:** el identificador de claim ya no depende del paquete de evidencia; una nueva fuente revisa la misma afirmación. Se impide la corroboración con evidencia repetida, se bloquea corroborar estados disputados/rechazados/deprecados, y la re-propuesta no rebaja el estado epistemológico. El hash de contenido usa un contrato único y puede recalcularse.
+3. **Separación preparación/commit:** prepareProposal construye una propuesta sin insertarla en la memoria canónica. /api/v1/knowledge/admit usa preparación y no confirma el claim si el pipeline no libera. La ruta mantiene policyGateGranted=false mientras no exista un motor de política independiente conectado; por tanto, la admisión canónica sigue bloqueada y debe declararse como tal.
+4. **Aprobación humana con ancla de confianza:** el verificador ya no confía en la clave pública que viene dentro del objeto de aprobación. Exige ISABELLA_APPROVAL_TRUSTED_KEY_ID, ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM e ISABELLA_APPROVAL_TRUSTED_APPROVER_ID, y la emisión exige rol admin o approver. La configuración de producción debe aprovisionarse fuera del repositorio; claves efímeras solo se generan en pruebas.
+5. **Evidencia de evolución:** el digest de un registro puede recalcularse, pero ese digest por sí solo no autentica su origen. La promoción a verified exige un verificador externo inyectado; sin él, una evidencia autoemitida con passed=true no eleva el estado.
+6. **Transparencia de archivos:** la cadena literal human_approved no prueba una aprobación real. Un archivo declarado stable permanece en draft hasta que una autoridad verificadora valide la declaración de aprobación.
+7. **Manifests:** el ID usa SHA-256 completo (64 hex), cubre los campos materiales de evidencia y la completitud exige claims, fuentes y IDs de auditoría BookPI. La excepción de estabilidad requiere verificación externa; no se admite un booleano de autorización.
+8. **Concurrencia/LSP:** Lock.release() exige el identificador del propietario. El adaptador LSP rechaza diagnósticos de una versión futura, evitando elevar un archivo a limpio con diagnósticos que no corresponden al contenido abierto.
+
+### Estado de verificación y bloqueadores que permanecen
+
+- Los cambios de código y pruebas están escritos en feature/canonical-libraries-governance; no se ha ejecutado localmente npm run typecheck, npm test ni npm run build desde esta sesión.
+- El conector de GitHub no devolvió status checks ni workflow runs para los SHA consultados. No se afirma CI verde.
+- PR #14 sigue divergente de main (18 commits detrás en la última comparación consultada) y GitHub informó mergeable=false. No fusionar ni forzar una actualización de la rama sin resolver los conflictos y revisar los archivos que cambiaron en ambos lados.
+- El verificador externo de evidencias, el motor de política de admisión, el índice durable, el almacenamiento persistente BookPI y la verificación remota de fuentes siguen sin estar conectados. Los controles deben permanecer en estado no verificado/bloqueado hasta que se integren.
+- La configuración de confianza de aprobaciones debe provisionarse en el entorno de despliegue y validarse con pruebas negativas. La configuración test-only no es una configuración productiva.
+
