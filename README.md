@@ -732,7 +732,7 @@ Pendiente:
 
 # 19. Matriz de avance
 
-Los porcentajes siguientes son una **métrica interna de madurez de implementación**, calculada por cobertura de capacidades verificables del repositorio. No son certificaciones externas.
+Los porcentajes de versiones anteriores eran estimaciones internas sin una rúbrica versionada ni evidencias por requisito. No son métricas auditadas ni certificaciones externas; véase la sección de auditoría al final.
 
 | Categoría | Avance |
 |---|---:|
@@ -1141,11 +1141,11 @@ El resultado de estos comandos debe tratarse como evidencia del commit concreto 
 
 ### Avance de implementación
 
-**≈ 60%**
+**No cuantificado con evidencia suficiente**
 
 ### Readiness productivo
 
-**≈ 43%**
+**No cuantificado con evidencia suficiente**
 
 ### Estado
 
@@ -1176,7 +1176,7 @@ La siguiente fase no consiste en agregar nombres de módulos. Consiste en conver
 
 ## Licencia / autoría
 
-Consultar los archivos de licencia y documentación canónica del repositorio antes de redistribuir componentes.
+El archivo LICENSE de este repositorio contiene MIT. Revisar también las licencias de dependencias y componentes externos antes de redistribuir.
 
 **Proyecto:** Isabella Villaseñor AI — Genesis TINA  
 **Ecosistema:** TAMV Online Network  
