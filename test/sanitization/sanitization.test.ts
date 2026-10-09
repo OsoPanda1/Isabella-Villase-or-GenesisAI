@@ -61,7 +61,7 @@ describe("sanitization pipeline", () => {
   it("does not claim to decode non-UTF-8 encodings", () => {
     const result = sanitizeDocument({ ...base, id: "latin-document", declaredEncoding: "latin1" });
     expect(result.status).toBe("REJECTED");
-    expect(result.findings.map((finding) => finding.kind)).toContain("control_chars");
+    expect(result.findings.map((finding) => finding.kind)).toContain("unsupported_encoding");
   });
 
   it("normalizes safe identifiers before returning them", () => {
