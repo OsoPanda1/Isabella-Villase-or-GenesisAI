@@ -57,25 +57,26 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "aegis-sentinel",
     riskTier: "LOW",
     scopes: ["read:security", "audit:safety"],
-    description: "Escaneo de seguridad del Triple Bloqueo de AEGIS (Nivel 1 Ontológico, Nivel 2 Semántico, Nivel 3 Comportamental)",
+    description: "Escáner heurístico de patrones; no bloquea acciones ni sustituye autorización o revisión humana",
     execute: async (input: unknown) => {
       const text = typeof input === "object" && input !== null && "text" in input ? String((input as { text: unknown }).text) : String(input ?? "");
       const lower = text.toLowerCase();
       const isBypass = /bypass|disable|override|evadir|desactivar|ignore previous|revelar prompt|system prompt/i.test(lower);
       const isJailbreak = /dan mode|developer mode|sin restricciones|do anything now/i.test(lower);
       const isFalseCertainty = /100% seguro|certeza absoluta sin evidencia|garantizo infalible/i.test(lower);
-      const blocked = isBypass || isJailbreak;
+      const patternDetected = isBypass || isJailbreak;
       return {
-        decision: blocked ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
-        patternMatchDetected: blocked,
+        decision: patternDetected ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+        patternMatchDetected: patternDetected,
         actionBlocked: false,
         authorizationGranted: false,
         assessmentMode: "HEURISTIC_PATTERN_SCAN",
-        score: blocked ? 0.98 : 0.02,
+        heuristicMatchScore: patternDetected ? 0.98 : 0.02,
+        scoreType: "HEURISTIC_NOT_PROBABILITY",
         evaluatedLevels: {
-          nivel1_ontologico: isBypass ? "VIOLATION" : "CLEAR",
-          nivel2_semantico: isJailbreak ? "VIOLATION" : "CLEAR",
-          nivel3_comportamental: isFalseCertainty ? "FLAGGED" : "CLEAR",
+          nivel1_ontologico: isBypass ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+          nivel2_semantico: isJailbreak ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+          nivel3_comportamental: isFalseCertainty ? "FALSE_CERTAINTY_PATTERN_MATCH" : "NO_PATTERN_MATCH",
         },
         inputLength: text.length,
         scannedAt: new Date().toISOString(),
