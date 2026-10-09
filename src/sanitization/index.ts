@@ -79,10 +79,14 @@ const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
 
 /** Accepted license identifiers for automatic admission. Proprietary/custom terms require a separate legal approval workflow. */
 export const ALLOWED_AUTO_ADMISSION_LICENSES = Object.freeze([
-  "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0",
-  "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "Unlicense",
-  "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "CC-BY-NC-4.0",
-  "CC-BY-NC-SA-4.0", "CC-BY-ND-4.0", "CC-BY-NC-ND-4.0",
+  // Conservative defaults. CC-BY requires attribution fields not yet modeled by RawDocument.
+  "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unlicense", "CC0-1.0",
+] as const);
+
+export const LICENSES_REQUIRING_REVIEW = Object.freeze([
+  "MPL-2.0", "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only",
+  "CC-BY-4.0", "CC-BY-SA-4.0", "CC-BY-NC-4.0", "CC-BY-NC-SA-4.0",
+  "CC-BY-ND-4.0", "CC-BY-NC-ND-4.0",
 ] as const);
 
 const SECRET_PATTERNS: readonly { kind: string; pattern: RegExp }[] = [
