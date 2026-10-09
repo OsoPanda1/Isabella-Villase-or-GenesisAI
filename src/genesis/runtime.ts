@@ -90,6 +90,7 @@ export class IsabellaGenesisRuntime {
     this.quantum = new PennyLaneBridge(quantumConfig);
     this.registerCanonicalModules();
     this.registerCanonicalProtocols();
+    this.registerHyperSkillFabric();
   }
 
   private registerCanonicalModules(): void {

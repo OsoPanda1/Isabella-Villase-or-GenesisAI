@@ -159,13 +159,11 @@ runtime.tools.register({
   description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
   execute: async (input) => {
     return {
-      status: "VERIFIED",
-      merkleRoot: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
-      unbrokenChain: true,
-      blocksValidated: 42,
-      wormRuleEnforced: true,
-      verifiedAt: new Date().toISOString(),
+      status: "NOT_VERIFIED",
+      verificationPerformed: false,
+      reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
       payload: input,
+      checkedAt: new Date().toISOString(),
     };
   },
 });
@@ -196,11 +194,12 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "sovereign_post_quantum_anchor",
-      suite: "FIPS-203 (ML-KEM-768) + FIPS-204 (ML-DSA-87)",
-      status: "ANCHORED",
+      suite: "FIPS-203 (ML-KEM) + FIPS-204 (ML-DSA) — algorithm labels only",
+      status: "NOT_CONFIGURED",
+      verificationPerformed: false,
       signals: ctx.signals,
-      commitmentHash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f",
-      anchoredAt: new Date().toISOString(),
+      reason: "NO_POST_QUANTUM_CRYPTOGRAPHY_PROVIDER_CONFIGURED",
+      checkedAt: new Date().toISOString(),
     };
   },
 });
@@ -215,10 +214,11 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "epistemic_dispute_arbiter",
-      disputeResolution: "EVALUATED_AND_ORDERED",
-      epistemicLadder: ["E0_UNVERIFIED", "E1_SOURCE_FOUND", "E2_CORROBORATED", "E6_ESTABLISHED"],
-      divergenceScore: 0.04,
-      provenanceIntegrity: "INTACT",
+      disputeResolution: "NOT_ASSESSED",
+      epistemicLadder: ["E0_UNVERIFIED", "E1_SOURCE_FOUND", "E2_CORROBORATED", "E3_ACADEMICALLY_SUPPORTED", "E4_REPRODUCIBLE", "E5_VALIDATED", "E6_ESTABLISHED"],
+      divergenceScore: null,
+      provenanceIntegrity: "NOT_VERIFIED",
+      limitation: "No dispute dataset or external provenance verifier was invoked.",
     };
   },
 });
@@ -233,9 +233,10 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "dynamic_compliance_shield",
-      frameworksChecked: ["EU_AI_ACT_RISK_GATES", "NIST_AI_RMF_1.0", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "LFPDPPP_MEXICO"],
-      complianceVerdict: "COMPLIANT",
-      highRiskControlsMet: true,
+      frameworksChecked: ["EU_AI_ACT", "NIST_AI_RMF", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "MEXICO_DATA_PROTECTION"],
+      complianceVerdict: "NOT_ASSESSED",
+      highRiskControlsMet: null,
+      limitation: "This skill returns framework scope only. Compliance requires a documented, jurisdiction- and use-case-specific assessment with evidence and legal review.",
       timestamp: new Date().toISOString(),
     };
   },
@@ -253,8 +254,10 @@ runtime.skills.register({
       skill: "territorial_digital_twin_sync",
       territory: "Real del Monte (Nodo Cero)",
       coordinates: [20.1417, -98.6722],
-      bioculturalArchiveSynced: true,
-      wormLedgerAnchor: "BOOKPI_BLOCK_SYNC_OK",
+      bioculturalArchiveSynced: false,
+      synchronizationStatus: "NOT_CONFIGURED",
+      wormLedgerAnchor: null,
+      limitation: "No live archive or BookPI synchronization adapter is configured.",
     };
   },
 });
@@ -270,10 +273,12 @@ runtime.skills.register({
     return {
       skill: "human_in_the_loop_delegation_audit",
       governanceInvariant: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
-      humanPrincipalVerified: true,
-      replayShieldChecked: true,
-      delegationApproved: true,
-      verifiedAt: new Date().toISOString(),
+      humanPrincipalVerified: false,
+      replayShieldChecked: false,
+      delegationApproved: false,
+      auditStatus: "NOT_PERFORMED",
+      reason: "No signed approval, nonce validation, or delegation audit provider was supplied.",
+      checkedAt: new Date().toISOString(),
     };
   },
 });
@@ -756,12 +761,11 @@ app.post("/api/v1/isabella/mediate", (req, res) => {
     }
 
     const started = Date.now();
+    // A request body must never be allowed to self-assign privileged roles or principal identity.
     const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles)
-        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
-        : ["operator"],
+      id: "service:hsf-api",
+      kind: "machine",
+      roles: ["operator"],
     });
     assertBalancedAuthority(principal);
 
@@ -840,6 +844,17 @@ app.get("/api/v1/hsf/status", async (_req, res) => {
 
 app.post("/api/v1/hsf/invoke", async (req, res) => {
   try {
+    const configuredToken = process.env.HSF_API_TOKEN;
+    const authorizationHeader = req.header("authorization") ?? "";
+    const suppliedToken = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.slice(7) : "";
+    if (!configuredToken) {
+      res.status(503).json({ success: false, error: "HSF_API_TOKEN_NOT_CONFIGURED" });
+      return;
+    }
+    if (!suppliedToken || suppliedToken !== configuredToken) {
+      res.status(401).json({ success: false, error: "HSF_AUTHENTICATION_REQUIRED" });
+      return;
+    }
     const body = req.body ?? {};
     const capabilityId = typeof body.capabilityId === "string" ? body.capabilityId : "";
     const input = body.input;
@@ -878,7 +893,7 @@ app.post("/api/v1/hsf/invoke", async (req, res) => {
       principalId: principal.id,
       role: principal.roles[0] ?? "operator",
       policyVersion: "genesis-hsf-v1",
-      metadata: { source: "api" },
+      metadata: { source: "api", authenticated: "true", genesisGovernanceAdmitted: "true" },
     });
     res.status(result.status === "executed" ? 200 : result.status === "rejected" ? 403 : result.status === "unavailable" ? 503 : 500)
       .json({ success: result.status === "executed", ...result, timestamp: new Date().toISOString() });

@@ -2,12 +2,14 @@
 
 > **Trusted Intelligence, Native & Adaptive** — runtime cognitivo gobernado, auditable y federable.
 
-**Repositorio:** Isabella-Villase-or-GenesisAI  
-**Rama de evolución:** `genesis-v6-sovereign-evolution`  
-**Clasificación actual:** infraestructura de runtime cognitivo gobernado / foundation pre-productivo avanzado.  
-**No es:** un modelo fundacional, una certificación de IA, una AGI ni una plataforma de producción completa.
+**Clasificación auditada (8 oct 2026):** runtime cognitivo gobernado modular, en fase preproductiva.  
+**Runtime canónico:** Isabella Villaseñor GenesisAI. Los demás componentes y repositorios se integran como módulos, protocolos, skills, adaptadores, proveedores, persistencia o infraestructura.  
+**Estado de verificación:** no se declara CI verde, despliegue productivo, certificación jurídica, cumplimiento normativo, criptografía poscuántica activa ni superioridad competitiva sin evidencia específica del commit y entorno correspondiente.
 
----
+> **Regla de veracidad:** `CONTRACT ≠ IMPLEMENTED ≠ TESTED ≠ INTEGRATED ≠ PRODUCTION ≠ CERTIFIED`. Los fixtures, simulaciones y respuestas de ejemplo deben etiquetarse como tales; nunca deben producir `VERIFIED`, `COMPLIANT`, `ANCHORED` o `SYNCED` sin verificación real.
+
+Auditoría detallada: [docs/AUDIT_GENESIS_V6_2026-10-08.md](docs/AUDIT_GENESIS_V6_2026-10-08.md).  
+Política de seguridad: [SECURITY.md](SECURITY.md).
 
 ## DIRECTIVA ARQUITECTÓNICA CANÓNICA
 
@@ -168,7 +170,7 @@ Las funciones se agrupan por capacidad. Una función descrita aquí sólo se con
 - Denegar capacidades desconocidas.
 - Mantener separación entre capacidad y autoridad.
 
-**Estado: 86% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -189,7 +191,7 @@ Funciones:
 
 La confianza heurística se etiqueta como heurística; no se presenta como probabilidad calibrada.
 
-**Estado: 86% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -220,7 +222,7 @@ Las señales críticas producen bloqueo.
 
 **Límite:** el detector actual es principalmente basado en reglas; no equivale a un sistema ML de detección adversarial completo.
 
-**Estado: 78% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -269,7 +271,7 @@ Pendiente:
 - pipeline RAG completo;
 - provenance persistente extremo a extremo.
 
-**Estado: 54% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -317,7 +319,7 @@ Tampoco están implementados todavía:
 - entrenamiento nativo;
 - MoE físico con expertos ejecutables.
 
-**Estado: 58% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -380,7 +382,7 @@ status
 
 Esto convierte una llamada de herramienta en un acto trazable.
 
-**Estado: 72% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 **Importante:** actualmente el catálogo de tools no equivale a cientos de integraciones productivas. Las herramientas deben registrarse explícitamente.
 
@@ -427,7 +429,7 @@ Una skill que exige evidencia y recibe cero señales queda bloqueada.
 
 Una skill HIGH/CRITICAL sin aprobación humana válida queda bloqueada.
 
-**Estado: 68% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -485,7 +487,7 @@ No equivale todavía a:
 - proof-carrying generation;
 - verifier fan-out distribuido.
 
-**Estado: 52% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -552,7 +554,7 @@ En este repositorio existe una implementación de BookPI orientada a eventos y c
 - anclaje externo;
 - auditoría independiente.
 
-**Estado: 62% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -592,7 +594,7 @@ Pendiente para producción:
 - resolución de conflictos entre jurisdicciones;
 - federación multi-región real.
 
-**Estado: 45% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -612,7 +614,7 @@ El lifecycle se orienta por evidencia y evita convertir hashes o metadatos en �
 
 Estados y transiciones deben mantenerse ligados a evidencia verificable.
 
-**Estado: 62% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -642,7 +644,7 @@ Pendiente:
 - trazas distribuidas;
 - almacenamiento de series temporales.
 
-**Estado: 42% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -682,7 +684,7 @@ Pendiente:
 - evaluación de modelos;
 - evaluación epistemológica a gran escala.
 
-**Estado: 48% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
@@ -715,44 +717,44 @@ Pendiente:
 - multi-region;
 - disaster recovery probado.
 
-**Estado: 40% interno.**
+**Estado: estimación histórica no auditada; revisar la matriz de evidencias.**
 
 ---
 
 # 19. Matriz de avance
 
-Los porcentajes siguientes son una **métrica interna de madurez de implementación**, calculada por cobertura de capacidades verificables del repositorio. No son certificaciones externas.
+Los porcentajes de versiones anteriores eran estimaciones internas sin una rúbrica versionada ni evidencias por requisito. No son métricas auditadas ni certificaciones externas; véase la sección de auditoría al final.
 
 | Categoría | Avance |
 |---|---:|
-| Governance / Authority | **86%** |
-| CROWN | **86%** |
-| Security / AEGIS | **78%** |
-| Identity | **76%** |
-| Tools | **72%** |
-| Skills | **68%** |
-| Evolution | **62%** |
-| BookPI | **62%** |
-| Inference | **58%** |
-| Memory / RAG | **54%** |
-| Veritas | **52%** |
-| Evaluation | **48%** |
-| Federation | **45%** |
-| Observability | **42%** |
-| Deployment | **40%** |
-| Native ML | **0%** |
-| GPU Serving | **0%** |
-| Distributed Workers | **0%** |
+| Governance / Authority | No cuantificado con evidencia suficiente |
+| CROWN | No cuantificado con evidencia suficiente |
+| Security / AEGIS | No cuantificado con evidencia suficiente |
+| Identity | No cuantificado con evidencia suficiente |
+| Tools | No cuantificado con evidencia suficiente |
+| Skills | No cuantificado con evidencia suficiente |
+| Evolution | No cuantificado con evidencia suficiente |
+| BookPI | No cuantificado con evidencia suficiente |
+| Inference | No cuantificado con evidencia suficiente |
+| Memory / RAG | No cuantificado con evidencia suficiente |
+| Veritas | No cuantificado con evidencia suficiente |
+| Evaluation | No cuantificado con evidencia suficiente |
+| Federation | No cuantificado con evidencia suficiente |
+| Observability | No cuantificado con evidencia suficiente |
+| Deployment | No cuantificado con evidencia suficiente |
+| Native ML | No cuantificado con evidencia suficiente |
+| GPU Serving | No cuantificado con evidencia suficiente |
+| Distributed Workers | No cuantificado con evidencia suficiente |
 
 ### Avance global de implementación
 
-**≈ 60%**
+**No cuantificado con evidencia suficiente**
 
 Este valor es un índice de ingeniería interno, no una medida universal.
 
 ### Readiness productivo
 
-**≈ 43%**
+**No cuantificado con evidencia suficiente**
 
 La diferencia existe porque tener código implementado no implica disponer de:
 
@@ -1105,15 +1107,17 @@ sin evidencia específica que lo demuestre.
 Requisitos:
 
 - Node.js >= 22
-- pnpm 10.22.0
+- npm
+
+Este repositorio no incluye actualmente un lockfile npm. Para reproducibilidad, debe generarse y versionarse un `package-lock.json` antes de exigir `npm ci` en CI.
 
 Ejecutar:
 
 ```bash
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm build
+npm install
+npm run typecheck
+npm test
+npm run build
 ```
 
 El resultado de estos comandos debe tratarse como evidencia del commit concreto ejecutado; este README no convierte su existencia en una afirmación de que todos los runs históricos hayan sido exitosos.
@@ -1128,11 +1132,11 @@ El resultado de estos comandos debe tratarse como evidencia del commit concreto 
 
 ### Avance de implementación
 
-**≈ 60%**
+**No cuantificado con evidencia suficiente**
 
 ### Readiness productivo
 
-**≈ 43%**
+**No cuantificado con evidencia suficiente**
 
 ### Estado
 
@@ -1163,7 +1167,7 @@ La siguiente fase no consiste en agregar nombres de módulos. Consiste en conver
 
 ## Licencia / autoría
 
-Consultar los archivos de licencia y documentación canónica del repositorio antes de redistribuir componentes.
+El archivo LICENSE de este repositorio contiene MIT. Revisar también las licencias de dependencias y componentes externos antes de redistribuir.
 
 **Proyecto:** Isabella Villaseñor AI — Genesis TINA  
 **Ecosistema:** TAMV Online Network  
@@ -1593,3 +1597,95 @@ Telemetry      → latencia/SLO/operación
  test/isabellaEngine.test.ts cubre determinismo de la evaluación heptafederada, entropía, rechazo de vectores probabilísticos inválidos, ledger y estabilidad de evaluaciones repetidas.
 
 La validación final de typecheck, suite completa y build debe hacerse mediante CI; la implementación del código no constituye evidencia de una ejecución CI exitosa.
+
+
+---
+
+# Auditoría actualizada: categoría, competencia, producción, licencia y regulación
+
+La auditoría detallada y la comparación con la revisión anterior de hoy están en [docs/AUDIT_GENESIS_V6_2026-10-08.md](docs/AUDIT_GENESIS_V6_2026-10-08.md). Los controles de divulgación de vulnerabilidades y puertas de salida están en [SECURITY.md](SECURITY.md).
+
+## Categoría emergente y competencia
+
+Isabella GenesisAI se posiciona en la categoría emergente **governed cognitive runtime / agent orchestration and evidence control plane**: una capa de runtime que pretende gobernar identidad, autorización, seguridad, herramientas, skills, inferencia, memoria epistemológica, procedencia y observabilidad alrededor de modelos externos.
+
+No es un modelo fundacional y no compite directamente como LLM con GPT, Claude, Gemini o Llama. Las familias comparables son:
+
+- [LangGraph/LangChain](https://github.com/langchain-ai/langgraph): orquestación y aplicaciones de agentes.
+- [Microsoft Semantic Kernel](https://github.com/microsoft/semantic-kernel): SDK de integración/orquestación.
+- [Microsoft AutoGen](https://github.com/microsoft/autogen): coordinación multiagente.
+- [OpenAI Agents SDK](https://github.com/openai/openai-agents-python): agentes, tools y trazas.
+- [CrewAI](https://github.com/crewAIInc/crewAI): equipos de agentes.
+- [Haystack](https://github.com/deepset-ai/haystack): pipelines RAG y búsqueda.
+- [NVIDIA NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails): guardrails.
+- [Temporal](https://github.com/temporalio/temporal): workflows durables, no un runtime cognitivo por sí solo.
+
+Esta lista es taxonómica, no un ranking. No se afirma superioridad global sin benchmarks reproducibles que midan coste, latencia, calidad, seguridad adversarial, disponibilidad, adopción y complejidad operativa con cargas comparables.
+
+## Porcentajes de avance: qué se puede afirmar
+
+Los porcentajes anteriores de implementación global y readiness productivo no están respaldados por una rúbrica versionada con denominador, pesos y evidencias por requisito. Por ello no se deben publicar como porcentajes “reales” auditados. La revisión estática no demuestra que un despliegue funciona, que los backups se restauran, que los SLO se cumplen ni que el CI del commit actual está verde.
+
+Para producir una cifra verificable, registrar por requisito: ID, peso, estado, evidencia enlazada al SHA, criterio de aceptación, fecha y responsable.
+
+- **Implementación:** porcentaje de requisitos ponderados que tienen código ejecutable y pruebas asociadas.
+- **Preparación productiva:** porcentaje de puertas operativas demostradas, incluyendo CI, seguridad, persistencia, backups/restores, observabilidad, carga, rollback, privacidad y respuesta a incidentes.
+- **Despliegue:** porcentaje de puertas verificadas en un entorno desplegado y reproducible.
+
+Hasta tener esa evidencia, el estado es **preproducción** y el porcentaje se marca **no cuantificado con evidencia suficiente**, no 100% ni un número arbitrario.
+
+## Licencia híbrida por zonas
+
+El archivo [LICENSE](LICENSE) contiene MIT. En general, MIT permite usar, modificar, distribuir y sublicenciar el código cubierto bajo sus condiciones. La etiqueta `private: true` de `package.json` no revoca una licencia MIT publicada. No debe afirmarse propiedad exclusiva sobre código que ya se distribuyó bajo MIT o bajo licencias de terceros.
+
+Zonificación recomendada:
+
+| Zona | Activos | Controles |
+|---|---|---|
+| Z0 Pública | SDKs, documentación y módulos expresamente publicados | Licencia por componente, avisos, SBOM y escaneo de secretos |
+| Z1 Interna | Roadmap, evaluaciones, experimentos y módulos no publicados | Repositorios privados, MFA/SSO, acceso mínimo y ramas protegidas |
+| Z2 IP restringida | Know-how, políticas internas, algoritmos no publicados y reglas de seguridad | Acceso por necesidad, registro de acceso y revisión antes de liberar |
+| Z3 Datos críticos | Datos personales, claves, datasets confidenciales y datos de clientes | No guardar en Git; secret manager, cifrado, minimización, retención/borrado y DLP |
+| Z4 Proveedores externos | Modelos, SDKs, datasets y backends externos | Cumplir licencias/terms de cada proveedor; no relicenciar código ajeno |
+
+Una licencia híbrida real requiere inventario de autoría, contribuciones, dependencias y versiones ya publicadas, más revisión jurídica. Los datos no quedan protegidos por la licencia del código: requieren controles técnicos, organizativos y contractuales propios.
+
+## Alineación normativa y regulatoria
+
+Esta lista es un **mapa de evaluación**, no una certificación ni un dictamen de cumplimiento. La aplicabilidad depende del uso, sector, datos, jurisdicción y rol de cada operador.
+
+| Organismo/jurisdicción | Marcos a evaluar |
+|---|---|
+| Unión Europea | [AI Act](https://artificial-intelligence-act.ec.europa.eu/), RGPD, NIS2 y normativa sectorial |
+| Estados Unidos | [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [NIST GenAI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence), leyes estatales/federales y sectoriales |
+| México | LFPDPPP, LGPDPPSO cuando aplique, propiedad intelectual, consumidor, laboral y normativa sectorial; seguir iniciativas de IA sin confundirlas con leyes promulgadas |
+| Latinoamérica | LGPD de Brasil y legislación por país; mantener una matriz jurisdiccional, no una única “ley LATAM” |
+| UNESCO | [Recomendación sobre la Ética de la IA](https://www.unesco.org/en/artificial-intelligence/recommendation-ethics) |
+| ONU | [Global Digital Compact y gobernanza de IA](https://www.un.org/en/global-issues/artificial-intelligence) |
+| WEF | Informes e iniciativas de gobernanza multi-actor; no equivalen a legislación |
+| ISO/IEC | ISO/IEC 42001 y 23894; no afirmar certificación sin auditoría formal |
+| OECD | Principios y recomendaciones de IA, según la fuerza del instrumento concreto |
+| Consejo de Europa | Convenio Marco sobre IA y derechos humanos, sujeto a ratificación, entrada en vigor y alcance territorial |
+
+El AI Act europeo tiene aplicación escalonada y su calendario puede ser modificado. Consultar la fuente oficial y el texto consolidado al preparar cada release. En Estados Unidos no se debe asumir una única ley federal integral de IA. En México, las iniciativas legislativas deben marcarse como propuestas hasta que se promulguen y entren en vigor.
+
+Cada release debe registrar finalidad, jurisdicciones, roles legales, inventario de datos, evaluación de riesgos/impacto cuando aplique, controles, evidencia, responsable y revisión jurídica. Ningún handler debe devolver `COMPLIANT` sólo por enumerar marcos; sin evaluación concreta el estado correcto es `NOT_ASSESSED`.
+
+## Puertas mínimas antes de producción
+
+- [ ] CI verde para el SHA exacto.
+- [ ] Lockfile versionado y dependencias reproducibles.
+- [ ] Autenticación, autorización por capacidad y pruebas negativas.
+- [ ] Rate limiting, límites de payload, timeouts y gestión de errores.
+- [ ] Secretos fuera del repositorio y rotación documentada.
+- [ ] Persistencia con migraciones, políticas y restore drill.
+- [ ] Métricas, alertas, SLO y retención de logs.
+- [ ] Pruebas de carga, abuso, prompt injection y recuperación.
+- [ ] Rollback e incident runbook probados.
+- [ ] Revisión de privacidad, licencias y jurisdicción.
+- [ ] Verificación real de claims criptográficos/procedencia.
+- [ ] Evidencia de despliegue en un entorno controlado.
+
+## Estado normativo de las afirmaciones
+
+GenesisAI no declara AGI, conciencia, infalibilidad, superioridad global, certificación, cumplimiento global, criptografía poscuántica activa, infraestructura GPU propia ni despliegue global sin evidencia específica. Los fixtures no pueden anunciar `VERIFIED`, `ANCHORED`, `SYNCED` o `COMPLIANT` si no se ejecutó un proveedor real.
