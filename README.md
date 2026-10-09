@@ -11,15 +11,6 @@
 Auditoría detallada: [docs/AUDIT_GENESIS_V6_2026-10-08.md](docs/AUDIT_GENESIS_V6_2026-10-08.md).  
 Política de seguridad: [SECURITY.md](SECURITY.md).
 
-> **Trusted Intelligence, Native & Adaptive** — runtime cognitivo gobernado, auditable y federable.
-
-**Repositorio:** Isabella-Villase-or-GenesisAI  
-**Rama de evolución:** `genesis-v6-sovereign-evolution`  
-**Clasificación actual:** infraestructura de runtime cognitivo gobernado / foundation pre-productivo avanzado.  
-**No es:** un modelo fundacional, una certificación de IA, una AGI ni una plataforma de producción completa.
-
----
-
 ## DIRECTIVA ARQUITECTÓNICA CANÓNICA
 
 **Isabella Villaseñor GenesisAI es el proyecto principal y el único runtime soberano del ecosistema.**
