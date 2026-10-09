@@ -46,6 +46,13 @@ describe("Genesis V6 security and cognition", () => {
     expect(() => verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" }, replay)).toThrow(/replay/i);
   });
 
+  it("approval replay registry has a hard capacity bound", () => {
+    const replay = createApprovalReplayRegistry(1);
+    const expiry = new Date(Date.now() + 60_000).toISOString();
+    replay.consume("nonce-one", expiry);
+    expect(() => replay.consume("nonce-two", expiry)).toThrow(/capacity exceeded/);
+  });
+
   it("unknown capabilities always deny", () => {
     const gate = createCapabilityGate([]);
     const principal = createPrincipal({ id: "m1", kind: "machine", roles: ["operator"] });
