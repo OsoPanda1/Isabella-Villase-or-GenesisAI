@@ -115,5 +115,17 @@ describe("sanitization pipeline", () => {
       content: "El programa X soporta 47 idiomas para la comunidad.\nEl segundo párrafo de la descripción.",
     });
     expect(classifyDuplicateRelationship(a.fingerprints, updated.fingerprints)).toBe("LIKELY_UPDATE");
+
+    // Same normalized tokens and structure, but different bytes: this is not
+    // sufficient evidence to classify a document as a verified duplicate.
+    const casingVariant = sanitizeDocument({
+      ...base,
+      id: "doc-case-variant",
+      content: base.content.replace("programa", "Programa"),
+    });
+    expect(isPhysicalDuplicate(a.fingerprints, casingVariant.fingerprints)).toBe(false);
+    expect(casingVariant.fingerprints.structural).toBe(a.fingerprints.structural);
+    expect(casingVariant.fingerprints.semantic).toBe(a.fingerprints.semantic);
+    expect(classifyDuplicateRelationship(a.fingerprints, casingVariant.fingerprints)).toBe("LIKELY_UPDATE");
   });
 });
