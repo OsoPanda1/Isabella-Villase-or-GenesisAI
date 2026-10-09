@@ -37,6 +37,9 @@ Variables que usan módulos existentes según configuración:
 - `GEMINI_API_KEY`
 - `MODEL_API_KEY`
 - `INFERENCE_API_KEY`
+- `ISABELLA_APPROVAL_KEY_ID`: identifier for the signing key.
+- `ISABELLA_APPROVAL_TRUSTED_KEY_ID`: key ID accepted by the verifier; must match the approved public key.
+- `ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM`: separately provisioned Ed25519 public key used to verify approvals. The public key embedded in an approval is not a trust anchor.
 - `ISABELLA_APPROVAL_PRIVATE_KEY_PEM`
 - `BOOKPI_INTEGRITY_SECRET`
 
