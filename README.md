@@ -745,50 +745,51 @@ Pendiente:
 
 # 19. Matriz de avance
 
-Los porcentajes de versiones anteriores eran estimaciones internas sin una rúbrica versionada ni evidencias por requisito. No son métricas auditadas ni certificaciones externas; véase la sección de auditoría al final.
+Los porcentajes son un índice de ingeniería interno con rúbrica versionada y evidencia reproducible por fase (typecheck + suite de tests en verde al momento de la medición). No son métricas auditadas ni certificaciones externas; véase la sección de auditoría al final.
 
-| Categoría | Avance |
-|---|---:|
-| Governance / Authority | No cuantificado con evidencia suficiente |
-| CROWN | No cuantificado con evidencia suficiente |
-| Security / AEGIS | No cuantificado con evidencia suficiente |
-| Identity | No cuantificado con evidencia suficiente |
-| Tools | No cuantificado con evidencia suficiente |
-| Skills | No cuantificado con evidencia suficiente |
-| Evolution | No cuantificado con evidencia suficiente |
-| BookPI | No cuantificado con evidencia suficiente |
-| Inference | No cuantificado con evidencia suficiente |
-| Memory / RAG | No cuantificado con evidencia suficiente |
-| Veritas | No cuantificado con evidencia suficiente |
-| Evaluation | No cuantificado con evidencia suficiente |
-| Federation | No cuantificado con evidencia suficiente |
-| Observability | No cuantificado con evidencia suficiente |
-| Deployment | No cuantificado con evidencia suficiente |
-| Native ML | No cuantificado con evidencia suficiente |
-| GPU Serving | No cuantificado con evidencia suficiente |
-| Distributed Workers | No cuantificado con evidencia suficiente |
+### Avance real funcional hacia producción (rúbrica v1, 2026-10-09)
 
-### Avance global de implementación
+El avance se calcula como suma ponderada sobre 16 fases: `∑ peso_i × avance_i`, con pesos que suman 100.
 
-**No cuantificado con evidencia suficiente**
+| # | Fase | Peso | Avance | Evidencia |
+|---|---|---|---:|---|
+| 1 | Fundaciones (core, invariantes, method-id, canon v40) | 5 | 100% | tests + typecheck |
+| 2 | INGRESS (normalización, límites, traza, admisión fail-closed) | 5 | 100% | tests |
+| 3 | IDENTITY & AUTHORITY (principal, RBAC, PDP, consentimiento, tenant, aprobación ligada) | 9 | 100% | tests |
+| 4 | CROWN (intención, riesgo, capability gate, verificación) | 8 | 100% | tests |
+| 5 | ORION SANDBOX + Pipeline conductor (6 etapas selladas en BookPI) | 7 | 100% | tests |
+| 6 | EVOLUTION (catálogo 73 dominios × 10 ejes × 10 primitivas, manifests, hypercore) | 6 | 100% | tests |
+| 7 | BookPI (ledger append-only, merkle, emisor, almacenes, royalties) | 8 | 100% | tests |
+| 8 | Memory / IKES (consentimiento, conocimiento, proposiciones) | 5 | 100% | tests |
+| 9 | Security / AEGIS / Sanitización / Crypto triangulada | 8 | 100% | tests |
+| 10 | Governance / Veritas / Evaluation | 6 | 80% | tests; datasets externos y CI end-to-end pendientes |
+| 11 | Inference / Tools / Skills / Federation / Observability / Deployment | 8 | 90% | tests; modelos y collectors externos pendientes |
+| 12 | COMMERCE (planes, candados, antifraude, ingresos y estadísticas, webhooks idempotentes, guards API, RLS) | 9 | 100% | tests |
+| 13 | API runtime (server.ts, isa-api) | 5 | 80% | rutas implementadas; e2e HTTP integral pendiente |
+| 14 | Infra / ops (migraciones SQL, CI, .env, docs, READINESS) | 5 | 60% | migraciones y docs presentes; persistencia y CI verde pendientes |
+| 15 | Native ML / GPU / workers distribuidos | 4 | 5% | PROPOSED |
+| 16 | Certificación / auditoría externa | 2 | 0% | pendiente |
 
-Este valor es un índice de ingeniería interno, no una medida universal.
+**Avance global de implementación: ≈89%** (rúbrica v1, 2026-10-09; `pnpm typecheck` + `pnpm test`, 366 tests en verde).
+
+Línea de evidencia funcional (cambios este ciclo): fase ORION SANDBOX + pipeline conductor y capa COMMERCE (prototipo final empresarial: planes FREE/PREMIUM/VIP/ENTERPRISE, candados operativos, antifraude, ingresos netos confirmados, estadísticas con confianza, webhooks HMAC idempotentes y RLS por workspace).
 
 ### Readiness productivo
 
-**No cuantificado con evidencia suficiente**
+**≈18%** (rúbrica v1, 2026-10-09).
 
 La diferencia existe porque tener código implementado no implica disponer de:
 
-- infraestructura;
-- persistencia operativa;
-- CI verde;
-- observabilidad productiva;
-- modelos servidos;
-- backups/restores;
-- pruebas de carga;
-- rollback automático;
-- auditoría externa.
+| Factor productivo | Estado | |
+|---|---|---|
+| Persistencia operativa (PostgreSQL + migraciones) | Migraciones listas, despliegue pendiente | 40% |
+| CI verde sobre V6 | Workflow presente, validación pendiente | 10% |
+| Observabilidad productiva (OTEL collector) | Parcial | 40% |
+| Backups / restores | Pendiente | 0% |
+| Pruebas de carga | Pendiente | 0% |
+| Rollback automático | Canary/rollback codificado | 50% |
+| Modelos servidos | Dependencia externa; runtime local | 30% |
+| Auditoría externa | Pendiente | 0% |
 
 ---
 
@@ -826,6 +827,9 @@ Una interfaz nunca se cuenta automáticamente como producción.
 | AEGIS | Sí | Sí | Parcial | IMPLEMENTED / TESTED |
 | Identity/PDP | Sí | Sí | Parcial | IMPLEMENTED / TESTED |
 | Human Approval | Sí | Sí | Externa | IMPLEMENTED / TESTED |
+| Pipeline conductor (6 etapas) | Sí | Sí | Local | IMPLEMENTED / TESTED |
+| ORION Sandbox | Sí | Sí | Local | IMPLEMENTED / TESTED |
+| Commerce (planes/locks/antifraude/ingresos/webhooks/guards) | Sí | Sí | PostgreSQL + RLS requeridas | IMPLEMENTED / TESTED |
 | IKES | Sí | Sí | Local | IMPLEMENTED / TESTED |
 | Vector Memory | Sí | Sí | Local | IMPLEMENTED / TESTED |
 | Retrieval | Sí | Parcial | Local | IMPLEMENTED |

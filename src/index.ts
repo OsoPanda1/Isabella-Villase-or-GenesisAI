@@ -43,6 +43,7 @@ export * from "./sanitization";
 export * from "./governance";
 export * from "./territory/tamv-integration";
 export * from "./plugins";
+export * from "./commerce";
 // Desambiguación de barril: crown y capabilities exportan nombres homónimos con
 // semánticas distintas (contrato de gate vs. contrato HSF). El re-export explícito
 // resuelve la ambigüedad del `export *`; los alias conservan ambos contratos.
