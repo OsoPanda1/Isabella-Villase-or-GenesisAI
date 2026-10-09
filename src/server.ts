@@ -1,5 +1,5 @@
 import express, { type Request, type Response } from "express";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "fs";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
@@ -102,13 +102,7 @@ runtime.tools.register({
   scopes: ["read:ledger"],
   description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
   execute: async (input) => {
-    return {
-      status: "NOT_VERIFIED",
-      verificationPerformed: false,
-      reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
-      checkedAt: new Date().toISOString(),
-      payload: input,
-    };
+    return { ...verifyBookPiChain(), checkedAt: new Date().toISOString(), payload: input };
   },
 });
 
@@ -332,11 +326,68 @@ interface BookPiLogEntry {
   methodId: string;
   principal: string;
   riskTier: string;
+  previousHash: string;
   hash: string;
   status: string;
 }
 
 const bookPiLedgerHistory: BookPiLogEntry[] = [];
+
+function appendBookPiEvent(input: Omit<BookPiLogEntry, "previousHash" | "hash">): BookPiLogEntry {
+  const previousHash = bookPiLedgerHistory.at(-1)?.hash ?? "0".repeat(64);
+  const payload = {
+    id: input.id,
+    timestamp: input.timestamp,
+    type: input.type,
+    methodId: input.methodId,
+    principal: input.principal,
+    riskTier: input.riskTier,
+    status: input.status,
+    previousHash,
+  };
+  const hash = createHash("sha256").update(JSON.stringify(payload), "utf8").digest("hex");
+  const entry: BookPiLogEntry = { ...payload, hash };
+  bookPiLedgerHistory.push(entry);
+  return entry;
+}
+
+function verifyBookPiChain() {
+  let previousHash = "0".repeat(64);
+  for (const entry of bookPiLedgerHistory) {
+    const payload = {
+      id: entry.id,
+      timestamp: entry.timestamp,
+      type: entry.type,
+      methodId: entry.methodId,
+      principal: entry.principal,
+      riskTier: entry.riskTier,
+      status: entry.status,
+      previousHash: entry.previousHash,
+    };
+    const expectedHash = createHash("sha256").update(JSON.stringify(payload), "utf8").digest("hex");
+    if (entry.previousHash !== previousHash || entry.hash !== expectedHash) {
+      return {
+        status: "INTEGRITY_FAILURE" as const,
+        valid: false,
+        blocksValidated: bookPiLedgerHistory.indexOf(entry),
+        chainHead: bookPiLedgerHistory.at(-1)?.hash ?? null,
+        storage: "VOLATILE_IN_MEMORY" as const,
+        wormEnforced: false,
+        durable: false,
+      };
+    }
+    previousHash = entry.hash;
+  }
+  return {
+    status: "VERIFIED_IN_MEMORY_CHAIN" as const,
+    valid: true,
+    blocksValidated: bookPiLedgerHistory.length,
+    chainHead: bookPiLedgerHistory.at(-1)?.hash ?? null,
+    storage: "VOLATILE_IN_MEMORY" as const,
+    wormEnforced: false,
+    durable: false,
+  };
+}
 
 // --- API ROUTES ---
 
@@ -494,10 +545,9 @@ app.get("/api/v1/bookpi/events", (_req, res) => {
   res.json({
     count: bookPiLedgerHistory.length,
     events: bookPiLedgerHistory,
+    ...verifyBookPiChain(),
+    ledgerType: "VOLATILE_IN_MEMORY_HASH_CHAIN",
     merkleRoot: null,
-    integrityStatus: "NOT_VERIFIED",
-    verificationPerformed: false,
-    reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
   });
 });
 
@@ -523,16 +573,15 @@ app.post("/api/v1/tools/execute", async (req, res) => {
       "read:territory",
     );
 
-    // Record BookPI event
-    bookPiLedgerHistory.push({
-      id: `evt-${Date.now()}`,
+    // Append a verifiable event to the volatile in-memory hash chain (not WORM storage).
+    appendBookPiEvent({
+      id: `evt-${randomUUID()}`,
       timestamp: new Date().toISOString(),
       type: "TOOL_EXECUTION",
       methodId: `T.TOOL.${String(toolId)}.execute.v1.0.0.LOW.TERRITORIAL`,
       principal: principal.id,
       riskTier: "LOW",
-      hash: "0x" + Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10),
-      status: "EXECUTED_CONFIRMED",
+      status: "EXECUTED",
     });
 
     res.json({
@@ -2131,9 +2180,9 @@ app.get("/", (_req, res) => {
           <div>
             <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-cyan-400">📜</span>
-              BookPI — Libro Mayor Criptográfico Append-Only (WORM)
+              BookPI — Cadena Hash de Eventos (memoria volátil)
             </h2>
-            <p class="text-xs text-slate-400 mt-0.5">Cadena inmutable de compromisos criptográficos, hashes de evento y firmas Ed25519</p>
+            <p class="text-xs text-slate-400 mt-0.5">Hash-chain SHA-256 en memoria; no es WORM durable ni contiene firmas Ed25519</p>
           </div>
           <button onclick="refreshBookPiLedger()" class="px-3 py-1.5 rounded-xl bg-cyan-950 border border-cyan-800 text-cyan-300 text-xs font-medium hover:bg-cyan-900 transition">Refrescar Cadena</button>
         </div>
@@ -2141,10 +2190,10 @@ app.get("/", (_req, res) => {
         <div class="p-4 rounded-2xl crystal-card">
           <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] text-xs font-mono">
             <div>
-              <span class="text-slate-400">Merkle Root:</span>
+              <span class="text-slate-400">Chain Head:</span>
               <span class="text-amber-300 ml-1">No calculado — verificador no configurado</span>
             </div>
-            <span class="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">WORM INTEGRITY: NOT VERIFIED</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">IN-MEMORY HASH CHAIN · WORM NOT ENFORCED</span>
           </div>
 
           <div id="ledgerEventsList" class="mt-4 space-y-2 text-xs font-mono">
