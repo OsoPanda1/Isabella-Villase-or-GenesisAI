@@ -233,9 +233,10 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "dynamic_compliance_shield",
-      frameworksChecked: ["EU_AI_ACT_RISK_GATES", "NIST_AI_RMF_1.0", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "LFPDPPP_MEXICO"],
-      complianceVerdict: "COMPLIANT",
-      highRiskControlsMet: true,
+      frameworksChecked: ["EU_AI_ACT", "NIST_AI_RMF", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "MEXICO_DATA_PROTECTION"],
+      complianceVerdict: "NOT_ASSESSED",
+      highRiskControlsMet: null,
+      limitation: "This skill returns framework scope only. Compliance requires a documented, jurisdiction- and use-case-specific assessment with evidence and legal review.",
       timestamp: new Date().toISOString(),
     };
   },
