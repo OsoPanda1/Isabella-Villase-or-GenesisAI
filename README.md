@@ -1606,3 +1606,95 @@ Telemetry      → latencia/SLO/operación
  test/isabellaEngine.test.ts cubre determinismo de la evaluación heptafederada, entropía, rechazo de vectores probabilísticos inválidos, ledger y estabilidad de evaluaciones repetidas.
 
 La validación final de typecheck, suite completa y build debe hacerse mediante CI; la implementación del código no constituye evidencia de una ejecución CI exitosa.
+
+
+---
+
+# Auditoría actualizada: categoría, competencia, producción, licencia y regulación
+
+La auditoría detallada y la comparación con la revisión anterior de hoy están en [docs/AUDIT_GENESIS_V6_2026-10-08.md](docs/AUDIT_GENESIS_V6_2026-10-08.md). Los controles de divulgación de vulnerabilidades y puertas de salida están en [SECURITY.md](SECURITY.md).
+
+## Categoría emergente y competencia
+
+Isabella GenesisAI se posiciona en la categoría emergente **governed cognitive runtime / agent orchestration and evidence control plane**: una capa de runtime que pretende gobernar identidad, autorización, seguridad, herramientas, skills, inferencia, memoria epistemológica, procedencia y observabilidad alrededor de modelos externos.
+
+No es un modelo fundacional y no compite directamente como LLM con GPT, Claude, Gemini o Llama. Las familias comparables son:
+
+- [LangGraph/LangChain](https://github.com/langchain-ai/langgraph): orquestación y aplicaciones de agentes.
+- [Microsoft Semantic Kernel](https://github.com/microsoft/semantic-kernel): SDK de integración/orquestación.
+- [Microsoft AutoGen](https://github.com/microsoft/autogen): coordinación multiagente.
+- [OpenAI Agents SDK](https://github.com/openai/openai-agents-python): agentes, tools y trazas.
+- [CrewAI](https://github.com/crewAIInc/crewAI): equipos de agentes.
+- [Haystack](https://github.com/deepset-ai/haystack): pipelines RAG y búsqueda.
+- [NVIDIA NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails): guardrails.
+- [Temporal](https://github.com/temporalio/temporal): workflows durables, no un runtime cognitivo por sí solo.
+
+Esta lista es taxonómica, no un ranking. No se afirma superioridad global sin benchmarks reproducibles que midan coste, latencia, calidad, seguridad adversarial, disponibilidad, adopción y complejidad operativa con cargas comparables.
+
+## Porcentajes de avance: qué se puede afirmar
+
+Los porcentajes anteriores de implementación global y readiness productivo no están respaldados por una rúbrica versionada con denominador, pesos y evidencias por requisito. Por ello no se deben publicar como porcentajes “reales” auditados. La revisión estática no demuestra que un despliegue funciona, que los backups se restauran, que los SLO se cumplen ni que el CI del commit actual está verde.
+
+Para producir una cifra verificable, registrar por requisito: ID, peso, estado, evidencia enlazada al SHA, criterio de aceptación, fecha y responsable.
+
+- **Implementación:** porcentaje de requisitos ponderados que tienen código ejecutable y pruebas asociadas.
+- **Preparación productiva:** porcentaje de puertas operativas demostradas, incluyendo CI, seguridad, persistencia, backups/restores, observabilidad, carga, rollback, privacidad y respuesta a incidentes.
+- **Despliegue:** porcentaje de puertas verificadas en un entorno desplegado y reproducible.
+
+Hasta tener esa evidencia, el estado es **preproducción** y el porcentaje se marca **no cuantificado con evidencia suficiente**, no 100% ni un número arbitrario.
+
+## Licencia híbrida por zonas
+
+El archivo [LICENSE](LICENSE) contiene MIT. En general, MIT permite usar, modificar, distribuir y sublicenciar el código cubierto bajo sus condiciones. La etiqueta `private: true` de `package.json` no revoca una licencia MIT publicada. No debe afirmarse propiedad exclusiva sobre código que ya se distribuyó bajo MIT o bajo licencias de terceros.
+
+Zonificación recomendada:
+
+| Zona | Activos | Controles |
+|---|---|---|
+| Z0 Pública | SDKs, documentación y módulos expresamente publicados | Licencia por componente, avisos, SBOM y escaneo de secretos |
+| Z1 Interna | Roadmap, evaluaciones, experimentos y módulos no publicados | Repositorios privados, MFA/SSO, acceso mínimo y ramas protegidas |
+| Z2 IP restringida | Know-how, políticas internas, algoritmos no publicados y reglas de seguridad | Acceso por necesidad, registro de acceso y revisión antes de liberar |
+| Z3 Datos críticos | Datos personales, claves, datasets confidenciales y datos de clientes | No guardar en Git; secret manager, cifrado, minimización, retención/borrado y DLP |
+| Z4 Proveedores externos | Modelos, SDKs, datasets y backends externos | Cumplir licencias/terms de cada proveedor; no relicenciar código ajeno |
+
+Una licencia híbrida real requiere inventario de autoría, contribuciones, dependencias y versiones ya publicadas, más revisión jurídica. Los datos no quedan protegidos por la licencia del código: requieren controles técnicos, organizativos y contractuales propios.
+
+## Alineación normativa y regulatoria
+
+Esta lista es un **mapa de evaluación**, no una certificación ni un dictamen de cumplimiento. La aplicabilidad depende del uso, sector, datos, jurisdicción y rol de cada operador.
+
+| Organismo/jurisdicción | Marcos a evaluar |
+|---|---|
+| Unión Europea | [AI Act](https://artificial-intelligence-act.ec.europa.eu/), RGPD, NIS2 y normativa sectorial |
+| Estados Unidos | [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [NIST GenAI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence), leyes estatales/federales y sectoriales |
+| México | LFPDPPP, LGPDPPSO cuando aplique, propiedad intelectual, consumidor, laboral y normativa sectorial; seguir iniciativas de IA sin confundirlas con leyes promulgadas |
+| Latinoamérica | LGPD de Brasil y legislación por país; mantener una matriz jurisdiccional, no una única “ley LATAM” |
+| UNESCO | [Recomendación sobre la Ética de la IA](https://www.unesco.org/en/artificial-intelligence/recommendation-ethics) |
+| ONU | [Global Digital Compact y gobernanza de IA](https://www.un.org/en/global-issues/artificial-intelligence) |
+| WEF | Informes e iniciativas de gobernanza multi-actor; no equivalen a legislación |
+| ISO/IEC | ISO/IEC 42001 y 23894; no afirmar certificación sin auditoría formal |
+| OECD | Principios y recomendaciones de IA, según la fuerza del instrumento concreto |
+| Consejo de Europa | Convenio Marco sobre IA y derechos humanos, sujeto a ratificación, entrada en vigor y alcance territorial |
+
+El AI Act europeo tiene aplicación escalonada y su calendario puede ser modificado. Consultar la fuente oficial y el texto consolidado al preparar cada release. En Estados Unidos no se debe asumir una única ley federal integral de IA. En México, las iniciativas legislativas deben marcarse como propuestas hasta que se promulguen y entren en vigor.
+
+Cada release debe registrar finalidad, jurisdicciones, roles legales, inventario de datos, evaluación de riesgos/impacto cuando aplique, controles, evidencia, responsable y revisión jurídica. Ningún handler debe devolver `COMPLIANT` sólo por enumerar marcos; sin evaluación concreta el estado correcto es `NOT_ASSESSED`.
+
+## Puertas mínimas antes de producción
+
+- [ ] CI verde para el SHA exacto.
+- [ ] Lockfile versionado y dependencias reproducibles.
+- [ ] Autenticación, autorización por capacidad y pruebas negativas.
+- [ ] Rate limiting, límites de payload, timeouts y gestión de errores.
+- [ ] Secretos fuera del repositorio y rotación documentada.
+- [ ] Persistencia con migraciones, políticas y restore drill.
+- [ ] Métricas, alertas, SLO y retención de logs.
+- [ ] Pruebas de carga, abuso, prompt injection y recuperación.
+- [ ] Rollback e incident runbook probados.
+- [ ] Revisión de privacidad, licencias y jurisdicción.
+- [ ] Verificación real de claims criptográficos/procedencia.
+- [ ] Evidencia de despliegue en un entorno controlado.
+
+## Estado normativo de las afirmaciones
+
+GenesisAI no declara AGI, conciencia, infalibilidad, superioridad global, certificación, cumplimiento global, criptografía poscuántica activa, infraestructura GPU propia ni despliegue global sin evidencia específica. Los fixtures no pueden anunciar `VERIFIED`, `ANCHORED`, `SYNCED` o `COMPLIANT` si no se ejecutó un proveedor real.
