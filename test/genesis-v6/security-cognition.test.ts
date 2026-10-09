@@ -6,7 +6,7 @@ import { issueHumanApproval, verifyHumanApproval, createApprovalReplayRegistry }
 import { callGate, createCapabilityGate } from "../../src/crown/capability";
 import { inspectAegis } from "../../src/security/aegis";
 import { planExecution } from "../../src/intelligence/adaptive-router";
-import { IKESEngine } from "../../src/memory/ikes";
+import { IKESEngine, hashSourceContent } from "../../src/memory/ikes";
 import { createEvidence, canPromoteToVerified } from "../../src/evolution/evidence";
 import { generateControls } from "../../src/evolution/catalog";
 
@@ -61,7 +61,7 @@ describe("Genesis V6 security and cognition", () => {
     const ikes = new IKESEngine();
     ikes.registerSource({
       sourceId: "s1", uri: "https://example.invalid/source", title: "Source",
-      retrievedAt: new Date().toISOString(), contentHash: "abc",
+      retrievedAt: new Date().toISOString(), contentHash: hashSourceContent("source content"),
     });
     const claim = ikes.propose({
       proposedBy: "human:h1",
@@ -73,6 +73,14 @@ describe("Genesis V6 security and cognition", () => {
     });
     expect(claim.epistemicState).toBe("E1_SOURCE_FOUND");
     expect(ikes.retrieve("TAMV")).toHaveLength(1);
+  });
+
+  it("IKES rejects malformed source hashes and conflicting source identity", () => {
+    const ikes = new IKESEngine();
+    expect(() => ikes.registerSource({ sourceId: "bad", uri: "https://example.invalid/source", title: "Bad", retrievedAt: new Date().toISOString(), contentHash: "abc" })).toThrow(/SHA256/);
+    const source = { sourceId: "stable", uri: "https://example.invalid/source", title: "Source", retrievedAt: new Date().toISOString(), contentHash: hashSourceContent("source A") };
+    ikes.registerSource(source);
+    expect(() => ikes.registerSource({ ...source, contentHash: hashSourceContent("source B") })).toThrow(/CONFLICT/);
   });
 
   it("verified evolution requires independent evidence plus runtime/review evidence", () => {
