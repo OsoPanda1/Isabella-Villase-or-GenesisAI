@@ -184,16 +184,18 @@ export function runIkesPipeline(input: IkesPipelineInput): IkesPipelineResult {
   push("ingestion", true, `entity=${input.entry.entityId}`);
   push("sanitization", input.sanitizationAdmitted, input.sanitizationAdmitted ? "admitted" : "quarantined_or_rejected");
   push("identity", input.entry.id.startsWith("KNO-"), `id=${input.entry.id}`);
-  push("claims", input.entry.claimIds.length >= 0, `${input.entry.claimIds.length} claims`);
+  push("claims", input.entry.claimIds.length > 0, `${input.entry.claimIds.length} claims`);
   push("evidence", input.entry.evidenceIds.length > 0, `${input.entry.evidenceIds.length} evidence`);
   push("temporal_analysis", true, `temporal=${input.entry.temporalStatus}`);
   push("policy_gate", input.policyGateGranted, input.policyGateGranted ? "granted" : "denied");
-  push("audit", true, `${input.auditIds?.length ?? 0} audit ids`);
-  push("git_commit", input.gitCommit !== undefined, input.gitCommit ?? "pending");
+  const hasAudit = (input.auditIds?.length ?? 0) > 0;
+  push("audit", hasAudit, `${input.auditIds?.length ?? 0} audit ids`);
+  const validGitCommit = typeof input.gitCommit === "string" && /^[a-f0-9]{40,64}$/i.test(input.gitCommit);
+  push("git_commit", validGitCommit, validGitCommit ? input.gitCommit! : "missing_or_invalid_commit");
   push("index", input.indexed === true, input.indexed === true ? "indexed" : "not_indexed");
 
   const hasEvidence = input.entry.evidenceIds.length > 0;
-  const reconciliable = input.sanitizationAdmitted && input.policyGateGranted && hasEvidence;
+  const reconciliable = input.sanitizationAdmitted && input.policyGateGranted && hasEvidence && hasAudit && validGitCommit && input.indexed === true;
   push("reconciliation", reconciliable, reconciliable ? "consistent" : "inconsistent");
 
   const released = stages.every((s) => s.ok);
