@@ -31,6 +31,7 @@ describe("sync manager", () => {
     const lock = new Lock();
     const owner = await lock.acquire();
     await expect(lock.acquire(5, "waiter")).rejects.toThrow(/timeout/);
+    expect(() => (lock.release as unknown as () => void)()).toThrow(/owner required/);
     expect(() => lock.release("wrong-owner")).toThrow(/owner mismatch/);
     lock.release(owner);
   });
