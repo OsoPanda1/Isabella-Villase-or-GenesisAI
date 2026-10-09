@@ -472,8 +472,20 @@ app.post("/api/v1/memory/proposals/:proposalId/resolve", (req, res) => {
 
 // BookPI Ledger Events
 app.get("/api/v1/bookpi/events", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "bookpi-public")) return;
+  const snapshot = bookPiLedger.snapshot();
+  // The public dashboard needs integrity metadata, not principal identities.
+  res.json({
+    ...snapshot,
+    events: snapshot.events.map(({ principal: _principal, ...event }) => event),
+    principalRedacted: true,
+    visibility: "PUBLIC_REDACTED_AUDIT",
+  });
+});
+
+app.get("/api/v1/bookpi/events/admin", (req, res) => {
   if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
-  res.json(bookPiLedger.snapshot());
+  res.json({ ...bookPiLedger.snapshot(), visibility: "ADMIN_FULL_AUDIT" });
 });
 
 // Tool execution
