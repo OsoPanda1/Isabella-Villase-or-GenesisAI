@@ -406,11 +406,17 @@ export function issueManagerToken(input: {
   });
 }
 
+// Revocation is process-local and volatile; it is not a durable or cross-host token service.
+const revokedManagerTokenIds = new Set<string>();
+
 export function tokenIsValid(token: ManagerToken, now = new Date()): boolean {
-  return !token.revoked && new Date(token.expiresAt).getTime() > now.getTime();
+  return !token.revoked &&
+    !revokedManagerTokenIds.has(token.tokenId) &&
+    new Date(token.expiresAt).getTime() > now.getTime();
 }
 
 export function revokeToken(token: ManagerToken): ManagerToken {
+  revokedManagerTokenIds.add(token.tokenId);
   return Object.freeze({ ...token, revoked: true });
 }
 
