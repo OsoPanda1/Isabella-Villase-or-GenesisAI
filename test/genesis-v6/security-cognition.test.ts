@@ -24,6 +24,13 @@ describe("Genesis V6 security and cognition", () => {
   it("human approval is signed and tamper evident", () => {
     const approver = createPrincipal({ id: "h1", kind: "human", roles: ["admin"] });
     const approval = issueHumanApproval(approver, { methodId: "m", action: "admin:escale" }, "ALLOW");
+    const trustedKeyId = process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID;
+    const trustedPublicKey = process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM;
+    delete process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID;
+    delete process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM;
+    expect(verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" })).toBe(false);
+    if (trustedKeyId) process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID = trustedKeyId;
+    if (trustedPublicKey) process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM = trustedPublicKey;
     expect(verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" })).toBe(true);
     const tampered = { ...approval, action: "delete:all" };
     expect(verifyHumanApproval(tampered, { methodId: "m", action: "delete:all" })).toBe(false);
