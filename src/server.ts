@@ -214,10 +214,11 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "epistemic_dispute_arbiter",
-      disputeResolution: "EVALUATED_AND_ORDERED",
-      epistemicLadder: ["E0_UNVERIFIED", "E1_SOURCE_FOUND", "E2_CORROBORATED", "E6_ESTABLISHED"],
-      divergenceScore: 0.04,
-      provenanceIntegrity: "INTACT",
+      disputeResolution: "NOT_ASSESSED",
+      epistemicLadder: ["E0_UNVERIFIED", "E1_SOURCE_FOUND", "E2_CORROBORATED", "E3_ACADEMICALLY_SUPPORTED", "E4_REPRODUCIBLE", "E5_VALIDATED", "E6_ESTABLISHED"],
+      divergenceScore: null,
+      provenanceIntegrity: "NOT_VERIFIED",
+      limitation: "No dispute dataset or external provenance verifier was invoked.",
     };
   },
 });
@@ -272,10 +273,12 @@ runtime.skills.register({
     return {
       skill: "human_in_the_loop_delegation_audit",
       governanceInvariant: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
-      humanPrincipalVerified: true,
-      replayShieldChecked: true,
-      delegationApproved: true,
-      verifiedAt: new Date().toISOString(),
+      humanPrincipalVerified: false,
+      replayShieldChecked: false,
+      delegationApproved: false,
+      auditStatus: "NOT_PERFORMED",
+      reason: "No signed approval, nonce validation, or delegation audit provider was supplied.",
+      checkedAt: new Date().toISOString(),
     };
   },
 });
