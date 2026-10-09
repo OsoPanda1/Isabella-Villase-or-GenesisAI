@@ -894,16 +894,16 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
   const isJailbreak = /dan mode|developer mode|sin restricciones|do anything now/i.test(lower);
   const isFalseCertainty = /100% seguro|certeza absoluta sin evidencia|garantizo infalible/i.test(lower);
 
-  const blockLevel1 = isBypass ? "VIOLATION" : "CLEAR";
-  const blockLevel2 = isJailbreak ? "VIOLATION" : "CLEAR";
-  const blockLevel3 = isFalseCertainty ? "FLAGGED" : "CLEAR";
+  const blockLevel1 = isBypass ? "PATTERN_MATCH" : "NO_PATTERN_MATCH";
+  const blockLevel2 = isJailbreak ? "PATTERN_MATCH" : "NO_PATTERN_MATCH";
+  const blockLevel3 = isFalseCertainty ? "FALSE_CERTAINTY_PATTERN_MATCH" : "NO_PATTERN_MATCH";
 
-  const isBlocked = blockLevel1 === "VIOLATION" || blockLevel2 === "VIOLATION";
+  const patternDetected = blockLevel1 === "PATTERN_MATCH" || blockLevel2 === "PATTERN_MATCH";
 
   res.json({
     input,
-    decision: isBlocked ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
-    patternMatchDetected: isBlocked,
+    decision: patternDetected ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+    patternMatchDetected: patternDetected,
     actionBlocked: false,
     authorizationGranted: false,
     assessmentMode: "HEURISTIC_PATTERN_SCAN",
@@ -912,7 +912,7 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
       nivel2_semantico: blockLevel2,
       nivel3_comportamental: blockLevel3,
     },
-    aegisScore: isBlocked ? 0.96 : 0.02,
+    aegisScore: patternDetected ? 0.96 : 0.02,
     scoreType: "HEURISTIC_NOT_PROBABILITY",
     timestamp: new Date().toISOString(),
   });
