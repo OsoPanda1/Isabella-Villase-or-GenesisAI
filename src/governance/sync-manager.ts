@@ -407,16 +407,23 @@ export function issueManagerToken(input: {
 }
 
 // Revocation is process-local and volatile; it is not a durable or cross-host token service.
-const revokedManagerTokenIds = new Set<string>();
+const revokedManagerTokenIds = new Map<string, number>();
 
 export function tokenIsValid(token: ManagerToken, now = new Date()): boolean {
+  const nowMs = now.getTime();
+  for (const [id, expiresAt] of revokedManagerTokenIds) {
+    if (expiresAt <= nowMs) revokedManagerTokenIds.delete(id);
+  }
+  const expiresAt = new Date(token.expiresAt).getTime();
   return !token.revoked &&
     !revokedManagerTokenIds.has(token.tokenId) &&
-    new Date(token.expiresAt).getTime() > now.getTime();
+    Number.isFinite(expiresAt) &&
+    expiresAt > nowMs;
 }
 
 export function revokeToken(token: ManagerToken): ManagerToken {
-  revokedManagerTokenIds.add(token.tokenId);
+  const expiresAt = new Date(token.expiresAt).getTime();
+  revokedManagerTokenIds.set(token.tokenId, Number.isFinite(expiresAt) ? expiresAt : Date.now());
   return Object.freeze({ ...token, revoked: true });
 }
 
