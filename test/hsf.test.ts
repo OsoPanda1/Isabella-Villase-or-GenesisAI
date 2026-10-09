@@ -29,6 +29,40 @@ describe("HSF", () => {
     expect(Object.isFrozen(registry.get("stable.descriptor").descriptor)).toBe(true);
   });
 
+  it("requires human approval for high-risk capabilities", async () => {
+    const registry = new CapabilityRegistry();
+    let executed = false;
+    registry.register({
+      descriptor: { id: "high-risk.capability", version: "1.0.0", domain: "execution", description: "high-risk", riskTier: "HIGH", requiresAuthority: true },
+      health: () => "ready",
+      execute: async () => { executed = true; return { ok: true }; },
+    });
+    const result = await new CapabilityGateway(registry).invoke("high-risk.capability", {}, {
+      requestId: "req-high", traceId: "trace-high", principalId: "service", role: "operator", policyVersion: "test",
+      metadata: { authenticated: "true", genesisGovernanceAdmitted: "true" },
+    });
+    expect(result.status).toBe("rejected");
+    expect(result.error).toBe("HSF_HUMAN_APPROVAL_REQUIRED");
+    expect(executed).toBe(false);
+  });
+
+  it("does not execute a degraded capability provider", async () => {
+    const registry = new CapabilityRegistry();
+    let executed = false;
+    registry.register({
+      descriptor: { id: "degraded.capability", version: "1.0.0", domain: "execution", description: "degraded", riskTier: "LOW", requiresAuthority: true },
+      health: () => "degraded",
+      execute: async () => { executed = true; return { ok: true }; },
+    });
+    const result = await new CapabilityGateway(registry).invoke("degraded.capability", {}, {
+      requestId: "req-degraded", traceId: "trace-degraded", principalId: "service", role: "operator", policyVersion: "test",
+      metadata: { authenticated: "true", genesisGovernanceAdmitted: "true" },
+    });
+    expect(result.status).toBe("unavailable");
+    expect(result.error).toBe("HSF_PROVIDER_DEGRADED_FAIL_CLOSED");
+    expect(executed).toBe(false);
+  });
+
   it("denies invocation without server-authenticated governance metadata", async () => {
     const registry = new CapabilityRegistry();
     registry.register({
