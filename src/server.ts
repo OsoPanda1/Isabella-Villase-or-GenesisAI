@@ -11,7 +11,8 @@ import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
 import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
 import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
-import { bookPiSecret, equalSecret } from "./security/secrets";
+import { bookPiSecret } from "./security/secrets";
+import { verifyBearerToken } from "./security/api-token";
 import { hashSourceContent } from "./memory/ikes";
 import { createAtlasStoreFromEnv } from "./atlas";
 import { createDiffObservatory, sanitizeDiffSnapshot, snapshotMetadataHash } from "./plugins";
@@ -48,14 +49,12 @@ const genAi = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 /** Server-side bearer-token gate for mutating or privileged API routes. */
 function authorizeApiToken(req: Request, res: Response, envName: string): boolean {
-  const expected = process.env[envName];
-  if (!expected || (process.env.NODE_ENV !== "test" && expected.length < 32)) {
+  const verdict = verifyBearerToken(req.get("authorization"), process.env[envName]);
+  if (verdict === "NOT_CONFIGURED") {
     res.status(503).json({ success: false, error: "API_TOKEN_NOT_CONFIGURED" });
     return false;
   }
-  const header = req.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (!equalSecret(token, expected)) {
+  if (verdict !== "AUTHORIZED") {
     res.status(401).json({ success: false, error: "UNAUTHORIZED" });
     return false;
   }
