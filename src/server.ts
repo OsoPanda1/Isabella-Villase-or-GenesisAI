@@ -3046,7 +3046,7 @@ app.get("/", (_req, res) => {
       ];
 
       list.innerHTML = suggestions.map(s => \`
-        <button onclick="applyFollowUp('\${escapeHtml(s)}')" class="px-2.5 py-1 rounded-xl bg-[#0d1424] hover:bg-[#131c30] border border-white/10 text-slate-300 whitespace-nowrap transition text-[11px]">
+        <button type="button" data-suggestion="\${escapeHtml(s)}" onclick="applyFollowUp(this.dataset.suggestion || '')" class="px-2.5 py-1 rounded-xl bg-[#0d1424] hover:bg-[#131c30] border border-white/10 text-slate-300 whitespace-nowrap transition text-[11px]">
           \${escapeHtml(s)} →
         </button>
       \`).join('');
@@ -3183,7 +3183,7 @@ app.get("/", (_req, res) => {
             <div class="text-[11px] space-y-0.5 text-slate-300">
               <div>Nivel 1 (Ontológico): <strong class="\${data.blockadeEvaluation.nivel1_ontologico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel1_ontologico ?? ""))}</strong></div>
               <div>Nivel 2 (Semántico - Prompt Guard): <strong class="\${data.blockadeEvaluation.nivel2_semantico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel2_semantico ?? ""))}</strong></div>
-              <div>Nivel 3 (Comportamental): <strong class="\${data.blockadeEvaluation.nivel3_comportamental === 'FLAGGED' ? 'text-amber-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel3_comportamental}</strong></div>
+              <div>Nivel 3 (Comportamental): <strong class="\${data.blockadeEvaluation.nivel3_comportamental === 'FLAGGED' ? 'text-amber-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel3_comportamental ?? ""))}</strong></div>
             </div>
           </div>
         \`;
