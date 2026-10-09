@@ -588,7 +588,8 @@ export class IsabellaGenesisRuntime {
       entry,
       sanitizationAdmitted: sanitized.status === "ADMITTED",
       policyGateGranted: input.policyGateGranted,
-      indexed: sanitized.status === "ADMITTED",
+      // The current runtime has no durable knowledge index adapter; never imply indexing from sanitization alone.
+      indexed: false,
       auditIds: [],
     });
     return { sanitized, entry: pipeline };
