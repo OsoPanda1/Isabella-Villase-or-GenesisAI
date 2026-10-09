@@ -8,7 +8,7 @@ import {
 const base = {
   id: "doc-1",
   content: "El programa X soporta 12 idiomas para la comunidad.\nEl segundo párrafo de la descripción.",
-  license: "CC-BY-4.0",
+  license: "CC0-1.0",
   provenance: { uri: "https://example.org/x", retrievedAt: "2026-01-01T00:00:00Z" },
 };
 
@@ -51,7 +51,7 @@ describe("sanitization pipeline", () => {
   });
 
   it("requires manual review for restrictive or copyleft licenses", () => {
-    for (const license of ["CC-BY-NC-4.0", "CC-BY-ND-4.0", "GPL-3.0-only", "AGPL-3.0-only"]) {
+    for (const license of ["CC-BY-4.0", "CC-BY-NC-4.0", "CC-BY-ND-4.0", "GPL-3.0-only", "AGPL-3.0-only"]) {
       const result = sanitizeDocument({ ...base, id: "license-review", license });
       expect(result.status).toBe("REJECTED");
       expect(result.findings.map((finding) => finding.kind)).toContain("license_requires_review");
