@@ -125,6 +125,15 @@ export function issueHumanApproval(
   if (approver.kind !== "human") {
     throw new Error("APPROVAL: sólo la conciencia humana puede emitir aprobación (only a human principal can approve).");
   }
+  if (!approver.roles.some((role) => role === "admin" || role === "approver")) {
+    throw new Error("APPROVAL: principal lacks approval authority.");
+  }
+  if (process.env.VITEST !== "true" && process.env.NODE_ENV !== "test") {
+    const trustedApproverId = process.env.ISABELLA_APPROVAL_TRUSTED_APPROVER_ID;
+    if (!trustedApproverId || trustedApproverId !== approver.id) {
+      throw new Error("APPROVAL: signer is not bound to the trusted approver identity.");
+    }
+  }
   if (!Number.isInteger(ttlMs) || ttlMs <= 0 || ttlMs > 24 * 60 * 60 * 1000) {
     throw new Error("APPROVAL: ttl must be between 1ms and 24h.");
   }
@@ -141,6 +150,7 @@ export function issueHumanApproval(
   if (process.env.VITEST === "true" || process.env.NODE_ENV === "test") {
     process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID = activeSigner.keyId;
     process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM = activeSigner.publicKeyPem;
+    process.env.ISABELLA_APPROVAL_TRUSTED_APPROVER_ID = approver.id;
   }
   return {
     evidenceId, approver: approver.id, approverKind: "human", methodId: target.methodId,
@@ -160,7 +170,8 @@ export function verifyHumanApproval(ref: ApprovalRef, target: ApprovalTarget, re
   if (!Number.isFinite(expiry) || expiry < Date.now()) return false;
   const trustedKeyId = process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID;
   const trustedPublicKeyPem = process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM;
-  if (!trustedKeyId || trustedKeyId !== ref.keyId || !trustedPublicKeyPem) return false;
+  const trustedApproverId = process.env.ISABELLA_APPROVAL_TRUSTED_APPROVER_ID;
+  if (!trustedKeyId || trustedKeyId !== ref.keyId || !trustedPublicKeyPem || !trustedApproverId || trustedApproverId !== ref.approver) return false;
 
   let trustedPublicKey;
   try {
