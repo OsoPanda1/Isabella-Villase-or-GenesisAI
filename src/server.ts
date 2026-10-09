@@ -2590,15 +2590,12 @@ app.get("/", (_req, res) => {
     }
 
     function applyDoubleCheckHighlights(enable) {
+      // Presentation-only toggle; never reinsert HTML from model output or data attributes.
       document.querySelectorAll('.narrative-text').forEach(el => {
-        if (enable) {
-          el.innerHTML = el.getAttribute('data-grounded-html') || el.innerHTML;
-        } else {
-          el.innerHTML = el.getAttribute('data-raw-text') || el.innerText;
-        }
+        el.classList.toggle('ring-1', Boolean(enable));
+        el.classList.toggle('ring-cyan-500/20', Boolean(enable));
       });
     }
-
     // Perplexity Modal Source Viewer
     function openSourceModal(sourceNum) {
       const src = CITATION_SOURCES[sourceNum] || CITATION_SOURCES[1];
@@ -2810,23 +2807,8 @@ app.get("/", (_req, res) => {
         }
       }
 
-      // Add inline interactive Perplexity citation pills [1], [2], [3]
-      let narrativeWithCitations = narrative;
-      if (!isBlocked) {
-        narrativeWithCitations = narrativeWithCitations
-          .replace(/(Real del Monte|Mineral del Monte|2,660 msnm)/g, '$1 <button onclick="openSourceModal(2)" class="citation-pill" title="Ver Fuente [2]: Catálogo Territorial">[2]</button>')
-          .replace(/(Panteón Inglés|Mina de Acosta|Mina La Dificultad)/g, '$1 <button onclick="openSourceModal(2)" class="citation-pill" title="Ver Fuente [2]: Arqueología Industrial">[2]</button>')
-          .replace(/(CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION)/g, '$1 <button onclick="openSourceModal(3)" class="citation-pill" title="Ver Fuente [3]: Constitución AGENTS.md">[3]</button>')
-          .replace(/(P-R-P-D-A-A|Hypercore|BookPI)/g, '$1 <button onclick="openSourceModal(4)" class="citation-pill" title="Ver Fuente [4]: Canon v40">[4]</button>');
-      }
-
-      // Grounding highlight version (Gemini Double-Check style)
-      const groundedHtml = narrativeWithCitations
-        .replace(/(CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION)/g, '<span class="grounded-verified" title="Fuente [3]: AGENTS.md [E6]">$1</span>')
-        .replace(/(Real del Monte|Mineral del Monte|2,660 msnm)/g, '<span class="grounded-verified" title="Fuente [2]: Gemelo Digital RDM [E6]">$1</span>')
-        .replace(/(Panteón Inglés|Mina de Acosta|Mina La Dificultad)/g, '<span class="grounded-verified" title="Fuente [2]: Catálogo Patrimonial [E6]">$1</span>')
-        .replace(/(fail-closed|Zero Trust|AEGIS)/g, '<span class="grounded-crypto" title="Fuente [4]: Salvaguardas AEGIS [E6]">$1</span>');
-
+      // Never inject model output or memory text as HTML. Escape the complete narrative before rendering.
+      const safeNarrativeHtml = escapeHtml(narrative);
       container.innerHTML = \`
         <!-- Turn Header & Performance Telemetry -->
         <div class="flex items-center justify-between text-xs">
@@ -2959,8 +2941,8 @@ app.get("/", (_req, res) => {
 
         <!-- MAIN NARRATIVE PROSE (CLAUDE TYPOGRAPHY WITH NEWSREADER & PLUS JAKARTA SANS) -->
         <div class="p-5 sm:p-6 rounded-3xl \${isBlocked ? 'bg-rose-950/20 border border-rose-800/40 text-rose-200' : 'bg-[#0e1628]/80 border border-white/10 text-slate-100'} text-sm leading-relaxed shadow-xl crystal-panel">
-          <div class="narrative-text font-editorial text-base sm:text-[17px] leading-8 text-slate-100" data-raw-text="\${escapeHtml(narrativeWithCitations)}" data-grounded-html="\${groundedHtml}">
-            \${isDoubleCheck ? groundedHtml : narrativeWithCitations}
+          <div class="narrative-text font-editorial text-base sm:text-[17px] leading-8 text-slate-100 whitespace-pre-wrap">
+            \${safeNarrativeHtml}
           </div>
         </div>
 
@@ -3143,7 +3125,7 @@ app.get("/", (_req, res) => {
           </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
         \`;
       } catch (err) {
-        resContainer.innerHTML = '<span class="text-rose-400">' + err.message + '</span>';
+        resContainer.textContent = 'Error: ' + err.message;
       }
     }
 
