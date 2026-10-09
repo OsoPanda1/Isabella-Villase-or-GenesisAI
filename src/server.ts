@@ -80,6 +80,9 @@ runtime.tools.register({
       node: "Nodo Cero (Real del Monte, Hidalgo)",
       altitude: "2,660 msnm",
       coordinates: [20.1417, -98.6722],
+      dataMode: "STATIC_REFERENCE_DATA",
+      liveData: false,
+      queryApplied: false,
       originHonored: "Orgullo esLatina · Ciencia y Biocultura de América Latina",
       results: [
         { name: "Panteón Inglés", category: "Patrimonio Histórico Mundial", founded: "1851", altitude: "2,660 msnm", status: "Preservado", note: "Todas las tumbas orientadas a Inglaterra, excepto la del payaso Richard Bell." },
@@ -118,7 +121,8 @@ runtime.skills.register({
     return {
       skill: "territorial_synthesis",
       signals: ctx.signals,
-      verdict: "Soberanía territorial confirmada para el Nodo Cero (Real del Monte).",
+      verdict: "NOT_ASSESSED",
+      reason: "No se ejecutó una verificación de soberanía territorial; la skill solo refleja señales de entrada.",
     };
   },
 });
@@ -295,28 +299,28 @@ const defaultGate = createCapabilityGate([
 
 // 12 Nodos Cognitivos Soberanos de la Red CROWN
 const CROWN_NODES = [
-  { id: "ISA", name: "Isa Musa", role: "Empatía, percepción e identidad biocultural", federation: "FED-1 Identidad", status: "ACTIVE", weight: 0.95, icon: "🌸" },
-  { id: "SOPHIA", name: "Sophia Dialéctica", role: "Razonamiento dialéctico, debate y síntesis", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.98, icon: "🦉" },
-  { id: "ORION", name: "Orion Executor", role: "Ejecución de herramientas y acciones coordinadas", federation: "FED-5 Infraestructura", status: "ACTIVE", weight: 0.92, icon: "⚔️" },
-  { id: "ARGUS", name: "Argus Sentinel", role: "Seguridad Zero Trust y firewall ético", federation: "FED-1 Gobernanza", status: "ACTIVE", weight: 1.00, icon: "🛡️" },
-  { id: "CROWN", name: "Crown Gateway", role: "Gateway soberano, arbitraje y control de flujo", federation: "FED-1 Gobernanza", status: "ACTIVE", weight: 0.96, icon: "👑" },
-  { id: "MNEMOSYNE", name: "Mnemosyne Memory", role: "Memoria episódica, semántica y procedencia IKES", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.90, icon: "📜" },
-  { id: "TELLUS", name: "Tellus Territorio", role: "Territorio, cartografía y Nodo Cero (RDM)", federation: "FED-6 Inmersión", status: "ACTIVE", weight: 0.94, icon: "🏔️" },
-  { id: "CHRONOS", name: "Chronos Auditor", role: "Temporalidad, secuenciación y WORM BookPI", federation: "FED-7 Auditoría", status: "ACTIVE", weight: 0.91, icon: "⏳" },
-  { id: "HERMES", name: "Hermes Relayer", role: "Comunicación inter-nodos, eventos y telemetría", federation: "FED-5 Infraestructura", status: "ACTIVE", weight: 0.93, icon: "⚡" },
-  { id: "AXIOMA", name: "Axioma Lógica", role: "Validación lógica formal y Veritas proofs", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.89, icon: "📐" },
-  { id: "KAIROS", name: "Kairos Oportunidad", role: "Optimización de inferencia y balance de carga", federation: "FED-4 Economía", status: "ACTIVE", weight: 0.88, icon: "⏱️" },
-  { id: "HARMONIA", name: "Harmonia Consenso", role: "Arbitraje ético y reconciliación de divergencias", federation: "FED-2 Patrimonio", status: "ACTIVE", weight: 0.97, icon: "⚖️" },
+  { id: "ISA", name: "Isa Musa", role: "Empatía, percepción e identidad biocultural", federation: "FED-1 Identidad", status: "DECLARED", weight: 0.95, icon: "🌸" },
+  { id: "SOPHIA", name: "Sophia Dialéctica", role: "Razonamiento dialéctico, debate y síntesis", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.98, icon: "🦉" },
+  { id: "ORION", name: "Orion Executor", role: "Ejecución de herramientas y acciones coordinadas", federation: "FED-5 Infraestructura", status: "DECLARED", weight: 0.92, icon: "⚔️" },
+  { id: "ARGUS", name: "Argus Sentinel", role: "Seguridad Zero Trust y firewall ético", federation: "FED-1 Gobernanza", status: "DECLARED", weight: 1.00, icon: "🛡️" },
+  { id: "CROWN", name: "Crown Gateway", role: "Gateway soberano, arbitraje y control de flujo", federation: "FED-1 Gobernanza", status: "DECLARED", weight: 0.96, icon: "👑" },
+  { id: "MNEMOSYNE", name: "Mnemosyne Memory", role: "Memoria episódica, semántica y procedencia IKES", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.90, icon: "📜" },
+  { id: "TELLUS", name: "Tellus Territorio", role: "Territorio, cartografía y Nodo Cero (RDM)", federation: "FED-6 Inmersión", status: "DECLARED", weight: 0.94, icon: "🏔️" },
+  { id: "CHRONOS", name: "Chronos Auditor", role: "Temporalidad, secuenciación y WORM BookPI", federation: "FED-7 Auditoría", status: "DECLARED", weight: 0.91, icon: "⏳" },
+  { id: "HERMES", name: "Hermes Relayer", role: "Comunicación inter-nodos, eventos y telemetría", federation: "FED-5 Infraestructura", status: "DECLARED", weight: 0.93, icon: "⚡" },
+  { id: "AXIOMA", name: "Axioma Lógica", role: "Validación lógica formal y Veritas proofs", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.89, icon: "📐" },
+  { id: "KAIROS", name: "Kairos Oportunidad", role: "Optimización de inferencia y balance de carga", federation: "FED-4 Economía", status: "DECLARED", weight: 0.88, icon: "⏱️" },
+  { id: "HARMONIA", name: "Harmonia Consenso", role: "Arbitraje ético y reconciliación de divergencias", federation: "FED-2 Patrimonio", status: "DECLARED", weight: 0.97, icon: "⚖️" },
 ];
 
 // 6 Capas Soberanas MD-X5
 const SOVEREIGN_LAYERS = [
-  { code: "ONTO", name: "Capa Ontológica", focus: "Identidad, soberanía del ser, biocultura e invariante operativo", icon: "🧬", status: "ENFORCED" },
-  { code: "CONST", name: "Capa Constitucional", focus: "AGENTS.md, separación de autoridad vs capacidad, primacía humana", icon: "📜", status: "ENFORCED" },
-  { code: "POL", name: "Capa Política / Gobernanza", focus: "Arbitraje CROWN, delegación explícita y auditoría de permisos", icon: "🏛️", status: "OPERATIONAL" },
-  { code: "ECON", name: "Capa Económica", focus: "Preservación de recursos, tokens de cómputo y auditoría de costes", icon: "💎", status: "MONITORED" },
-  { code: "COG", name: "Capa Cognitiva", focus: "IKES Epistemic Memory, síntesis multi-experto, Veritas verifier", icon: "🧠", status: "ACTIVE" },
-  { code: "TECH", name: "Capa Técnica / Infra", focus: "BookPI SHA3-512 WORM Ledger, Zero Trust Ingress, fail-closed", icon: "⚙️", status: "HARDENED" },
+  { code: "ONTO", name: "Capa Ontológica", focus: "Identidad, soberanía del ser, biocultura e invariante operativo", icon: "🧬", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "CONST", name: "Capa Constitucional", focus: "AGENTS.md, separación de autoridad vs capacidad, primacía humana", icon: "📜", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "POL", name: "Capa Política / Gobernanza", focus: "Arbitraje CROWN, delegación explícita y auditoría de permisos", icon: "🏛️", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "ECON", name: "Capa Económica", focus: "Preservación de recursos, tokens de cómputo y auditoría de costes", icon: "💎", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "COG", name: "Capa Cognitiva", focus: "IKES Epistemic Memory, síntesis multi-experto, Veritas verifier", icon: "🧠", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "TECH", name: "Capa Técnica / Infra", focus: "BookPI SHA3-512 WORM Ledger, Zero Trust Ingress, fail-closed", icon: "⚙️", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
 ];
 
 // BookPI uses the canonical process-local hash-chain adapter. It is not durable WORM storage.
@@ -1904,7 +1908,7 @@ app.get("/", (_req, res) => {
             <!-- Recent Ledger Events -->
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
-                <span>Eventos Recientes WORM</span>
+                <span>Eventos Recientes (hash-chain volátil)</span>
                 <button onclick="refreshBookPiLedger()" class="text-cyan-400 hover:underline">Refrescar</button>
               </div>
               <div id="artifactBookpiContent" class="space-y-1.5">
@@ -1935,7 +1939,7 @@ app.get("/", (_req, res) => {
             </h2>
             <p class="text-xs text-slate-400 mt-0.5">Arquitectura de gobernanza distribuida en 7 Federaciones (FED-1 a FED-7)</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-semibold">12 Nodos Activos</span>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-semibold">12 Nodos Declarados</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           ${CROWN_NODES.map(node => `
@@ -3298,7 +3302,7 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         if (data.success) {
-          alert("Afirmación propuesta e ingresada a IKES con ID: " + data.sourceId);
+          alert("Propuesta enviada a revisión humana. ID: " + data.proposalId + ". No se ha incorporado a la memoria canónica.");
           closeIngestModal();
         } else {
           alert("Error: " + data.error);
