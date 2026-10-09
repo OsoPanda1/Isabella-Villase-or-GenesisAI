@@ -109,15 +109,16 @@ export class IKESEngine {
     this.sources.set(source.sourceId, Object.freeze({ ...source, uri: parsedUri.toString() }));
   }
 
-  propose(proposal: KnowledgeProposal): KnowledgeClaim {
+  /** Builds a candidate without mutating canonical IKES state. */
+  prepareProposal(proposal: KnowledgeProposal): KnowledgeClaim {
     if (!proposal || !Array.isArray(proposal.evidenceIds) || proposal.evidenceIds.length === 0) {
       throw new Error("IKES_EVIDENCE_REQUIRED");
     }
     if (!Array.isArray(proposal.claim.sourceIds) || proposal.claim.sourceIds.length === 0) throw new Error("IKES_SOURCE_IDS_REQUIRED");
     const missingEvidence = proposal.evidenceIds.filter((id) => !this.sources.has(id));
-    if (missingEvidence.length > 0) throw new Error(`IKES: evidence not registered: ${missingEvidence.join(",")}`);
+    if (missingEvidence.length > 0) throw new Error("IKES: evidence not registered: " + missingEvidence.join(","));
     const missingSources = proposal.claim.sourceIds.filter((id) => !this.sources.has(id));
-    if (missingSources.length > 0) throw new Error(`IKES: source not registered: ${missingSources.join(",")}`);
+    if (missingSources.length > 0) throw new Error("IKES: source not registered: " + missingSources.join(","));
     const base = {
       ...proposal.claim,
       sourceIds: [...new Set(proposal.claim.sourceIds)],
@@ -137,7 +138,7 @@ export class IKESEngine {
       license: base.license,
       provenance: base.provenance,
     };
-    const claimId = `clm_${hash(identity).slice(0, 24)}`;
+    const claimId = "clm_" + hash(identity).slice(0, 24);
     const existing = this.claims.get(claimId);
     const merged = {
       ...base,
@@ -153,9 +154,14 @@ export class IKESEngine {
       contentHash: claimContentHash(merged),
       version: existing ? existing.version + 1 : 1,
     };
-    const frozen = freezeClaim(record);
-    this.claims.set(claimId, frozen);
-    return frozen;
+    return freezeClaim(record);
+  }
+
+  /** Commits a candidate to the in-memory canonical claim map. Call only after the caller's admission gate. */
+  propose(proposal: KnowledgeProposal): KnowledgeClaim {
+    const candidate = this.prepareProposal(proposal);
+    this.claims.set(candidate.claimId, candidate);
+    return candidate;
   }
 
   corroborate(claimId: string, evidenceIds: readonly string[]): KnowledgeClaim {
