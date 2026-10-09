@@ -77,3 +77,57 @@ npm run build
 ```
 
 La aceptación requiere además revisar la autenticación negativa de HSF y las rutas de escritura, verificar que los secretos no aparecen en salidas de sanitización, y confirmar que los estados no configurados no se muestran como verificaciones exitosas.
+
+
+## Segunda pasada de auditoría e implementación — 9 de octubre de 2026
+
+### Hallazgos adicionales corregidos en la rama
+
+1. **Gates de despliegue:** cualquier gate requerido distinto de `passed`, incluido `skipped` en build, tests, smoke, auth/RLS, health o canary, ahora bloquea `assessDeployment`. Antes, un gate no crítico omitido podía no convertirse en blocker.
+2. **Lock y sincronización:** `Lock.acquire(timeout)` ahora tiene timeout real y elimina los waiters expirados; el handoff conserva el propietario del lock, y liberar con un propietario incorrecto falla. Se corrigieron también la transferencia de permisos del semáforo, la recuperación de barrera tras timeout y la limpieza de waiters de Condition/Event.
+3. **Scopes y reconciliación:** los scopes de tenant/workspace/servicio usan componentes prefijados por longitud para evitar colisiones por separadores. La reconciliación Git/índice/BookPI ya rechaza marcas vacías. La revocación de ManagerToken invalida copias previas dentro del proceso; sigue siendo volátil y no sustituye un servicio de tokens persistente.
+4. **LSP:** abrir o guardar un archivo ya no produce por sí solo `FRESH_NO_DIAGNOSTICS`. Hasta recibir diagnósticos del servidor LSP para la versión correspondiente, el resultado es `NO_FRESH_DATA / INCONCLUSIVE`.
+5. **Ciclo de vida:** el planificador transporta título/cuerpo o una señal explícita de sensibilidad. Los issues sensibles no se incluyen en planes de cierre automático y se elevan al gate humano.
+6. **IKES:** la liberación exige un ID de auditoría BookPI no vacío además de sanitización, identidad, claims, evidencia, política, commit e índice. Se agregó una prueba para la ausencia de audit IDs.
+7. **HSF y conocimiento:** los descriptors registrados quedan congelados; memoria e ingesta devuelven copias separadas del estado interno. `KnowledgeFabric` crea entradas `PENDING_REVIEW`, no `accepted`, porque esta clase no ejecuta por sí misma validación de licencia, procedencia ni admisión canónica. El consenso incorpora ratio de acuerdo y etiqueta su puntuación como heurística; la puntuación de evidencia ya no usa niveles `VERY_HIGH/HIGH` que pudieran confundirse con probabilidad o verdad.
+8. **Memoria y privacidad HTTP:** `/api/v1/memory` y el detalle administrativo de BookPI requieren `GENESIS_ADMIN_API_TOKEN`; la cola de propuestas está conectada a `MemoryProposalQueue` y permite únicamente rechazar o pedir evidencia. La ruta pública BookPI conserva la telemetría necesaria para el panel, pero redacta la identidad del principal. `/api/v1/hsf/status` publica metadatos de tareas, no sus payloads.
+9. **Veracidad de los gates HTTP:** las rutas de quality/deployment ya no presentan las afirmaciones booleanas enviadas por un cliente como pruebas ejecutadas. La ruta del verificador de aplicaciones responde `NOT_INDEPENDENTLY_VERIFIED` porque no descarga ni ejecuta el repositorio. La ruta de diff declara que procesa un snapshot aportado por el cliente y no lee el filesystem del servidor.
+10. **Licencias:** la admisión automática queda limitada a MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unlicense y CC0-1.0. CC-BY-4.0 requiere revisión porque el esquema no conserva todavía un manifiesto completo de atribución; MPL, GPL/AGPL, share-alike, NC y ND también requieren revisión explícita.
+11. **XSS en el panel:** los valores dinámicos de BookPI y de los bloques de gobernanza se escapan antes de insertarse en `innerHTML`. Los follow-ups ya no interpolan el texto dentro del código JavaScript del atributo `onclick`; se transportan como atributo de datos escapado.
+
+### Inventario técnico priorizado de repositorios relacionados
+
+Este inventario es una auditoría priorizada de los repositorios directamente relacionados con Isabella, GenesisAI, IKES/LITLE, Atlas y TAMV. No equivale a una inspección línea por línea de cada uno de los repositorios existentes en la cuenta.
+
+| Repositorio | Evidencia comprobada | Decisión de integración |
+|---|---|---|
+| [isabella-ai-tina](https://github.com/OsoPanda1/isabella-ai-tina) | `package.json` válido; Node 24, Vite, TypeScript, Vitest, Prisma, scripts de auditoría y gates. Su `LICENSE` aplica condiciones diferentes a código, núcleo propietario/marca y documentación. | Reutilizar contratos y patrones tras revisar la licencia del archivo concreto. No copiar automáticamente algoritmos, marca, prompts o assets propietarios a la distribución MIT. |
+| [isabella-s-genesis-ai](https://github.com/OsoPanda1/isabella-s-genesis-ai) | README declara Supabase con 0 tablas y un 72% de avance, pero ese porcentaje es una declaración documental no validada. El `package.json` consultado no expone scripts `test` ni `typecheck`. No se encontró `LICENSE` en la raíz consultada. | Referencia de UI/flujo; no es runtime canónico ni fuente de un porcentaje de producción verificado. No copiar código hasta aclarar licencia. |
+| [isabella-ai-genesis-91037f85](https://github.com/OsoPanda1/isabella-ai-genesis-91037f85) | Contiene scripts de typecheck, tests, build y seguridad. Su `LICENSE` también establece licencias híbridas por clase de activo. | Extraer requisitos y patrones con revisión de licencia por archivo; no importar otra instancia de runtime. |
+| [isabella-villasenor-ai](https://github.com/OsoPanda1/isabella-villasenor-ai) | README lo identifica como scaffold Next.js/v0. No se encontró `LICENSE` en la raíz. El script `core:check` solo verifica que dos rutas existan, no que el núcleo funcione. | Prototipo de interfaz; el check de existencia no se considera prueba funcional. |
+| [isabella-s-crown](https://github.com/OsoPanda1/isabella-s-crown) | Repositorio público de referencia de CROWN; no se encontró `LICENSE` en la raíz consultada. | Referencia de arquitectura; no importar código sin licencia. |
+| [litle-trust-fabric](https://github.com/OsoPanda1/litle-trust-fabric) | El README describe un tejido de confianza. El código revisado documenta un proveedor PQC simulado basado en SHAKE256/HMAC; no demuestra implementación de ML-DSA real. No se encontró `LICENSE` raíz. | Reutilizar el contrato de simulación/estado, no presentarlo como criptografía poscuántica estandarizada ni copiar código sin licencia. |
+| [litle-atlas-suite](https://github.com/OsoPanda1/litle-atlas-suite) | README especifica un estándar de preservación/certificación, pero las afirmaciones de DAC, quorum y dimensiones no son por sí solas evidencia de una implementación desplegada. No se encontró `LICENSE` raíz. | Usar especificaciones como requisitos candidatos; mantener certificados, autoría y verificación como estados separados. |
+| [tamv-atlas](https://github.com/OsoPanda1/tamv-atlas) | `package.json` válido con scripts de test/typecheck/build y backend. No se encontró `LICENSE` raíz. El README describe endpoints e importación federada que aún requieren comprobación de ejecución. | Candidato a adaptador de infraestructura, no runtime paralelo. No copiar código sin licencia y pruebas reproducibles. |
+| [tamv-digital-nexus](https://github.com/OsoPanda1/tamv-digital-nexus) | **`package.json` no parsea como JSON**: error en línea 35, columna 5; falta una coma tras `linear:sync:apply` y existe una clave duplicada `linear:sync:payload`. Los scripts `check:docs-sync` y `audit:economy` son comandos `echo` de marcador de posición. El README también documenta bloqueos de instalación/build por dependencias. No se encontró `LICENSE` raíz. | Bloqueador de integración hasta reparar el manifiesto, validar dependencias y ejecutar CI. No importar ni depender de sus scripts declarados como si fueran controles funcionales. |
+| [tamv-documentacion](https://github.com/OsoPanda1/tamv-documentacion) | `LICENSE` raíz GPL-3.0. | No incorporar código a la distribución MIT sin una decisión explícita de compatibilidad/dual-licencia. |
+| [isabella-villasenor-agent](https://github.com/OsoPanda1/isabella-villasenor-agent) | Scaffold de agente; no se encontró `LICENSE` raíz. | Posible referencia para un adaptador, no una nueva instancia de Isabella. |
+| [quantum-system-tamv](https://github.com/OsoPanda1/quantum-system-tamv) | No se encontró `README.md` ni `package.json` en la raíz consultada. | Sin evidencia suficiente para integrarlo; queda fuera de la ruta de producción. |
+
+### Contrato de integración entre repositorios
+
+Ningún repositorio externo se considera integrado hasta que exista, en GenesisAI, un adaptador con contrato tipado, tests, política de autorización, procedencia de código/datos, tratamiento de errores, límites de timeout, telemetría sin secretos y un gate de release. Un README, badge, porcentaje de avance o API descrita no demuestra que el servicio esté disponible.
+
+Los repositorios sin licencia raíz identificable quedan en estado **referencia documental únicamente** hasta aclarar derechos. Los repositorios con licencia híbrida requieren evaluación por archivo, no solo por nombre de repositorio. La arquitectura mantiene un único runtime canónico y prohíbe la duplicación de los motores de decisión, autoridad, memoria y ejecución.
+
+### Validación de esta actualización
+
+Los cambios y pruebas unitarias adicionales se han escrito en la rama `feature/canonical-libraries-governance` del PR #14. No se declara que typecheck, tests o build hayan pasado: el conector no devolvió runs ni status checks asociados a los últimos commits consultados. La aceptación final exige ejecutar sobre el SHA más reciente:
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+No fusionar hasta revisar los resultados reales del SHA final y resolver cualquier fallo.
