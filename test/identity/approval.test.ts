@@ -31,8 +31,14 @@ describe("identity/approval", () => {
     ).toThrow(/conciencia humana/);
   });
 
+  it("un humano sin rol de aprobación no puede emitir una autorización", () => {
+    const human = createPrincipal({ id: "h2", kind: "human", roles: ["viewer"] });
+    expect(() => issueHumanApproval(human, { methodId: "m", action: "delete:x" }, "ALLOW"))
+      .toThrow(/lacks approval authority/);
+  });
+
   it("emite aprobación y verifica frescura", () => {
-    const human = createPrincipal({ id: "h1", kind: "human" });
+    const human = createPrincipal({ id: "h1", kind: "human", roles: ["approver"] });
     const ref = issueHumanApproval(human, { methodId: "m", action: "delete:x" }, "ALLOW");
     expect(ref.decision).toBe("ALLOW");
     expect(isRecentApproval(ref, 60_000)).toBe(true);
