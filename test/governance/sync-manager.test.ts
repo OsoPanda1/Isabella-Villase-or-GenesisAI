@@ -31,6 +31,24 @@ describe("sync manager", () => {
     await expect(sem.acquire(10)).rejects.toThrow(/timeout/);
   });
 
+  it("transfers queued permits without inflating capacity", async () => {
+    const sem = new BoundedSemaphore(1);
+    await sem.acquire();
+    const queued = sem.acquire(1000);
+    sem.release();
+    await queued;
+    expect(sem.availablePermits).toBe(0);
+    sem.release();
+    expect(sem.availablePermits).toBe(1);
+    expect(() => sem.release()).toThrow(/overflow/);
+  });
+
+  it("recovers a barrier after a timed-out generation", async () => {
+    const barrier = new Barrier(2);
+    await expect(barrier.wait(5)).rejects.toThrow(/generation aborted/);
+    await Promise.all([barrier.wait(100), barrier.wait(100)]);
+  });
+
   it("event, barrier and reentrant lock behave", async () => {
     const event = new Event();
     expect(event.isSet()).toBe(false);
