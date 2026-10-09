@@ -48,7 +48,6 @@ export interface RawDocument {
   declaredFormat?: string;
   declaredEncoding?: string;
   license?: string;
-  licenseEvidence?: string;
   provenance?: { uri?: string; publisher?: string; retrievedAt?: string };
   maxBytes?: number;
 }
@@ -79,12 +78,12 @@ export interface SanitizedDocument {
 const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
 
 /** Accepted license identifiers for automatic admission. Proprietary/custom terms require a separate legal approval workflow. */
-export const ALLOWED_AUTO_ADMISSION_LICENSES = new Set([
+export const ALLOWED_AUTO_ADMISSION_LICENSES = Object.freeze([
   "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0",
   "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "Unlicense",
   "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "CC-BY-NC-4.0",
   "CC-BY-NC-SA-4.0", "CC-BY-ND-4.0", "CC-BY-NC-ND-4.0",
-]);
+] as const);
 
 const SECRET_PATTERNS: readonly { kind: string; pattern: RegExp }[] = [
   { kind: "private_key", pattern: /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/ },
@@ -196,7 +195,7 @@ function classifyContent(content: string, secretHits: number, piiHits: number): 
  * el archivo sospechoso se marca QUARANTINED y nunca se indexa ni ejecuta.
  */
 export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
-  if (!raw.id.trim()) throw new Error("SANITIZATION: id required");
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(raw.id.trim())) throw new Error("SANITIZATION: id must be a safe 1-128 character identifier");
   const findings: SanitizationFinding[] = [];
   const report: SanitizationStageReport[] = [];
   const maxBytes = raw.maxBytes ?? DEFAULT_MAX_BYTES;
@@ -218,16 +217,19 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
 
   // 2. format
   const format = raw.declaredFormat ?? "text";
-  const formatOk = /^[a-z0-9][a-z0-9+._-]*$/i.test(format);
-  report.push({ stage: "format", ok: formatOk, detail: `format=${format}` });
+  const formatOk = format.length <= 32 && /^[a-z0-9][a-z0-9+._-]*$/i.test(format);
+  report.push({ stage: "format", ok: formatOk, detail: formatOk ? `format=${format}` : "format metadata invalid" });
 
   // 3. encoding
   const controlChars = detectControlChars(raw.content);
-  const encodingOk = controlChars.length === 0;
+  const declaredEncoding = raw.declaredEncoding ?? "utf-8";
+  const encodingNameOk = declaredEncoding.length <= 32 && /^[a-z0-9._-]+$/i.test(declaredEncoding);
+  const encodingOk = controlChars.length === 0 && encodingNameOk;
   if (!encodingOk) {
     findings.push({ stage: "encoding", kind: "control_chars", severity: "MEDIUM", evidence: `${controlChars.length} control chars` });
   }
-  report.push({ stage: "encoding", ok: encodingOk, detail: `encoding=${raw.declaredEncoding ?? "utf-8"}` });
+  if (!encodingNameOk) findings.push({ stage: "encoding", kind: "invalid_encoding_metadata", severity: "MEDIUM", evidence: "[REDACTED]" });
+  report.push({ stage: "encoding", ok: encodingOk, detail: encodingOk ? `encoding=${declaredEncoding}` : "encoding metadata or control characters invalid" });
 
   // 4. metadata / content (normalización NFKC)
   const normalized = normalizeUnicode(raw.content);
@@ -261,12 +263,12 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
 
   // 6. license
   const license = typeof raw.license === "string" ? raw.license.trim() : "unknown";
-  const licenseOk = license.length <= 100 && ALLOWED_AUTO_ADMISSION_LICENSES.has(license);
+  const licenseOk = license.length <= 100 && ALLOWED_AUTO_ADMISSION_LICENSES.includes(license as (typeof ALLOWED_AUTO_ADMISSION_LICENSES)[number]);
   if (!licenseOk) {
     const kind = license === "unknown" || !license ? "missing_license" : "license_not_allowlisted";
     findings.push({ stage: "license", kind, severity: "MEDIUM", evidence: "license missing, unknown, or not approved for automatic admission" });
   }
-  report.push({ stage: "license", ok: licenseOk, detail: `license=${license}` });
+  report.push({ stage: "license", ok: licenseOk, detail: licenseOk ? `license=${license}` : "license missing or not allowlisted" });
 
   // 7. language
   const language = detectLanguage(masked);
@@ -296,7 +298,7 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
     normalizedContent: critical ? "[QUARANTINED: CONTENT WITHHELD]" : masked,
     language,
     classification,
-    license,
+    license: licenseOk ? license : "unknown_or_not_allowlisted",
     fingerprints,
     findings: Object.freeze(findings),
     maskedPII: piiCount,
