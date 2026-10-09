@@ -127,5 +127,14 @@ describe("sanitization pipeline", () => {
     expect(casingVariant.fingerprints.structural).toBe(a.fingerprints.structural);
     expect(casingVariant.fingerprints.semantic).toBe(a.fingerprints.semantic);
     expect(classifyDuplicateRelationship(a.fingerprints, casingVariant.fingerprints)).toBe("LIKELY_UPDATE");
+
+    const sameTextDifferentRights = sanitizeDocument({
+      ...base,
+      id: "doc-different-rights",
+      license: "MIT",
+      provenance: { uri: "https://other.example.org/x", retrievedAt: "2026-01-02T00:00:00Z" },
+    });
+    expect(isPhysicalDuplicate(a.fingerprints, sameTextDifferentRights.fingerprints)).toBe(false);
+    expect(classifyDuplicateRelationship(a.fingerprints, sameTextDifferentRights.fingerprints)).not.toBe("IDENTICAL_ARTIFACT");
   });
 });
