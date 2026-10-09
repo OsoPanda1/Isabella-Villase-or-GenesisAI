@@ -234,16 +234,20 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
     const match = normalized.match(pattern);
     if (match) {
       secretMatches.push(kind);
-      findings.push({ stage: "pii_secrets", kind, severity: "CRITICAL", evidence: match[0].slice(0, 24) });
+      findings.push({ stage: "pii_secrets", kind, severity: "CRITICAL", evidence: "[REDACTED]" });
     }
   }
-  const { masked, count: piiCount } = maskPII(normalized);
+  const secretRedacted = SECRET_PATTERNS.reduce((value, { pattern }) => {
+    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+    return value.replace(new RegExp(pattern.source, flags), "[REDACTED_SECRET]");
+  }, normalized);
+  const { masked, count: piiCount } = maskPII(secretRedacted);
   const piiOk = secretMatches.length === 0;
   report.push({ stage: "pii_secrets", ok: piiOk, detail: `${piiCount} PII masked, ${secretMatches.length} secrets` });
 
   // 6. license
   const license = raw.license ?? "unknown";
-  const licenseOk = license !== "unknown";
+  const licenseOk = typeof raw.license === "string" && raw.license.trim().length > 0 && raw.license.trim().toLowerCase() !== "unknown";
   if (!licenseOk) {
     findings.push({ stage: "license", kind: "missing_license", severity: "MEDIUM", evidence: "license not declared" });
   }
@@ -269,12 +273,12 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
   const critical = findings.some((f) => f.severity === "CRITICAL");
   const status: SanitizationStatus = critical
     ? "QUARANTINED"
-    : (!formatOk || !encodingOk ? "REJECTED" : "ADMITTED");
+    : (!formatOk || !encodingOk || !licenseOk || !metadataOk ? "REJECTED" : "ADMITTED");
 
   return Object.freeze({
     id: raw.id,
     status,
-    normalizedContent: masked,
+    normalizedContent: critical ? "[QUARANTINED: CONTENT WITHHELD]" : masked,
     language,
     classification,
     license,
