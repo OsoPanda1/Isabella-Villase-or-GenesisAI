@@ -2,7 +2,7 @@ name: Isabella Genesis CI
 
 on:
   push:
-    branches: ["main", "genesis-v6-sovereign-evolution"]
+    branches: ["main", "genesis-v6-sovereign-evolution", "feature/canonical-libraries-governance"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
