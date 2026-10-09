@@ -76,10 +76,16 @@ export interface CapabilityGatewayPolicy {
 
 export class FailClosedCapabilityPolicy implements CapabilityGatewayPolicy {
   async authorize(capabilityId: string, context: CapabilityContext, _input: unknown) {
-    if (!capabilityId || !context.requestId || !context.traceId || !context.principalId || !context.role) {
+    if (!capabilityId || !context.requestId || !context.traceId || !context.principalId || !context.role || !context.policyVersion) {
       return { granted: false, reason: "HSF_CONTEXT_INCOMPLETE" };
     }
-    return { granted: true, reason: "HSF_CONTEXT_VALIDATED" };
+    if (context.metadata?.authenticated !== "true" || context.metadata?.genesisGovernanceAdmitted !== "true") {
+      return { granted: false, reason: "HSF_AUTHORIZATION_POLICY_NOT_CONFIGURED" };
+    }
+    if (!["operator", "admin"].includes(context.role)) {
+      return { granted: false, reason: "HSF_ROLE_NOT_ALLOWED" };
+    }
+    return { granted: true, reason: "GENESIS_GOVERNANCE_ADMITTED" };
   }
 }
 
