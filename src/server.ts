@@ -590,7 +590,7 @@ app.post("/api/v1/cognition/route", async (req, res) => {
     let generativeNarrative: string | null = null;
     if (decision.admitted && genAi && body.modelEngine === "gemini") {
       try {
-        const sysPrompt = `Eres Isabella Villaseñor AI (Genesis TINA V6), un runtime de IA gobernado. Mantén la separación entre capacidad, autoridad, ejecución, evidencia, aprendizaje y producción. Distingue hechos, inferencias y datos no verificados. No afirmes certificación, ejecución o verificación sin evidencia.`;
+        const sysPrompt = `Eres Isabella Villaseñor GenesisAI, un runtime de IA gobernado. Mantén la separación entre capacidad, autoridad, ejecución, evidencia, aprendizaje y producción. Distingue hechos, inferencias y datos no verificados. No afirmes certificación, ejecución o verificación sin evidencia.`;
         const resp = await genAi.models.generateContent({
           model: "gemini-2.5-flash",
           contents: `${sysPrompt}\n\nSolicitud del usuario:\n${input}`,
@@ -915,7 +915,7 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
   });
 });
 
-// NotebookLM Epistemic Studio Document Generator
+// Local epistemic document templates; no NotebookLM connector is invoked.
 app.post("/api/v1/notebook/generate", (req, res) => {
   if (!enforceRateLimit(req, res, publicScanLimiter, "notebook-template")) return;
   const body = req.body ?? {};
@@ -1471,7 +1471,7 @@ app.get("/", (_req, res) => {
         </button>
         <button onclick="switchView('view-notebook')" id="btn-view-notebook" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200 flex items-center gap-1">
           <span>🎧</span>
-          <span>NotebookLM Audio</span>
+          <span>Guion de audio local</span>
         </button>
       </nav>
 
@@ -1895,7 +1895,7 @@ app.get("/", (_req, res) => {
               </div>
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 2 (Prompt Guard):</span>
-                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+                <span class="text-amber-300 font-semibold">HEURISTIC ONLY</span>
               </div>
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 3 (Comportamental):</span>
@@ -1915,7 +1915,7 @@ app.get("/", (_req, res) => {
           </div>
         </div>
 
-        <!-- Accordion 6: Libro Mayor Criptográfico BookPI WORM & PQC -->
+        <!-- Accordion 6: BookPI hash-chain local; WORM/PQC providers not configured -->
         <div>
           <button onclick="toggleAccordion('acc-right-3')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.03] transition group">
             <div class="flex items-center gap-2.5">
@@ -1931,7 +1931,7 @@ app.get("/", (_req, res) => {
           </button>
 
           <div id="acc-right-3" class="p-3.5 space-y-3 pt-0 text-xs">
-            <!-- Merkle Root Badge -->
+            <!-- Volatile hash-chain status; not a Merkle root -->
             <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1 font-mono text-[10px]">
               <div class="text-slate-400">Chain Head:</div>
               <div id="bookPiMiniChainHead" class="text-cyan-300 truncate">Sin eventos</div>
@@ -2114,7 +2114,7 @@ app.get("/", (_req, res) => {
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 2: Semántico (Prompt Guard)</div>
             <p class="text-[11px] text-slate-300 font-editorial italic">Protección contra 10 familias de ataque (jailbreaks, prompt injection, evasión).</p>
-            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 3: Comportamental</div>
@@ -2923,7 +2923,7 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">4</span>
                     <span class="truncate font-semibold">Canon v40.0.0</span>
                   </div>
-                  <span class="text-[9px] font-mono text-purple-400 font-semibold">WORM</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">VOLATILE</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Pipeline P-R-P-D-A-A & BookPI
@@ -3228,7 +3228,7 @@ app.get("/", (_req, res) => {
       alert("Documento copiado al portapapeles.");
     }
 
-    // NotebookLM Audio Podcast Player
+    // Browser narration UI; the API generates a script, not an audio file.
     function toggleAudioPodcast() {
       isPodcastPlaying = !isPodcastPlaying;
       const btnIcon = document.getElementById('podcastPlayIcon');
