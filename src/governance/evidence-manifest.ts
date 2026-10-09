@@ -74,7 +74,7 @@ export function createEvidenceManifest(seed: EvidenceManifestSeed): EvidenceMani
     policyDecision: seed.policyDecision ?? "DEC-UNSET",
   };
   return Object.freeze({
-    manifestId: `EVM-${hash(core).slice(0, 8).toUpperCase()}`,
+    manifestId: "EVM-" + hash({ ...core, claimIds: seed.claimIds ?? [], sourceIds: seed.sourceIds ?? [], bookpiAuditIds: seed.bookpiAuditIds ?? [], rollbackPlan: seed.rollbackPlan ?? "revert_commit", limitations: seed.limitations ?? [] }).slice(0, 8).toUpperCase(),
     repository: core.repository,
     commit: core.commit,
     createdAt: seed.createdAt ?? new Date().toISOString(),
@@ -97,11 +97,18 @@ export interface ManifestCompleteness {
 /** Verifica que el manifest contenga todo lo requerido para respaldar `stable`. */
 export function assessManifestCompleteness(manifest: EvidenceManifest): ManifestCompleteness {
   const missing: string[] = [];
+  if (!manifest.repository.trim()) missing.push("repository");
+  if (!FULL_SHA.test(manifest.commit)) missing.push("commit");
+  if (!manifest.manifestId.trim()) missing.push("manifest_id");
+  if (!Number.isFinite(Date.parse(manifest.createdAt))) missing.push("created_at");
+  if (manifest.claimIds.length === 0) missing.push("claim_ids");
+  if (manifest.sourceIds.length === 0) missing.push("source_ids");
   if (manifest.validation.status !== "passed") missing.push("validation.status");
   if (manifest.validation.tests.length === 0) missing.push("validation.tests");
   if (manifest.security.secretScan !== "passed") missing.push("security.secret_scan");
   if (manifest.security.dependencyScan !== "passed") missing.push("security.dependency_scan");
   if (!manifest.policyDecision || manifest.policyDecision === "DEC-UNSET") missing.push("policy_decision");
+  if (manifest.bookpiAuditIds.length === 0) missing.push("bookpi_audit_ids");
   if (!manifest.rollbackPlan.trim()) missing.push("rollback_plan");
   return { complete: missing.length === 0, missing: Object.freeze(missing) };
 }
@@ -110,7 +117,32 @@ export function assessManifestCompleteness(manifest: EvidenceManifest): Manifest
  * Decide si un estado `stable` puede declararse: requiere manifest completo o una
  * excepción documentada y aprobada explícitamente.
  */
-export function canClaimStable(manifest: EvidenceManifest, approvedException = false): boolean {
-  const { complete } = assessManifestCompleteness(manifest);
-  return complete || approvedException;
+export interface StabilityException {
+  exceptionId: string;
+  approver: string;
+  rationale: string;
+  approvedAt: string;
+  evidenceId: string;
+}
+
+export type StabilityExceptionVerifier = (exception: StabilityException) => boolean;
+
+/**
+ * Una excepción solo cuenta si está documentada y una autoridad externa inyectada
+ * verifica su aprobación. Un booleano aportado por el caller no es autorización.
+ */
+export function canClaimStable(
+  manifest: EvidenceManifest,
+  exception?: StabilityException,
+  verifyException?: StabilityExceptionVerifier,
+): boolean {
+  if (assessManifestCompleteness(manifest).complete) return true;
+  if (!exception || !verifyException) return false;
+  if (![exception.exceptionId, exception.approver, exception.rationale, exception.evidenceId].every((value) => value.trim())) return false;
+  if (!Number.isFinite(Date.parse(exception.approvedAt))) return false;
+  try {
+    return verifyException(exception) === true;
+  } catch {
+    return false;
+  }
 }
