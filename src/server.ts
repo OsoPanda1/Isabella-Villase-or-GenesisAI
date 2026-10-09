@@ -939,7 +939,7 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
 ### 2. Puntos clave y referencias declaradas (no recuperadas por este runtime)
 - **Nodo Cero:** Ubicado a 2,660 msnm en Real del Monte, Hidalgo. Alberga patrimonio histórico minero (Mina de Acosta, Mina La Dificultad) y el Panteón Inglés.
 - **Autoría Canónica:** Edwin Oswaldo Castillo Trejo (Anubis Villaseñor), ORCID: 0009-0008-5050-1539, DOI Zenodo: 10.5281/zenodo.20606361.
-- **Memoria IKES:** Escala de verdad E0 a E6 con registro inmutable en BookPI SHA3-512.
+- **Memoria IKES:** Escala epistemológica E0–E6; BookPI mantiene una cadena SHA-256 volátil, no un registro inmutable durable.
 - **Red CROWN:** 12 Nodos cognitivos coordinados en 7 Federaciones (FED-1 a FED-7).
 
 ### 3. Recomendaciones Operativas
