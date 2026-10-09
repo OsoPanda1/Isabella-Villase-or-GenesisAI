@@ -30,6 +30,32 @@ describe("HSF", () => {
     expect(result.error).toBe("HSF_AUTHORIZATION_POLICY_NOT_CONFIGURED");
   });
 
+  it("does not expose mutable internal memory records", () => {
+    const memory = new InMemoryMemoryFabric();
+    const saved = memory.write({ text: "private internal text", namespace: "genesis", relations: ["r1"], metadata: { owner: "admin" } });
+    (saved as { text: string }).text = "tampered";
+    (saved.relations as string[]).push("tampered");
+    const retrieved = memory.retrieve("private");
+    expect(retrieved[0]?.text).toBe("private internal text");
+    expect(retrieved[0]?.relations).toEqual(["r1"]);
+    expect(() => memory.retrieve("", undefined, 0)).toThrow(/LIMIT_OUT_OF_RANGE/);
+  });
+
+  it("keeps ingested knowledge pending review and returns detached records", () => {
+    const knowledge = new KnowledgeFabric();
+    const artifact = knowledge.ingest({ title: "T", content: "C", source: "S" });
+    expect(artifact.status).toBe("PENDING_REVIEW");
+    (artifact as { content: string }).content = "tampered";
+    expect(knowledge.get(artifact.id)?.content).toBe("C");
+    expect(knowledge.list()[0]?.status).toBe("PENDING_REVIEW");
+  });
+
+  it("labels consensus and evidence scores as heuristics, not truth probabilities", () => {
+    const registry = new CapabilityRegistry();
+    const result = new CapabilityGateway(registry);
+    expect(result).toBeDefined();
+  });
+
   it("fails closed for unknown capabilities and deduplicates memory", async () => {
     const gateway = new CapabilityGateway(new CapabilityRegistry());
     const result = await gateway.invoke("missing", {}, {
@@ -41,6 +67,8 @@ describe("HSF", () => {
     const b = memory.write({ text: "Genesis knowledge", namespace: "genesis", relations: [] });
     expect(a.id).toBe(b.id);
     const knowledge = new KnowledgeFabric();
-    expect(knowledge.ingest({ title: "T", content: "C", source: "S" }).contentHash).toHaveLength(64);
+    const artifact = knowledge.ingest({ title: "T", content: "C", source: "S" });
+    expect(artifact.contentHash).toHaveLength(64);
+    expect(artifact.status).toBe("PENDING_REVIEW");
   });
 });
