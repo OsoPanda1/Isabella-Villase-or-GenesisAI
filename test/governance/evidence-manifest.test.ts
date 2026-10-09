@@ -17,6 +17,7 @@ const validSeed = {
 describe("evidence manifest integrity", () => {
   it("changes identity when material evidence changes", () => {
     const first = createEvidenceManifest(validSeed);
+    expect(first.manifestId).toMatch(/^EVM-[A-F0-9]{64}$/);
     const changedClaim = createEvidenceManifest({ ...validSeed, claimIds: ["claim-2"] });
     expect(first.manifestId).not.toBe(changedClaim.manifestId);
   });
