@@ -195,7 +195,14 @@ function classifyContent(content: string, secretHits: number, piiHits: number): 
  * el archivo sospechoso se marca QUARANTINED y nunca se indexa ni ejecuta.
  */
 export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
-  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(raw.id.trim())) throw new Error("SANITIZATION: id must be a safe 1-128 character identifier");
+  if (!raw || typeof raw.id !== "string" || typeof raw.content !== "string") {
+    throw new Error("SANITIZATION: id and content must be strings");
+  }
+  const safeId = raw.id.trim();
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(safeId)) throw new Error("SANITIZATION: id must be a safe 1-128 character identifier");
+  if (raw.maxBytes !== undefined && (!Number.isSafeInteger(raw.maxBytes) || raw.maxBytes <= 0)) {
+    throw new Error("SANITIZATION: maxBytes must be a positive safe integer");
+  }
   const findings: SanitizationFinding[] = [];
   const report: SanitizationStageReport[] = [];
   const maxBytes = raw.maxBytes ?? DEFAULT_MAX_BYTES;
@@ -223,7 +230,11 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
   // 3. encoding
   const controlChars = detectControlChars(raw.content);
   const declaredEncoding = raw.declaredEncoding ?? "utf-8";
-  const encodingNameOk = declaredEncoding.length <= 32 && /^[a-z0-9._-]+$/i.test(declaredEncoding);
+  // This function receives a JavaScript string; it does not decode arbitrary
+  // byte encodings. Only UTF-8 declarations can be represented honestly here.
+  const encodingNameOk = declaredEncoding.length <= 32 &&
+    /^[a-z0-9._-]+$/i.test(declaredEncoding) &&
+    ["utf-8", "utf8"].includes(declaredEncoding.toLowerCase());
   const encodingOk = controlChars.length === 0 && encodingNameOk;
   if (!encodingOk) {
     findings.push({ stage: "encoding", kind: "control_chars", severity: "MEDIUM", evidence: `${controlChars.length} control chars` });
@@ -265,7 +276,10 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
   const license = typeof raw.license === "string" ? raw.license.trim() : "unknown";
   const licenseOk = license.length <= 100 && ALLOWED_AUTO_ADMISSION_LICENSES.includes(license as (typeof ALLOWED_AUTO_ADMISSION_LICENSES)[number]);
   if (!licenseOk) {
-    const kind = license === "unknown" || !license ? "missing_license" : "license_not_allowlisted";
+    const requiresReview = LICENSES_REQUIRING_REVIEW.includes(license as (typeof LICENSES_REQUIRING_REVIEW)[number]);
+    const kind = license === "unknown" || !license
+      ? "missing_license"
+      : requiresReview ? "license_requires_review" : "license_not_allowlisted";
     findings.push({ stage: "license", kind, severity: "MEDIUM", evidence: "license missing, unknown, or not approved for automatic admission" });
   }
   report.push({ stage: "license", ok: licenseOk, detail: licenseOk ? `license=${license}` : "license missing or not allowlisted" });
@@ -293,7 +307,7 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
     : (!formatOk || !encodingOk || !licenseOk || !metadataOk ? "REJECTED" : "ADMITTED");
 
   return Object.freeze({
-    id: raw.id,
+    id: safeId,
     status,
     normalizedContent: critical ? "[QUARANTINED: CONTENT WITHHELD]" : masked,
     language,
