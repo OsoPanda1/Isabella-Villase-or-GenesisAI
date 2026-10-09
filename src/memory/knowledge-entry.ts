@@ -144,9 +144,9 @@ export type PreservationDecision = "ALLOW_DELETE" | "PRESERVE";
 export function decidePreservation(
   verdict: "IDENTICAL_ARTIFACT" | "VERIFIED_DUPLICATE" | "LIKELY_UPDATE" | "ENRICHMENT" | "DISTINCT",
 ): PreservationDecision {
-  return verdict === "IDENTICAL_ARTIFACT" || verdict === "VERIFIED_DUPLICATE"
-    ? "ALLOW_DELETE"
-    : "PRESERVE";
+  // No proof-bearing duplicate-verification contract is wired here yet.
+  // Therefore only byte-identical artifacts qualify for automatic deletion.
+  return verdict === "IDENTICAL_ARTIFACT" ? "ALLOW_DELETE" : "PRESERVE";
 }
 
 export interface IkesStageResult {
