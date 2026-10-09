@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CapabilityGateway, CapabilityRegistry, InMemoryMemoryFabric, KnowledgeFabric } from "../src/capabilities";
+import { CapabilityGateway, CapabilityRegistry, InMemoryMemoryFabric, KnowledgeFabric, consensus, verifyClaim } from "../src/capabilities";
 
 describe("HSF", () => {
   it("invokes a registered capability", async () => {
@@ -51,9 +51,21 @@ describe("HSF", () => {
   });
 
   it("labels consensus and evidence scores as heuristics, not truth probabilities", () => {
-    const registry = new CapabilityRegistry();
-    const result = new CapabilityGateway(registry);
-    expect(result).toBeDefined();
+    const result = consensus([
+      { expertId: "a", verdict: "yes", confidence: 0.9, evidence: ["e1"] },
+      { expertId: "b", verdict: "no", confidence: 0.9, evidence: ["e2"] },
+      { expertId: "c", verdict: "yes", confidence: 0.9, evidence: ["e3"] },
+    ]);
+    expect(result.verdict).toBe("yes");
+    expect(result.agreementRatio).toBeCloseTo(2 / 3);
+    expect(result.confidence).toBeCloseTo(0.6);
+    expect(result.confidenceType).toBe("HEURISTIC_AGREEMENT_SCORE");
+
+    const score = verifyClaim({ claim: "claim", evidence: ["source-1", "source-2"], contradictions: [] });
+    expect(score.confidence).toBe(0.8);
+    expect(score.scoreType).toBe("HEURISTIC_NOT_PROBABILITY");
+    expect(score.level).toBe("SUPPORTIVE_SIGNAL");
+    expect(verifyClaim({ claim: "unknown", evidence: [], contradictions: [] }).level).toBe("UNVERIFIED");
   });
 
   it("fails closed for unknown capabilities and deduplicates memory", async () => {
