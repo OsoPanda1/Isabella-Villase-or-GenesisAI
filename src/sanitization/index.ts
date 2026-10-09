@@ -48,6 +48,7 @@ export interface RawDocument {
   declaredFormat?: string;
   declaredEncoding?: string;
   license?: string;
+  licenseEvidence?: string;
   provenance?: { uri?: string; publisher?: string; retrievedAt?: string };
   maxBytes?: number;
 }
@@ -76,6 +77,14 @@ export interface SanitizedDocument {
 }
 
 const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
+
+/** Accepted license identifiers for automatic admission. Proprietary/custom terms require a separate legal approval workflow. */
+export const ALLOWED_AUTO_ADMISSION_LICENSES = new Set([
+  "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0",
+  "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "Unlicense",
+  "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "CC-BY-NC-4.0",
+  "CC-BY-NC-SA-4.0", "CC-BY-ND-4.0", "CC-BY-NC-ND-4.0",
+]);
 
 const SECRET_PATTERNS: readonly { kind: string; pattern: RegExp }[] = [
   { kind: "private_key", pattern: /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/ },
@@ -201,7 +210,7 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
   for (const { kind, pattern } of MALWARE_PATTERNS) {
     const match = raw.content.match(pattern);
     if (match) {
-      findings.push({ stage: "file_safety", kind, severity: "CRITICAL", evidence: match[0] });
+      findings.push({ stage: "file_safety", kind, severity: "CRITICAL", evidence: "[REDACTED]" });
       safetyOk = false;
     }
   }
@@ -222,7 +231,12 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
 
   // 4. metadata / content (normalización NFKC)
   const normalized = normalizeUnicode(raw.content);
-  const metadataOk = raw.provenance?.uri !== undefined || raw.provenance?.retrievedAt !== undefined;
+  let metadataOk = false;
+  try {
+    const uri = typeof raw.provenance?.uri === "string" ? new URL(raw.provenance.uri) : null;
+    metadataOk = Boolean(uri && (uri.protocol === "https:" || uri.protocol === "http:") &&
+      typeof raw.provenance?.retrievedAt === "string" && Number.isFinite(Date.parse(raw.provenance.retrievedAt)));
+  } catch { metadataOk = false; }
   if (!metadataOk) {
     findings.push({ stage: "metadata", kind: "missing_provenance", severity: "LOW", evidence: "provenance incomplete" });
   }
@@ -246,10 +260,11 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
   report.push({ stage: "pii_secrets", ok: piiOk, detail: `${piiCount} PII masked, ${secretMatches.length} secrets` });
 
   // 6. license
-  const license = raw.license ?? "unknown";
-  const licenseOk = typeof raw.license === "string" && raw.license.trim().length > 0 && raw.license.trim().toLowerCase() !== "unknown";
+  const license = typeof raw.license === "string" ? raw.license.trim() : "unknown";
+  const licenseOk = license.length <= 100 && ALLOWED_AUTO_ADMISSION_LICENSES.has(license);
   if (!licenseOk) {
-    findings.push({ stage: "license", kind: "missing_license", severity: "MEDIUM", evidence: "license not declared" });
+    const kind = license === "unknown" || !license ? "missing_license" : "license_not_allowlisted";
+    findings.push({ stage: "license", kind, severity: "MEDIUM", evidence: "license missing, unknown, or not approved for automatic admission" });
   }
   report.push({ stage: "license", ok: licenseOk, detail: `license=${license}` });
 
