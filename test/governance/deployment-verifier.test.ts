@@ -29,11 +29,17 @@ describe("agent sdk verifier", () => {
     expect(verifyAgentSdkApp({ isAgentSdkApp: false }).overall).toBe("NOT_APPLICABLE");
   });
 
+  it("does not return PASS when checks have not been executed", () => {
+    const report = verifyAgentSdkApp({ isAgentSdkApp: true });
+    expect(report.overall).toBe("INCONCLUSIVE");
+    expect(report.findings.some((finding) => finding.state === "INCONCLUSIVE")).toBe(true);
+  });
+
   it("fails on secrets and warns on missing pins", () => {
     const fail = verifyAgentSdkApp({ isAgentSdkApp: true, secretPatternsFound: 2, syntaxErrors: [], importErrors: [] });
     expect(fail.overall).toBe("FAIL");
     const warn = verifyAgentSdkApp({ isAgentSdkApp: true, secretPatternsFound: 0 });
-    expect(warn.overall).toBe("PASS_WITH_WARNINGS");
+    expect(warn.overall).toBe("INCONCLUSIVE");
   });
 });
 
