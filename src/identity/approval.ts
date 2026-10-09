@@ -107,7 +107,7 @@ function signerFor(approver: Principal, signer?: ApprovalSigner): ApprovalSigner
   if (process.env.VITEST === "true" || process.env.NODE_ENV === "test") {
     const pair = generateKeyPairSync("ed25519");
     return {
-      keyId: `test-${approver.id}`,
+      keyId: `test-${approver.id}-${randomUUID()}`,
       privateKeyPem: pair.privateKey.export({ format: "pem", type: "pkcs8" }).toString(),
       publicKeyPem: pair.publicKey.export({ format: "pem", type: "spki" }).toString(),
     };
@@ -136,6 +136,12 @@ export function issueHumanApproval(
   const targetHash = hashTarget(canonicalTarget(target, decision, approver.id, nonce, expiresAt));
   const payload = Buffer.from(`${evidenceId}.${targetHash}`, "utf8");
   const signature = sign(null, payload, createPrivateKey(activeSigner.privateKeyPem)).toString("base64url");
+  // Ephemeral trust is test-only. Production verification must use a separately
+  // configured trust anchor, never the public key embedded in the approval itself.
+  if (process.env.VITEST === "true" || process.env.NODE_ENV === "test") {
+    process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID = activeSigner.keyId;
+    process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM = activeSigner.publicKeyPem;
+  }
   return {
     evidenceId, approver: approver.id, approverKind: "human", methodId: target.methodId,
     decision, decidedAt, expiresAt, nonce, targetHash, keyId: activeSigner.keyId,
@@ -152,8 +158,24 @@ export function verifyHumanApproval(ref: ApprovalRef, target: ApprovalTarget, re
   if (hashTarget(canonical) !== ref.targetHash) return false;
   const expiry = Date.parse(ref.expiresAt);
   if (!Number.isFinite(expiry) || expiry < Date.now()) return false;
-  const valid = verify(null, Buffer.from(`${ref.evidenceId}.${ref.targetHash}`, "utf8"),
-    createPublicKey(ref.publicKeyPem), Buffer.from(ref.signature, "base64url"));
+  const trustedKeyId = process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID;
+  const trustedPublicKeyPem = process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM;
+  if (!trustedKeyId || trustedKeyId !== ref.keyId || !trustedPublicKeyPem) return false;
+
+  let trustedPublicKey;
+  try {
+    trustedPublicKey = createPublicKey(trustedPublicKeyPem);
+    const embeddedPublicKey = createPublicKey(ref.publicKeyPem);
+    if (trustedPublicKey.asymmetricKeyType !== "ed25519" || embeddedPublicKey.asymmetricKeyType !== "ed25519") return false;
+    const trustedDer = trustedPublicKey.export({ format: "der", type: "spki" });
+    const embeddedDer = embeddedPublicKey.export({ format: "der", type: "spki" });
+    if (!trustedDer.equals(embeddedDer)) return false;
+  } catch {
+    return false;
+  }
+
+  const valid = verify(null, Buffer.from(ref.evidenceId + "." + ref.targetHash, "utf8"),
+    trustedPublicKey, Buffer.from(ref.signature, "base64url"));
   if (!valid) return false;
   if (replay) replay.consume(ref.nonce, ref.expiresAt);
   return true;
