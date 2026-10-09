@@ -27,6 +27,7 @@ export * from "./xr/safety";
 
 export * from "./cognition/consent";
 export * from "./cognition/orchestrator";
+export * from "./cognition/sophia";
 export * from "./memory/provenance";
 export * from "./inference/adapters";
 export * from "./deployment/canary";
@@ -50,3 +51,9 @@ export type { CapabilityDescriptor as CrownCapabilityDescriptor } from "./crown"
 export type { VerificationResult as CrownVerificationResult } from "./crown";
 export type { CapabilityDescriptor as HsfCapabilityDescriptor } from "./capabilities";
 export type { VerificationResult as HsfVerificationResult } from "./capabilities";
+// `RateLimitDecision` existe en security/rate-limit (fixed window) y en
+// deployment/production-ops (token bucket). Se conservan ambos con alias y se
+// fija el canónico (fixed window) para resolver la ambigüedad del barril.
+export type { RateLimitDecision } from "./security/rate-limit";
+export type { RateLimitDecision as FixedWindowRateLimitDecision } from "./security/rate-limit";
+export type { RateLimitDecision as TokenBucketRateLimitDecision } from "./deployment/production-ops";

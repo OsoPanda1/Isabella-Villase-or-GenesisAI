@@ -971,7 +971,13 @@ src/
 │   ├── retrieval.ts
 │   ├── persistence.ts
 │   └── knowledge-entry.ts     # IKES_SPEC: entrada canónica KNO + pipeline
-├── sanitization/              # SANITIZATION_POLICY: pipeline + fingerprints
+├── sanitization/              # SANITIZATION_POLICY: pipeline + hardening 2.0
+├── bookpi/
+│   ├── merkle.ts              # chunking 64 KiB + Merkle + ZK commitment
+│   └── royalties.ts           # liquidación BigInt de 7 federaciones
+├── atlas/
+│   ├── documents.ts           # document_uid canónico + estados
+│   └── events.ts              # 15 eventos canónicos tipados
 ├── governance/                # políticas operativas (ver §31)
 │   ├── evidence-manifest.ts
 │   ├── git-governance.ts
@@ -1296,6 +1302,86 @@ los contratos anteriores. La validación (`npm run validate` = typecheck + test 
 debe ejecutarse en CI; la implementación del código no constituye evidencia de una
 ejecución CI exitosa.
 
+---
+
+# V6.6 — Hardening doble, criptografía triangulada y extensión de API nativa
+
+Actualización masiva derivada de los blueprints (BookPI, Atlas Trascendence,
+Isabella AI Library, TAP v1.0, ISA-API v40). Todo es determinista, tipado y con
+pruebas; ningún módulo ejecuta acciones destructivas ni sustituye firma PQC real.
+
+## Sanitización 2.0 (hardening)
+
+- `src/sanitization/hardening.ts`: entropía de Shannon para secretos de alta
+  aleatoriedad, detección de homóglifos y caracteres de ancho cero (evasión
+  Unicode), PII profunda (IBAN y tarjetas validadas por Luhn) y cuarentena que
+  registra solo hash + motivo (nunca el secreto).
+- Ruta `POST /api/v1/sanitization/harden`.
+
+## Criptografía triangulada (hardening doble)
+
+- `src/security/triangulated-crypto.ts`: tres rutas independientes
+  (SHA3-512 + SHA-256 + BLAKE2b-512) cuyo sello combinado debe coincidir; AEAD
+  AES-256-GCM con KDF scrypt, comparación en tiempo constante y sobre sellado.
+- Honestidad técnica: **no** implementa ML-KEM/ML-DSA/SLH-DSA; la firma
+  post-cuántica requiere HSM/proveedor externo y no se simula.
+- Rutas `POST /api/v1/security/triangulate`.
+
+## BookPI (Merkle + regalías)
+
+- `src/bookpi/merkle.ts`: chunking 64 KiB, árbol de Merkle, pruebas de inclusión
+  O(log N), compromiso ZK `SHA256(root || author || salt)`.
+- `src/bookpi/royalties.ts`: liquidación exacta en BigInt hacia las 7 federaciones,
+  sin pérdida por redondeo (remanente a la última federación).
+
+## Atlas Trascendence (documentos + eventos)
+
+- `src/atlas/documents.ts`: `document_uid` canónico
+  `ATLAS-DOC-{fed}-{ns}-{ULID}-{hash}`, canonicalización y estados
+  `draft → validated → published → archived`.
+- `src/atlas/events.ts`: los 15 eventos canónicos con payloads tipados y clave de
+  idempotencia.
+
+## ISA-API v40 y TAP v1.0
+
+- `src/ingress/isa-api.ts`: pipeline de 12 etapas (fail-closed) y acto operativo
+  canónico TAP v1.0 con controles obligatorios y disparadores de alto impacto.
+- Rutas `POST /api/v1/isa/pipeline` y `POST /api/v1/isa/act`.
+
+## Operaciones de producción
+
+- `src/deployment/production-ops.ts`: readiness fail-closed, rate limiting
+  (token bucket), circuit breaker, timeouts, correlación y ventanas de
+  mantenimiento.
+- Rutas `POST /api/v1/ops/readiness` y `GET /api/v1/ops/snapshot`.
+
+## Catálogos nativos
+
+- `CANONICAL_TOOLS`, `PROTOCOL_TOOLS`, `PROTOCOL_CATALOG` y `CANONICAL_SKILLS`
+  se registran en el runtime (tools, protocolos y skills canónicos).
+- `src/cognition/sophia.ts`: evaluador epistémico E0_AXIOM…E4_UNFOUNDED y puerta
+  del Índice de Resonancia Epistémica (ERI ≥ 95). El ERI es una métrica de
+  promoción separada; no eleva por sí sola una inferencia a verdad.
+- `src/isabella/library.ts`: catálogo de 9 módulos, 8 grupos de API, salvaguardas
+  éticas y marcos de cumplimiento.
+
+## Correcciones aplicadas sobre las actualizaciones previas
+
+- `Semaphore`/`Lock`: se eliminó una carrera de liberación de permiso y una fuga
+  de waiters en timeout; los timers no bloquean el event loop.
+- IKES: la etapa `claims` ya no es una verdad vacua; una entrada sin claims no se
+  libera (fail-closed).
+- Deployment gates: `canary` es opcional; `build`/`tests` y los escaneos son
+  obligatorios; los bloqueadores se deduplican.
+- ULID: corregido a 26 caracteres Crockford (10 de tiempo + 16 aleatorios).
+- SOPHIA: el nivel E1 ya no exige ERI ≥ 95 (se separó nivel de puerta de promoción).
+- Registro de tools/skills: se evita la colisión entre el runtime y el server.
+
+## Pruebas
+
+`test/bookpi/`, `test/atlas/`, `test/security/`, `test/deployment/`,
+`test/ingress/`, `test/cognition/` y `test/isabella/` cubren los contratos nuevos.
+Validación: `npm run validate` (typecheck + 253 tests + build) en verde.
 
 ---
 

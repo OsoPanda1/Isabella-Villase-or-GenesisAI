@@ -57,8 +57,15 @@ import {
   type SyncScope,
 } from "../governance";
 import type { KnowledgeClaim } from "../memory/ikes";
-import { ProtocolRegistry } from "../protocols";
+import { ProtocolRegistry, PROTOCOL_CATALOG } from "../protocols";
 import { GenesisModuleRegistry } from "../modules";
+import { CANONICAL_TOOLS, PROTOCOL_TOOLS } from "../tools";
+import { CANONICAL_SKILLS } from "../skills";
+import { assessEpistemicState, passesEriGate, type SophiaSignals, type SophiaAssessment } from "../cognition/sophia";
+import { hardenSanitization, buildQuarantineRecord, type HardeningResult } from "../sanitization";
+import { triangulateDigest, sealEnvelope, openEnvelope, type TriangulatedDigest, type SealedEnvelope } from "../security";
+import { buildOpsSnapshot, assessProductionReadiness, TokenBucket, CircuitBreaker, type DependencyHealth, type MaintenanceWindow, type OpsSnapshot, type ProductionReadinessReport } from "../deployment";
+import { buildTapAct, validateTapAct, evaluateIsaPipeline, type TapActInput, type TapAct, type TapActValidation, type HighImpactTrigger } from "../ingress";
 import {
   CapabilityGateway,
   CapabilityRegistry,
@@ -129,6 +136,23 @@ export class IsabellaGenesisRuntime {
     this.registerCanonicalProtocols();
     this.registerHyperSkillFabric();
     this.registerGovernanceCapabilities();
+    this.registerCanonicalCatalogs();
+  }
+
+  /** Registra los catálogos canónicos de tools, skills y protocolos. */
+  private registerCanonicalCatalogs(): void {
+    for (const tool of [...CANONICAL_TOOLS, ...PROTOCOL_TOOLS]) {
+      if (this.tools.list().some((t) => t.id === tool.id)) continue;
+      this.tools.register(tool);
+    }
+    for (const skill of CANONICAL_SKILLS) {
+      if (this.skills.list().some((s) => s.id === skill.id)) continue;
+      this.skills.register(skill);
+    }
+    for (const protocol of PROTOCOL_CATALOG) {
+      if (this.protocols.list().some((p) => p.id === protocol.id)) continue;
+      this.protocols.register(protocol);
+    }
   }
 
   private registerCanonicalModules(): void {
@@ -300,6 +324,29 @@ export class IsabellaGenesisRuntime {
         if (value.diagnostics) this.lsp.pushDiagnostics(value.file, version, value.diagnostics);
         return this.lsp.waitForDiagnostics(value.file, version, value.timeoutMs ?? 50);
       },
+    });
+    this.capabilities.register({
+      descriptor: low("hsf.sanitization.hardening", "knowledge", "Endurecimiento de sanitización: entropía, homóglifos y PII profunda (Luhn/IBAN)."),
+      health: () => "ready",
+      execute: async (input) => this.harden((input as { content?: string }).content ?? ""),
+    });
+    this.capabilities.register({
+      descriptor: low("hsf.crypto.triangulated", "verification", "Sello criptográfico triangulado (SHA3-512 + SHA-256 + BLAKE2b-512) y AEAD AES-256-GCM."),
+      health: () => "ready",
+      execute: async (input) => {
+        const value = input as { content?: string; hmacKey?: string };
+        return this.triangulate(value.content ?? "", value.hmacKey);
+      },
+    });
+    this.capabilities.register({
+      descriptor: low("hsf.ops.readiness", "integration", "Readiness de producción fail-closed sobre dependencias requeridas."),
+      health: () => "ready",
+      execute: async (input) => this.readiness((input as { dependencies?: DependencyHealth[] }).dependencies ?? []),
+    });
+    this.capabilities.register({
+      descriptor: low("hsf.isa.pipeline", "verification", "Evalúa el pipeline ISA-API v40 de 12 etapas (fail-closed)."),
+      health: () => "ready",
+      execute: async (input) => this.evaluateIsa(input as Parameters<typeof evaluateIsaPipeline>[0]),
     });
   }
 
@@ -631,5 +678,65 @@ export class IsabellaGenesisRuntime {
 
   reconcile(state: ReconciliationState): ReconciliationReport {
     return reconcileBeforeRelease(state);
+  }
+
+  /** SOPHIA: evalúa el estado epistémico (E0–E4) y el Índice de Resonancia Epistémica. */
+  assessEpistemic(signals: SophiaSignals): SophiaAssessment & { passesEriGate: boolean } {
+    const assessment = assessEpistemicState(signals);
+    return { ...assessment, passesEriGate: passesEriGate(assessment) };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Hardening: sanitización 2.0, criptografía triangulada, operaciones  */
+  /* ------------------------------------------------------------------ */
+
+  /** Endurecimiento de sanitización con entropía, homóglifos y PII profunda. */
+  harden(content: string): HardeningResult {
+    return hardenSanitization(content);
+  }
+
+  /** Cuarentena de un contenido sensible (registra hash y motivo, no el secreto). */
+  quarantine(content: string, findings: Parameters<typeof buildQuarantineRecord>[1]): ReturnType<typeof buildQuarantineRecord> {
+    return buildQuarantineRecord(content, findings);
+  }
+
+  /** Sello triangulado de un contenido (SHA3-512 + SHA-256 + BLAKE2b-512). */
+  triangulate(content: string, hmacKey?: string): TriangulatedDigest {
+    return triangulateDigest(content, hmacKey);
+  }
+
+  /** Sella un contenido con AES-256-GCM + sello triangulado. */
+  seal(plaintext: string, key: Buffer, aad = ""): SealedEnvelope {
+    return sealEnvelope(plaintext, key, aad);
+  }
+
+  /** Abre un sobre sellado; fail-closed ante tag o sello inválidos. */
+  open(envelope: SealedEnvelope, key: Buffer, aad = ""): string {
+    return openEnvelope(envelope, key, aad);
+  }
+
+  /** Readiness de producción (fail-closed: solo `healthy` es ready). */
+  readiness(dependencies: readonly DependencyHealth[]): ProductionReadinessReport {
+    return assessProductionReadiness(dependencies);
+  }
+
+  /** Snapshot operativo coherente (readiness + mantenimiento + correlación). */
+  opsSnapshot(dependencies: readonly DependencyHealth[], windows: readonly MaintenanceWindow[] = []): OpsSnapshot {
+    return buildOpsSnapshot(dependencies, windows);
+  }
+
+  /** Construye un acto operativo canónico TAP v1.0. */
+  buildAct(input: TapActInput, highImpactTriggers: readonly HighImpactTrigger[] = []): TapAct {
+    return buildTapAct(input, highImpactTriggers);
+  }
+
+  /** Valida los controles obligatorios de un acto TAP. */
+  validateAct(act: TapAct): TapActValidation {
+    return validateTapAct(act);
+  }
+
+  /** Evalúa el pipeline ISA-API de 12 etapas (fail-closed). */
+  evaluateIsa(flags: Parameters<typeof evaluateIsaPipeline>[0]): ReturnType<typeof evaluateIsaPipeline> {
+    return evaluateIsaPipeline(flags);
   }
 }

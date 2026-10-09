@@ -7,9 +7,12 @@ const commit = "b".repeat(40);
 function fullInput(manifest = createEvidenceManifest({
   repository: "isabella",
   commit,
+  claimIds: ["clm-1"],
+  sourceIds: ["src-1"],
   validation: { status: "passed", tests: ["t1"], lsp: ["clean"] },
   security: { secretScan: "passed", dependencyScan: "passed" },
   policyDecision: "DEC-1",
+  bookpiAuditIds: ["audit-1"],
 })): QualityGateInput {
   return {
     allFilesHaveSchema: true,
@@ -38,7 +41,10 @@ describe("quality gates and evidence manifest", () => {
     expect(completeness.complete).toBe(false);
     expect(completeness.missing).toContain("validation.status");
     expect(canClaimStable(incomplete)).toBe(false);
-    expect(canClaimStable(incomplete, true)).toBe(true);
+    // Una excepción solo cuenta si está documentada y una autoridad externa la verifica.
+    expect(canClaimStable(incomplete, { exceptionId: "EX-1", approver: "h", rationale: "r", approvedAt: "2026-01-01T00:00:00Z", evidenceId: "e1" })).toBe(false);
+    const exception = { exceptionId: "EX-1", approver: "h", rationale: "r", approvedAt: "2026-01-01T00:00:00Z", evidenceId: "e1" };
+    expect(canClaimStable(incomplete, exception, (candidate) => candidate.approver === "h")).toBe(true);
   });
 
   it("passes all 15 gates when inputs are satisfied", () => {

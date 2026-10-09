@@ -187,6 +187,8 @@ export function runIkesPipeline(input: IkesPipelineInput): IkesPipelineResult {
   push("ingestion", true, `entity=${input.entry.entityId}`);
   push("sanitization", input.sanitizationAdmitted, input.sanitizationAdmitted ? "admitted" : "quarantined_or_rejected");
   push("identity", input.entry.id.startsWith("KNO-"), `id=${input.entry.id}`);
+  // Una entrada sin claims extraídos no es todavía una afirmación de conocimiento:
+  // el pipeline es fail-closed en la etapa de claims, no una verdad vacua.
   push("claims", input.entry.claimIds.length > 0, `${input.entry.claimIds.length} claims`);
   push("evidence", input.entry.evidenceIds.length > 0, `${input.entry.evidenceIds.length} evidence`);
   push("temporal_analysis", true, `temporal=${input.entry.temporalStatus}`);

@@ -82,50 +82,9 @@ function enforceRateLimit(req: Request, res: Response, limiter: FixedWindowRateL
 // IKES starts empty. Knowledge enters only through authenticated ingestion with
 // user-supplied source content hashed at ingestion; remote URLs are not treated as fetched evidence.
 
-// Pre-register canonical tools
-runtime.tools.register({
-  id: "rdm_territory_query",
-  version: "1.0.0",
-  methodId: "T.TOURISM.E04_TERRITORY.query.v1.0.0.LOW.TERRITORIAL",
-  owner: "isabella-sovereign",
-  riskTier: "LOW",
-  scopes: ["read:territory", "read:heritage"],
-  description: "Consulta puntos de interés, patrimonio e historia en el Gemelo Digital de Real del Monte (Nodo Cero)",
-  execute: async (input) => {
-    const q = typeof input === "object" && input !== null && "query" in input ? String((input as { query: unknown }).query) : "patrimonio";
-    return {
-      node: "Nodo Cero (Real del Monte, Hidalgo)",
-      altitude: "2,660 msnm",
-      coordinates: [20.1417, -98.6722],
-      dataMode: "STATIC_REFERENCE_DATA",
-      liveData: false,
-      queryApplied: false,
-      originHonored: "Orgullo esLatina · Ciencia y Biocultura de América Latina",
-      results: [
-        { name: "Panteón Inglés", category: "Patrimonio Histórico Mundial", founded: "1851", altitude: "2,660 msnm", status: "Preservado", note: "Todas las tumbas orientadas a Inglaterra, excepto la del payaso Richard Bell." },
-        { name: "Mina de Acosta", category: "Minería Soberana Cornish", epoch: "Siglo XVIII", status: "Museo & Archivo Histórico", depth: "400 metros" },
-        { name: "Mina La Dificultad", category: "Patrimonio Tecnológico de Vapor", epoch: "Siglo XIX", status: "Centro de Interpretación", chimneyHeight: "39 metros" },
-        { name: "Museo del Paste", category: "Patrimonio Gastronómico & Biocultural", status: "Activo", designation: "Cuna del Paste en América" },
-        { name: "Peñas Cargadas", category: "Reserva Natural y Ecoturismo", altitude: "2,800 msnm", status: "Área Protegida" },
-      ],
-      query: q,
-      timestamp: new Date().toISOString(),
-    };
-  },
-});
-
-runtime.tools.register({
-  id: "bookpi_integrity_verify",
-  version: "1.0.0",
-  methodId: "A.TWINS.E08_DATA.verify.v1.0.0.LOW.AUTONOMOUS",
-  owner: "bookpi-ledger",
-  riskTier: "LOW",
-  scopes: ["read:ledger"],
-  description: "Verifica la cadena hash SHA-256 local de BookPI; no certifica persistencia WORM ni firma externa",
-  execute: async (input) => {
-    return { ...bookPiLedger.verify(), checkedAt: new Date().toISOString(), payload: input };
-  },
-});
+// Los tools canónicos (rdm_territory_query, bookpi_integrity_verify, etc.) se
+// registran en el runtime desde CANONICAL_TOOLS. No se duplican aquí para evitar
+// colisiones de registro; el catálogo canónico es la única fuente de verdad.
 
 // Pre-register canonical skills (5 Evolved Sovereign Skills)
 runtime.skills.register({
@@ -1316,6 +1275,99 @@ app.post("/api/v1/diff/observe", (req, res) => {
     const result = sanitizeDiffSnapshot(snapshot);
     observatory.dispose();
     res.json({ success: true, source: "CALLER_SUPPLIED_SNAPSHOT", filesystemRead: false, snapshot: result, metadataHash: snapshotMetadataHash(result) });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// --- HARDENING: SANITIZATION 2.0, TRIANGULATED CRYPTO, PRODUCTION OPS, ISA-API/TAP ---
+
+// Sanitization hardening: entropy, homoglyph/zero-width evasion and deep PII.
+app.post("/api/v1/sanitization/harden", (req, res) => {
+  try {
+    const content = typeof req.body?.content === "string" ? req.body.content : "";
+    if (!content) {
+      res.status(400).json({ success: false, error: "content es requerido" });
+      return;
+    }
+    const result = runtime.harden(content);
+    res.json({ success: !result.quarantineRequired, hardening: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Triangulated integrity seal (SHA3-512 + SHA-256 + BLAKE2b-512).
+app.post("/api/v1/security/triangulate", (req, res) => {
+  try {
+    const content = typeof req.body?.content === "string" ? req.body.content : "";
+    if (!content) {
+      res.status(400).json({ success: false, error: "content es requerido" });
+      return;
+    }
+    const hmacKey = typeof req.body?.hmacKey === "string" ? req.body.hmacKey : undefined;
+    res.json({ success: true, digest: runtime.triangulate(content, hmacKey) });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Production readiness (fail-closed over required dependencies).
+app.post("/api/v1/ops/readiness", (req, res) => {
+  try {
+    const dependencies = Array.isArray(req.body?.dependencies) ? req.body.dependencies : [];
+    const readiness = runtime.readiness(dependencies);
+    res.status(readiness.ready ? 200 : 503).json({ success: readiness.ready, readiness });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Operational snapshot (readiness + maintenance windows + correlation).
+app.get("/api/v1/ops/snapshot", (_req, res) => {
+  const snapshot = runtime.opsSnapshot([
+    { name: "bookpi-ledger", status: "healthy", required: true },
+    { name: "ikes-memory", status: "healthy", required: true },
+    { name: "observability", status: "healthy", required: false },
+  ]);
+  res.json({ success: true, snapshot });
+});
+
+// ISA-API v40 pipeline evaluation (12 stages, fail-closed).
+app.post("/api/v1/isa/pipeline", (req, res) => {
+  try {
+    const result = runtime.evaluateIsa(req.body ?? {});
+    res.status(result.passed ? 200 : 403).json({ success: result.passed, result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// TAP v1.0 canonical act (build + validate with mandatory controls).
+app.post("/api/v1/isa/act", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    if (typeof body.issuer !== "string" || typeof body.subject !== "string" || typeof body.scope !== "string") {
+      res.status(400).json({ success: false, error: "issuer, subject y scope son requeridos" });
+      return;
+    }
+    const triggers = Array.isArray(body.highImpactTriggers) ? body.highImpactTriggers : [];
+    const act = runtime.buildAct(
+      {
+        actType: (body.actType ?? "AI.QUERY") as Parameters<typeof runtime.buildAct>[0]["actType"],
+        issuer: body.issuer,
+        subject: body.subject,
+        intent: typeof body.intent === "string" ? body.intent : "unspecified",
+        scope: body.scope,
+        policyVersion: typeof body.policyVersion === "string" ? body.policyVersion : "KEC-v2026.09",
+        payload: body.payload ?? null,
+        toolPermissions: Array.isArray(body.toolPermissions) ? body.toolPermissions : [],
+        signature: body.signature,
+      },
+      triggers,
+    );
+    const validation = runtime.validateAct(act);
+    res.status(validation.valid ? 201 : 422).json({ success: validation.valid, act, validation });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }

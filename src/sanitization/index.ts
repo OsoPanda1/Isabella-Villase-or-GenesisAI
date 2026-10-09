@@ -367,3 +367,4 @@ export function classifyDuplicateRelationship(a: DocumentFingerprints, b: Docume
   if (a.semantic === b.semantic) return "ENRICHMENT";
   return "DISTINCT";
 }
+export * from "./hardening";

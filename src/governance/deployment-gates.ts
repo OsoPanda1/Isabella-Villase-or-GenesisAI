@@ -64,27 +64,29 @@ export function assessDeployment(
   opts: { dnsRecords?: readonly string[] } = {},
 ): DeploymentAssessment {
   const reports: DeploymentGateReport[] = [];
-  const blockers: string[] = [];
+  const blockers = new Set<string>();
+  // Gates de seguridad que se marcan explícitamente como críticos en el reporte.
   const CRITICAL: readonly DeploymentGate[] = ["secret_scan", "dependency_scan", "security_scan", "rollback_plan"];
 
   for (const gate of DEPLOYMENT_GATES) {
     const status = gates[gate] ?? "skipped";
     const critical = CRITICAL.includes(gate);
-    if (status !== "passed") blockers.push(gate);
+    // Fail-closed: cualquier gate que no esté `passed` bloquea el despliegue.
+    if (status !== "passed") blockers.add(gate);
     reports.push({ gate, status, detail: status === "passed" ? "ok" : critical ? "critical gate not passed" : "not passed" });
   }
 
-  for (const record of opts.dnsRecords ?? []) {
-    if (EXAMPLE_IP.test(record.trim())) {
-      blockers.push("dns_example_value_in_production");
-      reports.push({ gate: "health_readiness", status: "failed", detail: `example DNS value: ${record}` });
-    }
+  const dnsRecords = opts.dnsRecords ?? [];
+  const exampleRecords = dnsRecords.filter((record) => EXAMPLE_IP.test(record.trim()));
+  if (exampleRecords.length > 0) {
+    blockers.add("dns_example_value_in_production");
+    reports.push({ gate: "health_readiness", status: "failed", detail: `example DNS values: ${exampleRecords.join(", ")}` });
   }
 
   return {
     target,
-    deployable: blockers.length === 0,
-    blockers: Object.freeze(blockers),
+    deployable: blockers.size === 0,
+    blockers: Object.freeze([...blockers]),
     reports: Object.freeze(reports),
   };
 }

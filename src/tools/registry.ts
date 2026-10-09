@@ -50,6 +50,10 @@ export class ToolRegistry {
     return tool;
   }
 
+  has(id: string): boolean {
+    return this.tools.has(id);
+  }
+
   async execute(
     id: string,
     input: unknown,

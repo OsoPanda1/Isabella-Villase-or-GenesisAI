@@ -73,7 +73,7 @@ function canonicalizeNodes(nodes: readonly EvidenceNode[]): readonly EvidenceNod
       throw new Error("LITLE evidence: invalid content hash");
     }
     if (!Array.isArray(node.parentIds)) throw new Error("LITLE evidence: parentIds must be an array");
-    const parentIds = node.parentIds.map((id) => {
+    const parentIds = node.parentIds.map((id: string) => {
       if (typeof id !== "string" || !ID_RE.test(id.trim())) throw new Error("LITLE evidence: invalid parent id");
       return id.trim();
     }).sort();

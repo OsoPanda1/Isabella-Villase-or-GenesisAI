@@ -7,7 +7,7 @@ import { callGate, createCapabilityGate } from "../../src/crown/capability";
 import { inspectAegis } from "../../src/security/aegis";
 import { planExecution } from "../../src/intelligence/adaptive-router";
 import { IKESEngine, hashSourceContent, verifyKnowledgeClaimIntegrity } from "../../src/memory/ikes";
-import { createEvidence, canPromoteToVerified, verifyEvidenceIntegrity } from "../../src/evolution/evidence";
+import { createEvidence, canPromoteToVerified, verifyEvidenceIntegrity, type ControlEvidence } from "../../src/evolution/evidence";
 import { generateControls } from "../../src/evolution/catalog";
 
 describe("Genesis V6 security and cognition", () => {
@@ -219,7 +219,7 @@ describe("Genesis V6 security and cognition", () => {
     expect(evidence.every(verifyEvidenceIntegrity)).toBe(true);
     expect(canPromoteToVerified(wired, evidence)).toBe(false);
     expect(canPromoteToVerified(wired, evidence, (item) => Boolean(item.uri?.startsWith("https://") && item.commitSha === "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))).toBe(true);
-    const tampered = { ...evidence[0], details: "altered after hashing" };
+    const tampered: ControlEvidence = { ...evidence[0]!, details: "altered after hashing" };
     expect(verifyEvidenceIntegrity(tampered)).toBe(false);
   });
 });
