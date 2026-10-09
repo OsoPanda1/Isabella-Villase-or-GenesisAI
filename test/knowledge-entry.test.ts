@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createKnowledgeEntry, runIkesPipeline } from "../../src/memory/knowledge-entry";
+import { createKnowledgeEntry, runIkesPipeline } from "../src/memory/knowledge-entry";
 
 const entry = createKnowledgeEntry({
   entityId: "entity-1",
