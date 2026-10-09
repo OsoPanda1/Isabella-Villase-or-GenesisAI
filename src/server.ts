@@ -411,70 +411,82 @@ app.get("/api/v1/memory", (req, res) => {
   });
 });
 
-// Epistemic Memory (IKES) Ingestion. Content is supplied by an authenticated operator;
-// the URL is provenance metadata only and is never represented as remotely fetched/verified.
+// Public claims enter a bounded review queue; they do not mutate canonical IKES memory.
+interface PendingMemoryProposal {
+  id: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  sourceUri: string | null;
+  proposalHash: string;
+  submittedAt: string;
+  status: "PENDING_HUMAN_REVIEW";
+}
+const pendingMemoryProposals: PendingMemoryProposal[] = [];
+const MAX_PENDING_MEMORY_PROPOSALS = 500;
+
 app.post("/api/v1/memory/ingest", (req, res) => {
-  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   try {
     const body = req.body ?? {};
-    const { subject, predicate, object, sourceUri, title, sourceContent, license } = body;
-    if (![subject, predicate, object, sourceUri, title, sourceContent, license].every((v) => typeof v === "string" && v.trim())) {
-      res.status(400).json({ success: false, error: "subject, predicate, object, sourceUri, title, sourceContent y license son requeridos" });
+    const { subject, predicate, object } = body;
+    const sourceUri = typeof body.sourceUri === "string" && body.sourceUri.trim() ? body.sourceUri.trim() : null;
+    if (![subject, predicate, object].every((value) => typeof value === "string" && value.trim())) {
+      res.status(400).json({ success: false, error: "subject, predicate y object son requeridos" });
       return;
     }
-    let parsedUri: URL;
-    try { parsedUri = new URL(sourceUri); } catch {
-      res.status(400).json({ success: false, error: "SOURCE_URI_INVALID" });
+    if (subject.length > 300 || predicate.length > 160 || object.length > 5000 || (sourceUri && sourceUri.length > 2048)) {
+      res.status(413).json({ success: false, error: "PROPOSAL_SIZE_LIMIT_EXCEEDED" });
       return;
     }
-    if (parsedUri.protocol !== "https:") {
-      res.status(400).json({ success: false, error: "SOURCE_URI_MUST_USE_HTTPS" });
+    if (sourceUri) {
+      let parsedUri: URL;
+      try { parsedUri = new URL(sourceUri); } catch {
+        res.status(400).json({ success: false, error: "SOURCE_URI_INVALID" });
+        return;
+      }
+      if (parsedUri.protocol !== "https:") {
+        res.status(400).json({ success: false, error: "SOURCE_URI_MUST_USE_HTTPS" });
+        return;
+      }
+    }
+    if (pendingMemoryProposals.length >= MAX_PENDING_MEMORY_PROPOSALS) {
+      res.status(429).json({ success: false, error: "PROPOSAL_REVIEW_QUEUE_FULL" });
       return;
     }
-    const retrievedAt = new Date().toISOString();
-    const sanitized = runtime.sanitize({
-      id: `source-${randomUUID()}`,
-      content: sourceContent,
-      license,
-      provenance: { uri: parsedUri.toString(), retrievedAt },
-    });
-    if (sanitized.status !== "ADMITTED") {
-      res.status(422).json({ success: false, status: sanitized.status, findings: sanitized.findings, reason: "SOURCE_NOT_ADMITTED" });
-      return;
-    }
-    const sourceId = `src-${randomUUID()}`;
-    runtime.memory.registerSource({
-      sourceId,
-      uri: parsedUri.toString(),
-      title,
-      retrievedAt,
-      contentHash: hashSourceContent(sourceContent),
-      license,
-    });
-    const proposal = runtime.memory.propose({
-      proposedBy: "service:authenticated-memory-ingest",
-      evidenceIds: [sourceId],
-      claim: {
-        subject: subject.trim(),
-        predicate: predicate.trim(),
-        object: object.trim(),
-        sourceIds: [sourceId],
-        evidenceIds: [sourceId],
-        temporalState: "current",
-        provenance: { source: sourceId, verification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED" },
-      },
-    });
+    const proposal = {
+      id: `proposal-${randomUUID()}`,
+      subject: subject.trim(),
+      predicate: predicate.trim(),
+      object: object.trim(),
+      sourceUri,
+      submittedAt: new Date().toISOString(),
+      status: "PENDING_HUMAN_REVIEW" as const,
+    };
+    const proposalHash = hashSourceContent(JSON.stringify(proposal));
+    const stored: PendingMemoryProposal = { ...proposal, proposalHash };
+    pendingMemoryProposals.push(stored);
     res.status(202).json({
       success: true,
-      status: "PROPOSED_UNVERIFIED",
-      sourceVerification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED",
-      contentHash: hashSourceContent(sourceContent),
-      proposal,
-      sourceId,
+      status: stored.status,
+      proposalId: stored.id,
+      proposalHash: stored.proposalHash,
+      canonicalMemoryMutated: false,
+      sourceVerification: "NOT_PERFORMED",
+      note: "La propuesta queda en una cola volátil de revisión; no es un claim IKES admitido ni evidencia verificada.",
     });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err instanceof Error ? err.message : "MEMORY_INGEST_FAILED" });
+  } catch {
+    res.status(400).json({ success: false, error: "MEMORY_PROPOSAL_FAILED" });
   }
+});
+
+app.get("/api/v1/memory/proposals", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  res.json({
+    status: "VOLATILE_REVIEW_QUEUE",
+    count: pendingMemoryProposals.length,
+    proposals: pendingMemoryProposals,
+    persistence: "IN_MEMORY_ONLY",
+  });
 });
 
 // BookPI Ledger Events
@@ -492,19 +504,23 @@ app.get("/api/v1/bookpi/events", (_req, res) => {
 // Tool execution
 app.post("/api/v1/tools/execute", async (req, res) => {
   try {
-    const { toolId = "rdm_territory_query", input = {}, scope = "read:territory" } = req.body ?? {};
+    const { toolId = "rdm_territory_query", input = {} } = req.body ?? {};
+    if (toolId !== "rdm_territory_query") {
+      res.status(403).json({ success: false, error: "PUBLIC_TOOL_NOT_ALLOWED" });
+      return;
+    }
 
     const principal = createPrincipal({
-      id: "human:operator:active",
+      id: "human:public-session",
       kind: "human",
-      roles: ["operator"],
+      roles: ["viewer"],
     });
 
     const result = await runtime.executeTool(
       String(toolId),
       input,
       principal,
-      String(scope),
+      "read:territory",
     );
 
     // Record BookPI event
@@ -532,93 +548,74 @@ app.post("/api/v1/tools/execute", async (req, res) => {
   }
 });
 
-// Cognitive evaluation & route (CROWN + AEGIS + IKES + Plan)
+// Public cognitive route: viewer-only. Request bodies cannot supply authority, roles, action or resource.
 app.post("/api/v1/cognition/route", async (req, res) => {
   try {
-    const {
-      input = "consulta el estado del sistema",
-      methodId = "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS",
-      principalKind = "human",
-      roles = ["operator"],
-      action = "memory:recall",
-      resource = "memory",
-      riskTier = "LOW",
-      memoryQuery = "TAMV",
-      modelEngine = "sovereign", // 'gemini' or 'sovereign'
-    } = req.body ?? {};
-
-    const principal = createPrincipal({
-      id: `principal-${Date.now()}`,
-      kind: principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(roles) ? roles : ["operator"],
-    });
-
-    // CROWN / AEGIS / IKES Evaluation
+    const body = req.body ?? {};
+    const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (!input) {
+      res.status(400).json({ success: false, error: "input es requerido" });
+      return;
+    }
+    const safeMethodId = "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
+    const destructiveMethodId = "T.TWINS.E08_DATA.remove.permanent_delete.v1.0.0.CRITICAL.CONSTITUTIONAL";
+    const destructiveIntent = body.methodId === destructiveMethodId;
+    const methodId = destructiveIntent ? destructiveMethodId : safeMethodId;
+    const principal = createPrincipal({ id: "human:public-session", kind: "human", roles: ["viewer"] });
+    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery.slice(0, 300) : undefined;
     const decision = runtime.evaluate({
-      input: String(input),
-      methodId: String(methodId),
+      input,
+      methodId,
       principal,
       gate: defaultGate,
-      action: String(action),
-      resource: String(resource),
-      riskTier: (riskTier as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") || "LOW",
-      inputTokens: Math.max(1, Math.ceil(String(input).length / 4)),
+      action: destructiveIntent ? "data:delete" : "memory:recall",
+      resource: destructiveIntent ? "records" : "memory",
+      riskTier: destructiveIntent ? "CRITICAL" : "LOW",
+      inputTokens: Math.max(1, Math.ceil(input.length / 4)),
       expectedOutputTokens: 256,
       pressure: 0.1,
       requiresTools: false,
       requiresMemory: Boolean(memoryQuery),
-      memoryQuery: memoryQuery ? String(memoryQuery) : undefined,
+      memoryQuery,
     });
 
-    // Record in BookPI ledger
-    bookPiLedgerHistory.push({
-      id: `evt-${Date.now()}`,
+    appendBookPiEvent({
+      id: `evt-${randomUUID()}`,
       timestamp: new Date().toISOString(),
       type: "COGNITIVE_EVALUATION",
-      methodId: String(methodId),
+      methodId,
       principal: principal.id,
-      riskTier: String(riskTier),
-      hash: "0x" + Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10),
+      riskTier: destructiveIntent ? "CRITICAL" : "LOW",
       status: decision.admitted ? "ADMITTED" : "BLOCKED_BY_POLICY",
     });
 
-    // If admitted and Gemini API is available and requested, query Gemini 2.5 Flash
     let generativeNarrative: string | null = null;
-    if (decision.admitted && genAi && modelEngine === "gemini") {
+    if (decision.admitted && genAi && body.modelEngine === "gemini") {
       try {
-        const sysPrompt = `Eres Isabella Villaseñor AI (Genesis TINA v40.0.0), el núcleo cognitivo y de gobernanza soberana del ecosistema TAMV Online Network (CITEMESH), anclado en Real del Monte (Mineral del Monte), Hidalgo, México (20.3833° N, 98.8500° O, 2,660 msnm).
-Tu categorización TINA es un homenaje de honor al orgullo latinoamericano: ISABELLA TINA esLatina, nacida en México como bastión de soberanía ontológica y científica del Sur Global.
-Tu constitución es AGENTS.md y tu invariante operativo supremo es:
-CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
-Las inteligencias sugieren, calculan y evalúan; la conciencia humana decide, aprueba, arbitra y ejecuta.
-Responde de forma elocuente, rigurosa, profunda, epistemológicamente calibrada (escala E0-E6), con respeto a la biocultura, patrimonio y soberanía territorial.`;
-
+        const sysPrompt = `Eres Isabella Villaseñor AI (Genesis TINA V6), un runtime de IA gobernado. Mantén la separación entre capacidad, autoridad, ejecución, evidencia, aprendizaje y producción. Distingue hechos, inferencias y datos no verificados. No afirmes certificación, ejecución o verificación sin evidencia.`;
         const resp = await genAi.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: `${sysPrompt}\n\nPregunta/Instrucción del usuario:\n${input}`,
+          contents: `${sysPrompt}\n\nSolicitud del usuario:\n${input}`,
         });
         generativeNarrative = resp.text ?? null;
-      } catch (genErr) {
-        console.warn("Gemini call failed, falling back to sovereign synthesizer:", genErr);
+      } catch {
+        generativeNarrative = null;
       }
     }
-
-    res.json({
-      success: true,
+    res.status(decision.admitted ? 200 : 403).json({
+      success: decision.admitted,
       decision,
       principal,
       generativeNarrative,
+      requestedRiskIgnored: true,
+      publicAuthority: "VIEWER_ONLY",
     });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
+  } catch {
+    res.status(500).json({ success: false, error: "COGNITIVE_ROUTE_FAILED" });
   }
 });
 
-// Canonical cognitive API: product/UI clients submit intent only.
-// Identity, authority, policy and system instructions are derived server-side.
+// Canonical public cognitive API. Only user intent is accepted; authority and policy inputs are server-owned.
 app.post("/api/v1/cognitive/request", async (req, res) => {
   const startedAt = new Date().toISOString();
   try {
@@ -628,22 +625,12 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       res.status(400).json({ success: false, error: "input es requerido" });
       return;
     }
-
-    const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles) ? body.roles.filter((v: unknown): v is string => typeof v === "string") : ["operator"],
-    });
-    assertBalancedAuthority(principal);
-
-    const methodId = typeof body.methodId === "string"
-      ? body.methodId
-      : "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
-    const action = typeof body.action === "string" ? body.action : "memory:recall";
-    const resource = typeof body.resource === "string" ? body.resource : "memory";
-    const riskTier = body.riskTier === "MEDIUM" || body.riskTier === "HIGH" || body.riskTier === "CRITICAL" ? body.riskTier : "LOW";
-    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery : undefined;
-
+    const principal = createPrincipal({ id: "human:public-session", kind: "human", roles: ["viewer"] });
+    const methodId = "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
+    const action = "memory:recall";
+    const resource = "memory";
+    const riskTier = "LOW" as const;
+    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery.slice(0, 300) : undefined;
     const decision = runtime.evaluate({
       input,
       methodId,
@@ -659,12 +646,11 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       requiresMemory: Boolean(memoryQuery),
       memoryQuery,
     });
-
-    const traceId = `trace-${Date.now()}-${Buffer.from(input).toString("base64url").slice(0, 12)}`;
+    const traceId = `trace-${randomUUID()}`;
     const snapshot = createCrownExperienceSnapshot(
       { input, principal, methodId, action, resource, riskTier, memoryQuery },
       decision.crown,
-      `req-${Date.now()}`,
+      `req-${randomUUID()}`,
       traceId,
       startedAt,
       decision.memory.length,
@@ -675,16 +661,18 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       snapshot.route,
       traceId,
     );
-
     let generativeNarrative: string | null = null;
     if (decision.admitted && genAi && body.modelEngine === "gemini") {
-      const resp = await genAi.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `${systemPrompt}\\n\\nSolicitud del usuario:\\n${input}`,
-      });
-      generativeNarrative = resp.text ?? null;
+      try {
+        const resp = await genAi.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: `${systemPrompt}\n\nSolicitud del usuario:\n${input}`,
+        });
+        generativeNarrative = resp.text ?? null;
+      } catch {
+        generativeNarrative = null;
+      }
     }
-
     res.status(decision.admitted ? 200 : 403).json({
       success: decision.admitted,
       requestId: snapshot.requestId,
@@ -693,9 +681,10 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       snapshot,
       systemPromptApplied: true,
       generativeNarrative,
+      publicAuthority: "VIEWER_ONLY",
     });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  } catch {
+    res.status(500).json({ success: false, error: "COGNITIVE_REQUEST_FAILED" });
   }
 });
 
@@ -715,13 +704,7 @@ app.post("/api/v1/isabella/mediate", (req, res) => {
     }
 
     const started = Date.now();
-    const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles)
-        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
-        : ["operator"],
-    });
+    const principal = createPrincipal({ id: "human:public-session", kind: "human", roles: ["viewer"] });
     assertBalancedAuthority(principal);
 
     const governance = runtime.evaluate({
@@ -856,17 +839,12 @@ app.get("/api/v1/quantum/pennylane/status", async (_req, res) => {
 });
 
 app.post("/api/v1/quantum/pennylane/execute", async (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   try {
     const body = req.body ?? {};
     const circuit = body.circuit;
     const input = JSON.stringify({ circuit, backend: body.backend, shots: body.shots });
-    const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles)
-        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
-        : ["operator"],
-    });
+    const principal = createPrincipal({ id: "service:quantum-api", kind: "machine", roles: ["operator"] });
     assertBalancedAuthority(principal);
 
     const governance = runtime.evaluate({
@@ -3361,6 +3339,7 @@ app.get("/", (_req, res) => {
 });
 
 app.post("/api/v1/litle/attest", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   try {
     const body = req.body ?? {};
     const evidence = Array.isArray(body.evidence) ? body.evidence : [];
