@@ -70,9 +70,7 @@ export function assessDeployment(
   for (const gate of DEPLOYMENT_GATES) {
     const status = gates[gate] ?? "skipped";
     const critical = CRITICAL.includes(gate);
-    if (status !== "passed") {
-      if (critical || status === "failed") blockers.push(gate);
-    }
+    if (status !== "passed") blockers.push(gate);
     reports.push({ gate, status, detail: status === "passed" ? "ok" : critical ? "critical gate not passed" : "not passed" });
   }
 
