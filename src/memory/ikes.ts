@@ -48,6 +48,10 @@ export interface KnowledgeProposal {
   evidenceIds: readonly string[];
 }
 
+export function hashSourceContent(content: string): string {
+  return createHash("sha256").update(content, "utf8").digest("hex");
+}
+
 function hash(value: unknown): string {
   return createHash("sha256").update((JSON.stringify(value) ?? ""), "utf8").digest("hex");
 }
@@ -57,7 +61,16 @@ export class IKESEngine {
   private readonly claims = new Map<string, KnowledgeClaim>();
 
   registerSource(source: KnowledgeSource): void {
-    this.sources.set(source.sourceId, Object.freeze({ ...source }));
+    if (!source.sourceId.trim() || !source.title.trim()) throw new Error("IKES_SOURCE_METADATA_REQUIRED");
+    if (!/^[a-f0-9]{64}$/i.test(source.contentHash)) throw new Error("IKES_SOURCE_HASH_MUST_BE_SHA256");
+    if (!Number.isFinite(Date.parse(source.retrievedAt))) throw new Error("IKES_SOURCE_RETRIEVED_AT_INVALID");
+    let parsedUri: URL;
+    try { parsedUri = new URL(source.uri); } catch { throw new Error("IKES_SOURCE_URI_INVALID"); }
+    if (parsedUri.protocol !== "https:" && parsedUri.protocol !== "http:") throw new Error("IKES_SOURCE_URI_SCHEME_NOT_ALLOWED");
+    const existing = this.sources.get(source.sourceId);
+    if (existing && existing.contentHash !== source.contentHash) throw new Error("IKES_SOURCE_ID_HASH_CONFLICT");
+    if (existing) return;
+    this.sources.set(source.sourceId, Object.freeze({ ...source, uri: parsedUri.toString() }));
   }
 
   propose(proposal: KnowledgeProposal): KnowledgeClaim {
