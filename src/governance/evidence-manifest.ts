@@ -55,7 +55,7 @@ function hash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value) ?? "", "utf8").digest("hex");
 }
 
-/** Construye un manifest con id determinista EVM-XXXXXXXX. */
+/** Construye un manifest con ID determinista basado en SHA-256 (EVM- + 64 hex). */
 export function createEvidenceManifest(seed: EvidenceManifestSeed): EvidenceManifest {
   if (!seed.repository.trim()) throw new Error("MANIFEST: repository required");
   if (!FULL_SHA.test(seed.commit)) throw new Error("MANIFEST: commit must be a full 40-char sha");
@@ -74,7 +74,7 @@ export function createEvidenceManifest(seed: EvidenceManifestSeed): EvidenceMani
     policyDecision: seed.policyDecision ?? "DEC-UNSET",
   };
   return Object.freeze({
-    manifestId: "EVM-" + hash({ ...core, claimIds: seed.claimIds ?? [], sourceIds: seed.sourceIds ?? [], bookpiAuditIds: seed.bookpiAuditIds ?? [], rollbackPlan: seed.rollbackPlan ?? "revert_commit", limitations: seed.limitations ?? [] }).slice(0, 8).toUpperCase(),
+    manifestId: "EVM-" + hash({ ...core, claimIds: seed.claimIds ?? [], sourceIds: seed.sourceIds ?? [], bookpiAuditIds: seed.bookpiAuditIds ?? [], rollbackPlan: seed.rollbackPlan ?? "revert_commit", limitations: seed.limitations ?? [] }).slice(0, 64).toUpperCase(),
     repository: core.repository,
     commit: core.commit,
     createdAt: seed.createdAt ?? new Date().toISOString(),
