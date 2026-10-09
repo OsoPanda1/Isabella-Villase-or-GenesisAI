@@ -83,6 +83,29 @@ describe("Genesis V6 security and cognition", () => {
     expect(ikes.retrieve("TAMV")).toHaveLength(1);
   });
 
+  it("IKES prepares an admission candidate without mutating canonical retrieval", () => {
+    const ikes = new IKESEngine();
+    ikes.registerSource({
+      sourceId: "staged-source", uri: "https://example.invalid/staged", title: "Staged source",
+      retrievedAt: new Date().toISOString(), contentHash: hashSourceContent("staged body"),
+    });
+    const proposal = {
+      proposedBy: "service:review",
+      evidenceIds: ["staged-source"],
+      claim: {
+        subject: "Staged", predicate: "status", object: "pending",
+        sourceIds: ["staged-source"], evidenceIds: ["staged-source"], temporalState: "current" as const,
+        provenance: { source: "staged-source" },
+      },
+    };
+    const candidate = ikes.prepareProposal(proposal);
+    expect(candidate.claimId).toMatch(/^clm_/);
+    expect(ikes.retrieve("Staged")).toHaveLength(0);
+    const committed = ikes.propose(proposal);
+    expect(committed.claimId).toBe(candidate.claimId);
+    expect(ikes.retrieve("Staged")).toHaveLength(1);
+  });
+
   it("IKES rejects malformed source hashes and conflicting source identity", () => {
     const ikes = new IKESEngine();
     expect(() => ikes.registerSource({ sourceId: "bad", uri: "https://example.invalid/source", title: "Bad", retrievedAt: new Date().toISOString(), contentHash: "abc" })).toThrow(/SHA256/);
