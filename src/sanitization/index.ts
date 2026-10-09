@@ -53,7 +53,7 @@ export interface RawDocument {
 }
 
 export interface DocumentFingerprints {
-  /** ¿es exactamente el mismo archivo? */
+  /** Identidad del contenido y metadatos de licencia/procedencia relevantes para preservación. */
   physical: string;
   /** ¿es esencialmente el mismo documento? */
   structural: string;
@@ -301,8 +301,21 @@ export function sanitizeDocument(raw: RawDocument): SanitizedDocument {
   report.push({ stage: "classification", ok: true, detail: `classification=${classification}` });
 
   // 9. fingerprints
+  // Content equality alone is insufficient for deletion: the same text may have
+  // different rights or provenance. Include stable metadata, but exclude retrievedAt
+  // so a second fetch of the same source does not create a false difference.
+  const physicalIdentity = {
+    content: raw.content,
+    declaredFormat: format.toLowerCase(),
+    declaredEncoding: declaredEncoding.toLowerCase(),
+    license: license.toLowerCase(),
+    provenance: {
+      uri: typeof raw.provenance?.uri === "string" ? raw.provenance.uri.trim() : null,
+      publisher: typeof raw.provenance?.publisher === "string" ? raw.provenance.publisher.trim() : null,
+    },
+  };
   const fingerprints: DocumentFingerprints = Object.freeze({
-    physical: sha256(raw.content),
+    physical: sha256(JSON.stringify(physicalIdentity)),
     structural: sha256(structuralSkeleton(masked)),
     semantic: sha256(semanticBag(masked)),
   });
