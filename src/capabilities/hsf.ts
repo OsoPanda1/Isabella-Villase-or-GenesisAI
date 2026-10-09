@@ -49,7 +49,9 @@ export class CapabilityRegistry {
   register(provider: CapabilityProvider): void {
     if (!provider.descriptor.id || !provider.descriptor.version) throw new Error("HSF_INVALID_DESCRIPTOR");
     if (this.providers.has(provider.descriptor.id)) throw new Error(`HSF_DUPLICATE_CAPABILITY:${provider.descriptor.id}`);
-    this.providers.set(provider.descriptor.id, provider);
+    const descriptor = Object.freeze({ ...provider.descriptor });
+    const stored = Object.freeze({ ...provider, descriptor });
+    this.providers.set(descriptor.id, stored);
   }
 
   get(id: string): CapabilityProvider {
@@ -59,7 +61,7 @@ export class CapabilityRegistry {
   }
 
   list(): readonly CapabilityDescriptor[] {
-    return [...this.providers.values()].map((p) => p.descriptor);
+    return Object.freeze([...this.providers.values()].map((provider) => Object.freeze({ ...provider.descriptor })));
   }
 
   async health(): Promise<readonly (CapabilityDescriptor & { status: CapabilityStatus })[]> {
@@ -139,11 +141,12 @@ export interface MemoryFabric {
 }
 
 function cloneMemoryRecord(record: MemoryRecord): MemoryRecord {
-  return Object.freeze({
+  // Return detached mutable copies: callers may edit their view, never the stored record.
+  return {
     ...record,
-    relations: Object.freeze([...record.relations]),
-    ...(record.metadata ? { metadata: Object.freeze({ ...record.metadata }) } : {}),
-  });
+    relations: [...record.relations],
+    ...(record.metadata ? { metadata: { ...record.metadata } } : {}),
+  };
 }
 
 export class InMemoryMemoryFabric implements MemoryFabric {
@@ -251,7 +254,7 @@ export class KnowledgeFabric {
     const contentHash = createHash("sha3-256").update(input.content, "utf8").digest("hex");
     const id = `knowledge:${contentHash.slice(0, 24)}`;
     const existing = this.artifacts.get(id);
-    if (existing) return Object.freeze({ ...existing });
+    if (existing) return { ...existing };
     const artifact: KnowledgeArtifact = Object.freeze({
       id,
       title: input.title.trim(),
@@ -262,16 +265,16 @@ export class KnowledgeFabric {
       status: "PENDING_REVIEW",
     });
     this.artifacts.set(id, artifact);
-    return Object.freeze({ ...artifact });
+    return { ...artifact };
   }
 
   get(id: string): KnowledgeArtifact | undefined {
     const artifact = this.artifacts.get(id);
-    return artifact ? Object.freeze({ ...artifact }) : undefined;
+    return artifact ? { ...artifact } : undefined;
   }
 
   list(): readonly KnowledgeArtifact[] {
-    return [...this.artifacts.values()].map((artifact) => Object.freeze({ ...artifact }));
+    return [...this.artifacts.values()].map((artifact) => ({ ...artifact }));
   }
 }
 
