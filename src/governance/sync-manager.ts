@@ -79,10 +79,11 @@ export class RLock extends Lock {
   }
 }
 
-/** Semáforo acotado: limita el paralelismo (análisis concurrente). */
+/** Semáforo: entrega los permisos directamente a la cola y limpia timeouts. */
 export class Semaphore {
-  private available: number;
-  private readonly queue: Array<() => void> = [];
+  protected available: number;
+  protected inUse = 0;
+  private readonly queue: Array<{ resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }> = [];
 
   constructor(permits: number) {
     if (!Number.isInteger(permits) || permits < 1) throw new Error("SYNC: semaphore permits must be >= 1");
@@ -90,36 +91,34 @@ export class Semaphore {
   }
 
   async acquire(timeoutMs = 5000): Promise<void> {
-    if (this.available > 0) {
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 0) throw new Error("SYNC: semaphore timeout must be >= 0");
+    if (this.available > 0 && this.queue.length === 0) {
       this.available -= 1;
+      this.inUse += 1;
       return;
     }
-    const deadline = Date.now() + timeoutMs;
     await new Promise<void>((resolve, reject) => {
-      const entry = () => resolve();
-      this.queue.push(entry);
-      const check = () => {
-        if (this.available > 0) {
-          this.available -= 1;
-          const idx = this.queue.indexOf(entry);
-          if (idx >= 0) this.queue.splice(idx, 1);
-          resolve();
-        } else if (Date.now() >= deadline) {
-          const idx = this.queue.indexOf(entry);
-          if (idx >= 0) this.queue.splice(idx, 1);
+      const waiter = {
+        resolve: () => { clearTimeout(waiter.timer); resolve(); },
+        reject: (error: Error) => { clearTimeout(waiter.timer); reject(error); },
+        timer: setTimeout(() => {
+          const index = this.queue.indexOf(waiter);
+          if (index >= 0) this.queue.splice(index, 1);
           reject(new Error("SYNC: semaphore acquire timeout"));
-        } else {
-          setTimeout(check, 5);
-        }
+        }, timeoutMs),
       };
-      check();
+      this.queue.push(waiter);
     });
   }
 
   release(): void {
-    this.available += 1;
     const next = this.queue.shift();
-    if (next) next();
+    if (next) {
+      next.resolve();
+      return; // The active permit is transferred; inUse is unchanged.
+    }
+    if (this.inUse > 0) this.inUse -= 1;
+    this.available += 1;
   }
 
   get availablePermits(): number {
@@ -127,17 +126,14 @@ export class Semaphore {
   }
 }
 
-/** BoundedSemaphore: no permite liberar más de lo adquirido. */
+/** BoundedSemaphore: no permite liberar más permisos de los adquiridos. */
 export class BoundedSemaphore extends Semaphore {
-  private readonly initial: number;
-
   constructor(permits: number) {
     super(permits);
-    this.initial = permits;
   }
 
   override release(): void {
-    if (this.availablePermits >= this.initial) throw new Error("SYNC: bounded semaphore release overflow");
+    if (this.inUse <= 0) throw new Error("SYNC: bounded semaphore release overflow");
     super.release();
   }
 }
@@ -195,25 +191,57 @@ export class Event {
   }
 }
 
-/** Barrier: sincroniza N participantes. */
+/** Barrier reutilizable con generaciones; un timeout rompe solo la generación actual. */
 export class Barrier {
   private waiting = 0;
+  private generation = 0;
+  private readonly waiters = new Map<number, Array<{ resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>>();
 
   constructor(private readonly parties: number) {
     if (!Number.isInteger(parties) || parties < 1) throw new Error("SYNC: barrier parties must be >= 1");
   }
 
   async wait(timeoutMs = 5000): Promise<void> {
+    if (!Number.isFinite(timeoutMs) || timeoutMs < 0) throw new Error("SYNC: barrier timeout must be >= 0");
+    if (this.parties === 1) return;
+    const generation = this.generation;
     this.waiting += 1;
-    if (this.waiting >= this.parties) {
+
+    if (this.waiting === this.parties) {
       this.waiting = 0;
+      this.generation += 1;
+      const group = this.waiters.get(generation) ?? [];
+      this.waiters.delete(generation);
+      for (const waiter of group) {
+        clearTimeout(waiter.timer);
+        waiter.resolve();
+      }
       return;
     }
-    const deadline = Date.now() + timeoutMs;
-    const target = this.waiting;
-    while (this.waiting !== 0 && this.waiting === target) {
-      if (Date.now() >= deadline) throw new Error("SYNC: barrier wait timeout");
-      await new Promise((resolve) => setTimeout(resolve, 5));
+
+    await new Promise<void>((resolve, reject) => {
+      const waiter = {
+        resolve,
+        reject,
+        timer: setTimeout(() => this.breakGeneration(generation), timeoutMs),
+      };
+      const group = this.waiters.get(generation) ?? [];
+      group.push(waiter);
+      this.waiters.set(generation, group);
+    });
+  }
+
+  private breakGeneration(generation: number): void {
+    const group = this.waiters.get(generation);
+    if (!group) return;
+    this.waiters.delete(generation);
+    if (generation === this.generation) {
+      this.waiting = 0;
+      this.generation += 1;
+    }
+    for (const waiter of group) {
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error("SYNC: barrier wait timeout; generation aborted"));
     }
   }
 }
