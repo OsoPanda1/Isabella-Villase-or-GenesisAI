@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import fs from "fs";
 import path from "path";
@@ -11,7 +11,8 @@ import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
 import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
 import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
-import { bookPiSecret } from "./security/secrets";
+import { bookPiSecret, equalSecret } from "./security/secrets";
+import { hashSourceContent } from "./memory/ikes";
 import { createAtlasStoreFromEnv } from "./atlas";
 import { createDiffObservatory, sanitizeDiffSnapshot, snapshotMetadataHash } from "./plugins";
 
@@ -45,81 +46,24 @@ void runtime.initPersistence().catch((error) => {
 const apiKey = process.env.GEMINI_API_KEY || process.env.MODEL_API_KEY;
 const genAi = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-// Pre-seed canonical knowledge into IKES Epistemic Memory (TAMV & Real del Monte)
-runtime.memory.registerSource({
-  sourceId: "src-tamv-001",
-  uri: "https://tamv.network/canon/v40",
-  title: "Canon v40.0.0 — Ecosistema TAMV & Isabella TINA",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-});
+/** Server-side bearer-token gate for mutating or privileged API routes. */
+function authorizeApiToken(req: Request, res: Response, envName: string): boolean {
+  const expected = process.env[envName];
+  if (!expected) {
+    res.status(503).json({ success: false, error: "API_TOKEN_NOT_CONFIGURED" });
+    return false;
+  }
+  const header = req.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!equalSecret(token, expected)) {
+    res.status(401).json({ success: false, error: "UNAUTHORIZED" });
+    return false;
+  }
+  return true;
+}
 
-runtime.memory.registerSource({
-  sourceId: "src-rdm-002",
-  uri: "https://realdelmonte.hidalgo.gob.mx/patrimonio",
-  title: "Gemelo Digital & Archivo Biocultural — Real del Monte, Hidalgo (Nodo Cero)",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "7d8a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-agents-003",
-  uri: "https://github.com/OsoPanda1/isabella-ai-genesis/blob/main/AGENTS.md",
-  title: "Constitución Operativa AGENTS.md — Invariante Operativo Soberano",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "fa4b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-zenodo-004",
-  uri: "https://doi.org/10.5281/zenodo.20606361",
-  title: "Registro Canónico TAMV ONLINE v2.0.0 — Zenodo / CERN (ORCID 0009-0008-5050-1539)",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
-});
-
-// Seed Core Invariants & Claims
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-tamv-001", "src-agents-003"],
-  claim: {
-    subject: "ISABELLA_TINA",
-    predicate: "operationalInvariant",
-    object: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
-    sourceIds: ["src-tamv-001", "src-agents-003"],
-    evidenceIds: ["src-tamv-001"],
-    temporalState: "current",
-    provenance: { source: "src-agents-003" },
-  },
-});
-
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-tamv-001", "src-rdm-002"],
-  claim: {
-    subject: "TAMV_NODO_CERO",
-    predicate: "location",
-    object: "Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O, 2,660 msnm)",
-    sourceIds: ["src-tamv-001", "src-rdm-002"],
-    evidenceIds: ["src-rdm-002"],
-    temporalState: "current",
-    provenance: { source: "src-rdm-002" },
-  },
-});
-
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-zenodo-004"],
-  claim: {
-    subject: "TAMV_ECOSYSTEM",
-    predicate: "canonicalAuthor",
-    object: "Edwin Oswaldo Castillo Trejo (Anubis Villaseñor) · ORCID 0009-0008-5050-1539 · DOI 10.5281/zenodo.20606361",
-    sourceIds: ["src-zenodo-004"],
-    evidenceIds: ["src-zenodo-004"],
-    temporalState: "current",
-    provenance: { source: "src-zenodo-004" },
-  },
-});
+// IKES starts empty. Knowledge enters only through authenticated ingestion with
+// user-supplied source content hashed at ingestion; remote URLs are not treated as fetched evidence.
 
 // Pre-register canonical tools
 runtime.tools.register({
@@ -160,12 +104,10 @@ runtime.tools.register({
   description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
   execute: async (input) => {
     return {
-      status: "VERIFIED",
-      merkleRoot: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
-      unbrokenChain: true,
-      blocksValidated: 42,
-      wormRuleEnforced: true,
-      verifiedAt: new Date().toISOString(),
+      status: "NOT_VERIFIED",
+      verificationPerformed: false,
+      reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
+      checkedAt: new Date().toISOString(),
       payload: input,
     };
   },
@@ -198,10 +140,11 @@ runtime.skills.register({
     return {
       skill: "sovereign_post_quantum_anchor",
       suite: "FIPS-203 (ML-KEM-768) + FIPS-204 (ML-DSA-87)",
-      status: "ANCHORED",
+      status: "NOT_CONFIGURED",
+      verificationPerformed: false,
+      reason: "NO_POST_QUANTUM_CRYPTOGRAPHY_PROVIDER_CONFIGURED",
       signals: ctx.signals,
-      commitmentHash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f",
-      anchoredAt: new Date().toISOString(),
+      checkedAt: new Date().toISOString(),
     };
   },
 });
@@ -216,10 +159,11 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "epistemic_dispute_arbiter",
-      disputeResolution: "EVALUATED_AND_ORDERED",
-      epistemicLadder: ["E0_UNVERIFIED", "E1_SOURCE_FOUND", "E2_CORROBORATED", "E6_ESTABLISHED"],
-      divergenceScore: 0.04,
-      provenanceIntegrity: "INTACT",
+      disputeResolution: "NOT_ASSESSED",
+      epistemicLadder: ["E0_UNVERIFIED", "E1_SOURCE_FOUND", "E2_CORROBORATED", "E3_ACADEMICALLY_SUPPORTED", "E4_REPRODUCIBLE", "E5_VALIDATED", "E6_ESTABLISHED"],
+      divergenceScore: null,
+      provenanceIntegrity: "NOT_VERIFIED",
+      limitation: "No dispute dataset or external provenance verifier was invoked.",
     };
   },
 });
@@ -234,9 +178,10 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "dynamic_compliance_shield",
-      frameworksChecked: ["EU_AI_ACT_RISK_GATES", "NIST_AI_RMF_1.0", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "LFPDPPP_MEXICO"],
-      complianceVerdict: "COMPLIANT",
-      highRiskControlsMet: true,
+      frameworksInScope: ["EU_AI_ACT", "NIST_AI_RMF", "ISO_IEC_42001", "UNESCO_AI_ETHICS", "LFPDPPP_MEXICO"],
+      complianceVerdict: "NOT_ASSESSED",
+      highRiskControlsMet: null,
+      limitation: "Framework scope only; no jurisdiction-specific assessment or legal review was executed.",
       timestamp: new Date().toISOString(),
     };
   },
@@ -254,8 +199,10 @@ runtime.skills.register({
       skill: "territorial_digital_twin_sync",
       territory: "Real del Monte (Nodo Cero)",
       coordinates: [20.1417, -98.6722],
-      bioculturalArchiveSynced: true,
-      wormLedgerAnchor: "BOOKPI_BLOCK_SYNC_OK",
+      bioculturalArchiveSynced: false,
+      synchronizationStatus: "NOT_CONFIGURED",
+      wormLedgerAnchor: null,
+      limitation: "No live archive or BookPI synchronization adapter is configured.",
     };
   },
 });
@@ -271,10 +218,13 @@ runtime.skills.register({
     return {
       skill: "human_in_the_loop_delegation_audit",
       governanceInvariant: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
-      humanPrincipalVerified: true,
-      replayShieldChecked: true,
-      delegationApproved: true,
-      verifiedAt: new Date().toISOString(),
+      status: "NOT_ASSESSED",
+      verificationPerformed: false,
+      humanPrincipalVerified: false,
+      replayShieldChecked: false,
+      delegationApproved: false,
+      reason: "NO_APPROVAL_VERIFIER_OR_REPLAY_REGISTRY_INVOKED",
+      checkedAt: new Date().toISOString(),
     };
   },
 });
@@ -387,28 +337,7 @@ interface BookPiLogEntry {
   status: string;
 }
 
-const bookPiLedgerHistory: BookPiLogEntry[] = [
-  {
-    id: "evt-001",
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    type: "GENESIS_BOOTSTRAP",
-    methodId: "A.TWINS.E00_GENESIS.init.v1.0.0.CRITICAL.CONSTITUTIONAL",
-    principal: "human:founder:anubis-villasenor",
-    riskTier: "CRITICAL",
-    hash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f",
-    status: "CONFIRMED_IMMUTABLE",
-  },
-  {
-    id: "evt-002",
-    timestamp: new Date(Date.now() - 1800000).toISOString(),
-    type: "CANON_ANCHOR",
-    methodId: "N.PATRIMONY.E02_CANON.anchor.v1.0.0.HIGH.INSTITUTIONAL",
-    principal: "human:founder:anubis-villasenor",
-    riskTier: "HIGH",
-    hash: "0x3a7c9e1f5d8b2a4e6c0d8f7a9b1c3d5e7f9a1b3c5d7e9f1a3b5c7d9e1f3a5b7c",
-    status: "CONFIRMED_IMMUTABLE",
-  },
-];
+const bookPiLedgerHistory: BookPiLogEntry[] = [];
 
 // --- API ROUTES ---
 
@@ -448,7 +377,7 @@ app.get("/api/v1/status", (_req, res) => {
       aegis: "ACTIVE",
       ikes: "ACTIVE",
       veritas: "ACTIVE",
-      bookpi: "ACTIVE",
+      bookpi: "NOT_CONFIGURED",
       pdp: "ACTIVE",
       litleTrustFabric: "ACTIVE",
       quantumPennyLane: runtime.quantum.describe(),
@@ -483,41 +412,69 @@ app.get("/api/v1/memory", (req, res) => {
   });
 });
 
-// Epistemic Memory (IKES) Ingestion
+// Epistemic Memory (IKES) Ingestion. Content is supplied by an authenticated operator;
+// the URL is provenance metadata only and is never represented as remotely fetched/verified.
 app.post("/api/v1/memory/ingest", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   try {
-    const { subject, predicate, object, sourceUri, title } = req.body ?? {};
-    if (!subject || !predicate || !object) {
-      res.status(400).json({ success: false, error: "subject, predicate y object son requeridos" });
+    const body = req.body ?? {};
+    const { subject, predicate, object, sourceUri, title, sourceContent, license } = body;
+    if (![subject, predicate, object, sourceUri, title, sourceContent, license].every((v) => typeof v === "string" && v.trim())) {
+      res.status(400).json({ success: false, error: "subject, predicate, object, sourceUri, title, sourceContent y license son requeridos" });
       return;
     }
-
-    const sourceId = `src-${Date.now()}`;
+    let parsedUri: URL;
+    try { parsedUri = new URL(sourceUri); } catch {
+      res.status(400).json({ success: false, error: "SOURCE_URI_INVALID" });
+      return;
+    }
+    if (parsedUri.protocol !== "https:") {
+      res.status(400).json({ success: false, error: "SOURCE_URI_MUST_USE_HTTPS" });
+      return;
+    }
+    const retrievedAt = new Date().toISOString();
+    const sanitized = runtime.sanitize({
+      id: `source-${randomUUID()}`,
+      content: sourceContent,
+      license,
+      provenance: { uri: parsedUri.toString(), retrievedAt },
+    });
+    if (sanitized.status !== "ADMITTED") {
+      res.status(422).json({ success: false, status: sanitized.status, findings: sanitized.findings, reason: "SOURCE_NOT_ADMITTED" });
+      return;
+    }
+    const sourceId = `src-${randomUUID()}`;
     runtime.memory.registerSource({
       sourceId,
-      uri: sourceUri || `urn:tamv:claim:${Date.now()}`,
-      title: title || `Afirmación Registrada: ${subject}`,
-      retrievedAt: new Date().toISOString(),
-      contentHash: `hash-${Date.now()}`,
+      uri: parsedUri.toString(),
+      title,
+      retrievedAt,
+      contentHash: hashSourceContent(sourceContent),
+      license,
     });
-
     const proposal = runtime.memory.propose({
-      proposedBy: "human:operator",
+      proposedBy: "service:authenticated-memory-ingest",
       evidenceIds: [sourceId],
       claim: {
-        subject: String(subject),
-        predicate: String(predicate),
-        object: String(object),
+        subject: subject.trim(),
+        predicate: predicate.trim(),
+        object: object.trim(),
         sourceIds: [sourceId],
         evidenceIds: [sourceId],
         temporalState: "current",
-        provenance: { source: sourceId },
+        provenance: { source: sourceId, verification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED" },
       },
     });
-
-    res.json({ success: true, proposal, sourceId });
+    res.status(202).json({
+      success: true,
+      status: "PROPOSED_UNVERIFIED",
+      sourceVerification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED",
+      contentHash: hashSourceContent(sourceContent),
+      proposal,
+      sourceId,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : "MEMORY_INGEST_FAILED" });
   }
 });
 
@@ -526,8 +483,10 @@ app.get("/api/v1/bookpi/events", (_req, res) => {
   res.json({
     count: bookPiLedgerHistory.length,
     events: bookPiLedgerHistory,
-    merkleRoot: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
-    wormRule: "APPEND_ONLY_IMMUTABLE",
+    merkleRoot: null,
+    integrityStatus: "NOT_VERIFIED",
+    verificationPerformed: false,
+    reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
   });
 });
 
@@ -840,19 +799,15 @@ app.get("/api/v1/hsf/status", async (_req, res) => {
 });
 
 app.post("/api/v1/hsf/invoke", async (req, res) => {
+  if (!authorizeApiToken(req, res, "HSF_API_TOKEN")) return;
   try {
     const body = req.body ?? {};
     const capabilityId = typeof body.capabilityId === "string" ? body.capabilityId : "";
     const input = body.input;
     const requestId = typeof body.requestId === "string" ? body.requestId : randomUUID();
     const traceId = typeof body.traceId === "string" ? body.traceId : requestId;
-    const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles)
-        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
-        : ["operator"],
-    });
+    // The principal and role are server-owned. Client-supplied identity/roles are ignored.
+    const principal = createPrincipal({ id: "service:hsf-api", kind: "machine", roles: ["operator"] });
     assertBalancedAuthority(principal);
     const serialized = JSON.stringify({ capabilityId, input });
     const governance = runtime.evaluate({
@@ -877,14 +832,14 @@ app.post("/api/v1/hsf/invoke", async (req, res) => {
       requestId,
       traceId,
       principalId: principal.id,
-      role: principal.roles[0] ?? "operator",
+      role: "operator",
       policyVersion: "genesis-hsf-v1",
-      metadata: { source: "api" },
+      metadata: { source: "api", authenticated: "true", genesisGovernanceAdmitted: "true" },
     });
     res.status(result.status === "executed" ? 200 : result.status === "rejected" ? 403 : result.status === "unavailable" ? 503 : 500)
       .json({ success: result.status === "executed", ...result, timestamp: new Date().toISOString() });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  } catch {
+    res.status(500).json({ success: false, error: "HSF_INVOCATION_FAILED" });
   }
 });
 
@@ -1135,22 +1090,82 @@ app.post("/api/v1/sanitization/scan", (req, res) => {
 
 // Admit governed knowledge (IKES): sanitization → identity → evidence → policy gate → index.
 app.post("/api/v1/knowledge/admit", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   try {
     const body = req.body ?? {};
-    if (typeof body.entityId !== "string" || typeof body.provenanceId !== "string" || typeof body.content !== "string") {
-      res.status(400).json({ success: false, error: "entityId, provenanceId y content son requeridos" });
+    const claim = body.claim;
+    if (typeof body.entityId !== "string" || !body.entityId.trim() ||
+        typeof body.provenanceId !== "string" || !body.provenanceId.trim() ||
+        typeof body.content !== "string" || !body.content.trim() ||
+        typeof body.sourceUri !== "string" || !body.sourceUri.trim() ||
+        typeof body.license !== "string" || !body.license.trim() ||
+        !claim || typeof claim.subject !== "string" || typeof claim.predicate !== "string" || typeof claim.object !== "string") {
+      res.status(400).json({ success: false, error: "entityId, provenanceId, content, sourceUri, license y claim {subject,predicate,object} son requeridos" });
       return;
     }
+    let parsedUri: URL;
+    try { parsedUri = new URL(body.sourceUri); } catch {
+      res.status(400).json({ success: false, error: "SOURCE_URI_INVALID" });
+      return;
+    }
+    if (parsedUri.protocol !== "https:") {
+      res.status(400).json({ success: false, error: "SOURCE_URI_MUST_USE_HTTPS" });
+      return;
+    }
+    const retrievedAt = new Date().toISOString();
+    const raw = {
+      id: typeof body.id === "string" ? body.id : body.entityId,
+      content: body.content,
+      license: body.license,
+      provenance: { uri: parsedUri.toString(), retrievedAt },
+    };
+    const sanitized = runtime.sanitize(raw);
+    if (sanitized.status !== "ADMITTED") {
+      res.status(422).json({ success: false, status: sanitized.status, findings: sanitized.findings, reason: "SOURCE_NOT_ADMITTED" });
+      return;
+    }
+    const sourceId = `src-${randomUUID()}`;
+    runtime.memory.registerSource({
+      sourceId,
+      uri: parsedUri.toString(),
+      title: typeof body.title === "string" && body.title.trim() ? body.title.trim() : `Aportación de conocimiento: ${body.entityId}`,
+      retrievedAt,
+      contentHash: hashSourceContent(body.content),
+      license: body.license,
+    });
+    const proposal = runtime.memory.propose({
+      proposedBy: "service:authenticated-knowledge-admission",
+      evidenceIds: [sourceId],
+      claim: {
+        subject: claim.subject.trim(),
+        predicate: claim.predicate.trim(),
+        object: claim.object.trim(),
+        sourceIds: [sourceId],
+        evidenceIds: [sourceId],
+        temporalState: "current",
+        provenance: { source: sourceId, verification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED" },
+      },
+    });
     const result = runtime.admitKnowledge({
-      raw: { id: body.id ?? body.entityId, content: body.content, license: body.license, provenance: body.provenance },
+      raw,
       entityId: body.entityId,
       provenanceId: body.provenanceId,
-      claims: Array.isArray(body.claims) ? body.claims : [],
-      policyGateGranted: body.policyGateGranted === true,
+      claims: [proposal],
+      policyGateGranted: true,
     });
-    res.json({ success: result.entry.released, ...result });
+    const blockers = result.entry.stages.filter((stage) => !stage.ok);
+    res.status(202).json({
+      success: result.entry.released,
+      status: result.entry.released ? "RELEASED" : "PROPOSAL_RECORDED_RELEASE_BLOCKED",
+      sourceVerification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED",
+      sourceId,
+      contentHash: hashSourceContent(body.content),
+      proposal,
+      ...result,
+      releaseBlockers: blockers,
+    });
   } catch (err) {
-    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : "KNOWLEDGE_ADMISSION_FAILED" });
   }
 });
 
@@ -2150,9 +2165,9 @@ app.get("/", (_req, res) => {
           <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] text-xs font-mono">
             <div>
               <span class="text-slate-400">Merkle Root:</span>
-              <span class="text-cyan-300 ml-1">0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a</span>
+              <span class="text-amber-300 ml-1">No calculado — verificador no configurado</span>
             </div>
-            <span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px]">WORM INTEGRITY: VERIFIED</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px]">WORM INTEGRITY: NOT VERIFIED</span>
           </div>
 
           <div id="ledgerEventsList" class="mt-4 space-y-2 text-xs font-mono">
