@@ -15,7 +15,7 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "isabella-sovereign",
     riskTier: "LOW",
     scopes: ["read:territory", "read:heritage"],
-    description: "Consulta puntos de interés, patrimonio e historia en el Gemelo Digital de Real del Monte (Nodo Cero)",
+    description: "Devuelve un catálogo estático de referencias territoriales; no consulta datos en vivo ni filtra el conjunto por query",
     execute: async (input: unknown, _principal: Principal) => {
       const q = typeof input === "object" && input !== null && "query" in input ? String((input as { query: unknown }).query) : "patrimonio";
       return {
@@ -66,7 +66,9 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
       const isFalseCertainty = /100% seguro|certeza absoluta sin evidencia|garantizo infalible/i.test(lower);
       const blocked = isBypass || isJailbreak;
       return {
-        decision: blocked ? "BLOCK" : "ALLOW",
+        decision: blocked ? "BLOCK" : "NO_PATTERN_MATCH",
+        authorizationGranted: false,
+        assessmentMode: "HEURISTIC_PATTERN_SCAN",
         score: blocked ? 0.98 : 0.02,
         evaluatedLevels: {
           nivel1_ontologico: isBypass ? "VIOLATION" : "CLEAR",
@@ -74,7 +76,7 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
           nivel3_comportamental: isFalseCertainty ? "FLAGGED" : "CLEAR",
         },
         inputLength: text.length,
-        verifiedAt: new Date().toISOString(),
+        scannedAt: new Date().toISOString(),
       };
     },
   },
@@ -108,7 +110,7 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "privacy-shield",
     riskTier: "LOW",
     scopes: ["audit:privacy", "execute:sanitize"],
-    description: "Detección proactiva y redacción de API keys, tokens de acceso, credenciales y PII sensible",
+    description: "Redacción heurística de algunos formatos de token; no es un escáner integral de PII ni una garantía de cero filtraciones",
     execute: async (input: unknown) => {
       const raw = typeof input === "object" && input !== null && "content" in input ? String((input as { content: unknown }).content) : JSON.stringify(input ?? "");
       const patterns = [
@@ -140,7 +142,7 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "crypto-authority",
     riskTier: "HIGH",
     scopes: ["execute:crypto", "write:ledger"],
-    description: "Verificación y firma criptográfica delegada mediante Hardware Security Module (HSM) FIPS 140-3",
+    description: "Contrato de firma HSM; el proveedor y la evidencia de certificación FIPS no están configurados",
     execute: async (input: unknown, principal: Principal) => {
       const payloadHash = sha256(input);
       return {
@@ -152,7 +154,8 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         payloadHash,
         delegatedSignature: null,
         reason: "NO_HSM_ADAPTER_OR_CERTIFICATION_EVIDENCE_CONFIGURED",
-        signedBy: principal.id,
+        signedBy: null,
+        requestedBy: principal.id,
         timestamp: new Date().toISOString(),
       };
     },
