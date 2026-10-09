@@ -104,6 +104,9 @@ export function createKnowledgeEntry(seed: KnowledgeEntrySeed): KnowledgeEntry {
   return Object.freeze({
     id: `KNO-${hash(core).slice(0, 8).toUpperCase()}`,
     ...core,
+    claimIds: Object.freeze([...core.claimIds]),
+    sourceIds: Object.freeze([...core.sourceIds]),
+    evidenceIds: Object.freeze([...core.evidenceIds]),
     gitCommit: null,
     auditIds: Object.freeze([] as string[]),
   });
@@ -203,6 +206,9 @@ export function runIkesPipeline(input: IkesPipelineInput): IkesPipelineResult {
 
   const entry: KnowledgeEntry = Object.freeze({
     ...input.entry,
+    claimIds: Object.freeze([...input.entry.claimIds]),
+    sourceIds: Object.freeze([...input.entry.sourceIds]),
+    evidenceIds: Object.freeze([...input.entry.evidenceIds]),
     gitCommit: input.gitCommit ?? input.entry.gitCommit,
     auditIds: Object.freeze([...(input.auditIds ?? input.entry.auditIds)]),
   });
