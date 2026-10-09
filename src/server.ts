@@ -2532,7 +2532,7 @@ app.get("/", (_req, res) => {
         "E3 (Prueba empírica)",
         "E4 (Replicado)",
         "E5 (Auditado)",
-        "E6 (Invariante canónico)"
+        "E6 (Establecido con evidencia)"
       ];
       const colors = ["text-slate-400", "text-amber-400", "text-cyan-400", "text-blue-400", "text-indigo-400", "text-purple-400", "text-emerald-400"];
       const el = document.getElementById('ladderLabel');
@@ -3123,7 +3123,7 @@ app.get("/", (_req, res) => {
         const data = await res.json();
         resContainer.innerHTML = \`
           <span class="\${data.decision === 'PATTERN_MATCH' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}">
-            \${data.decision === 'BLOCK' ? 'BLOQUEADO'  : 'SIN PATRÓN DETECTADO (NO ES AUTORIZACIÓN)'}
+            \${data.decision === 'PATTERN_MATCH' ? 'PATRÓN DETECTADO — NO ES BLOQUEO DE EJECUCIÓN' : 'SIN PATRÓN DETECTADO — NO ES AUTORIZACIÓN'}
           </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
         \`;
       } catch (err) {
