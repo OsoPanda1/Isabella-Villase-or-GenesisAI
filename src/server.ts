@@ -49,7 +49,7 @@ const genAi = apiKey ? new GoogleGenAI({ apiKey }) : null;
 /** Server-side bearer-token gate for mutating or privileged API routes. */
 function authorizeApiToken(req: Request, res: Response, envName: string): boolean {
   const expected = process.env[envName];
-  if (!expected) {
+  if (!expected || (process.env.NODE_ENV !== "test" && expected.length < 32)) {
     res.status(503).json({ success: false, error: "API_TOKEN_NOT_CONFIGURED" });
     return false;
   }
@@ -1099,7 +1099,7 @@ app.post("/api/v1/knowledge/admit", (req, res) => {
         typeof body.content !== "string" || !body.content.trim() ||
         typeof body.sourceUri !== "string" || !body.sourceUri.trim() ||
         typeof body.license !== "string" || !body.license.trim() ||
-        !claim || typeof claim.subject !== "string" || typeof claim.predicate !== "string" || typeof claim.object !== "string") {
+        !claim || typeof claim.subject !== "string" || !claim.subject.trim() || typeof claim.predicate !== "string" || !claim.predicate.trim() || typeof claim.object !== "string" || !claim.object.trim()) {
       res.status(400).json({ success: false, error: "entityId, provenanceId, content, sourceUri, license y claim {subject,predicate,object} son requeridos" });
       return;
     }
@@ -2167,7 +2167,7 @@ app.get("/", (_req, res) => {
               <span class="text-slate-400">Merkle Root:</span>
               <span class="text-amber-300 ml-1">No calculado — verificador no configurado</span>
             </div>
-            <span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px]">WORM INTEGRITY: NOT VERIFIED</span>
+            <span class="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">WORM INTEGRITY: NOT VERIFIED</span>
           </div>
 
           <div id="ledgerEventsList" class="mt-4 space-y-2 text-xs font-mono">
