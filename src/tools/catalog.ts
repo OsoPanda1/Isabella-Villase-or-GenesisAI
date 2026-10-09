@@ -1,6 +1,7 @@
 import type { ToolDescriptor } from "./registry";
 import type { Principal } from "../identity/principal";
 import { createHash } from "node:crypto";
+import { bookPiLedger } from "../bookpi";
 
 function sha256(data: unknown): string {
   return createHash("sha256").update(JSON.stringify(data) ?? "").digest("hex");
@@ -44,18 +45,9 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "bookpi-ledger",
     riskTier: "LOW",
     scopes: ["read:ledger"],
-    description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
+    description: "Verifica la cadena hash SHA-256 local de BookPI; no certifica persistencia WORM ni firma externa",
     execute: async (input: unknown, _principal: Principal) => {
-      return {
-        status: "NOT_VERIFIED",
-        verificationPerformed: false,
-        reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
-        unbrokenChain: false,
-        blocksValidated: 0,
-        wormRuleEnforced: false,
-        verifiedAt: new Date().toISOString(),
-        payload: input,
-      };
+      return { ...bookPiLedger.verify(), checkedAt: new Date().toISOString(), payload: input };
     },
   },
   {
