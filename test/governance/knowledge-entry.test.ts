@@ -32,14 +32,25 @@ describe("IKES knowledge entry", () => {
     expect(blocked.released).toBe(false);
 
     const released = runIkesPipeline({
-      entry: createKnowledgeEntry({ entityId: "ENT-1", provenanceId: "PRV-1", evidenceIds: ["src-1"] }),
+      entry: createKnowledgeEntry({ entityId: "ENT-1", provenanceId: "PRV-1", claimIds: ["clm-1"], evidenceIds: ["src-1"] }),
       sanitizationAdmitted: true,
       policyGateGranted: true,
       gitCommit: "a".repeat(40),
+      auditIds: ["audit-1"],
       indexed: true,
     });
     expect(released.released).toBe(true);
     expect(released.stages.map((s) => s.stage)).toEqual([...IKES_PIPELINE]);
+  });
+
+  it("does not release when audit, Git commit, or indexing evidence is missing", () => {
+    const entry = createKnowledgeEntry({ entityId: "ENT-1", provenanceId: "PRV-1", claimIds: ["clm-1"], evidenceIds: ["src-1"] });
+    const missingAudit = runIkesPipeline({ entry, sanitizationAdmitted: true, policyGateGranted: true, gitCommit: "a".repeat(40), indexed: true });
+    expect(missingAudit.released).toBe(false);
+    expect(missingAudit.stages.find((stage) => stage.stage === "audit")?.ok).toBe(false);
+    const missingCommit = runIkesPipeline({ entry, sanitizationAdmitted: true, policyGateGranted: true, auditIds: ["audit-1"], indexed: true });
+    expect(missingCommit.released).toBe(false);
+    expect(missingCommit.stages.find((stage) => stage.stage === "git_commit")?.ok).toBe(false);
   });
 
   it("only deletes on identical/verified duplicate, otherwise preserves", () => {
