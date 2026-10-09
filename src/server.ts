@@ -931,7 +931,7 @@ app.post("/api/v1/notebook/generate", (req, res) => {
 El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo, México) representa una infraestructura civilizatoria soberana y federada, portadora del orgullo latinoamericano (TINA esLatina). Opera bajo el invariante ontológico fundamental:
 > CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
 
-### 2. Puntos Clave & Fuentes Conectadas
+### 2. Puntos clave y referencias declaradas (no recuperadas por este runtime)
 - **Nodo Cero:** Ubicado a 2,660 msnm en Real del Monte, Hidalgo. Alberga patrimonio histórico minero (Mina de Acosta, Mina La Dificultad) y el Panteón Inglés.
 - **Autoría Canónica:** Edwin Oswaldo Castillo Trejo (Anubis Villaseñor), ORCID: 0009-0008-5050-1539, DOI Zenodo: 10.5281/zenodo.20606361.
 - **Memoria IKES:** Escala de verdad E0 a E6 con registro inmutable en BookPI SHA3-512.
@@ -962,7 +962,7 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
 1. **¿Qué significa TINA y por qué representa el orgullo esLatina?**
    TINA es 'Trusted Intelligence, Native & Adaptive' y al mismo tiempo simboliza que ISABELLA esLatina, en honor a su cuna mexicana y a la soberanía científica de América Latina.
 2. **¿Qué sucede si un agente de IA intenta auto-aprobarse?**
-   El sistema ejecuta fail-closed inmediato por violación del Invariante Operativo.
+   La política del runtime puede bloquear solicitudes no autorizadas; esta FAQ no sustituye pruebas de rutas ni evidencia de despliegue.
 3. **¿Dónde se ancla territorialmente el sistema?**
    En Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O · 2,660 msnm).`;
   } else {
@@ -983,7 +983,7 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
   });
 });
 
-// NotebookLM Audio Overview (Simulated 2-Host Deep Dive Podcast)
+// Guion de audio local (sin proveedor de generación de audio)
 app.post("/api/v1/audio-overview/generate", (req, res) => {
   if (!enforceRateLimit(req, res, publicScanLimiter, "audio-script")) return;
   const rawTopic = req.body?.topic;
@@ -1019,6 +1019,8 @@ app.post("/api/v1/audio-overview/generate", (req, res) => {
 
   res.json({
     success: true,
+    status: "SCRIPT_ONLY_NO_AUDIO_PROVIDER",
+    mediaGenerated: false,
     topic,
     durationSeconds: 145,
     hosts: [
@@ -2387,43 +2389,43 @@ app.get("/", (_req, res) => {
     const CITATION_SOURCES = {
       1: {
         id: "SRC-01",
-        title: "Registro Canónico Zenodo / CERN (TAMV Online Network)",
+        title: "Referencia declarada: registro Zenodo",
         domain: "doi.org/10.5281/zenodo.20606361",
-        category: "Territorial & Académico",
-        level: "E6 Established Invariant",
-        confidence: "99.9%",
-        excerpt: "Edwin Oswaldo Castillo Trejo (Anubis Villaseñor / OsoPanda1), Mineral del Monte, Hidalgo. Registro DOI y ORCID 0009-0008-5050-1539.",
-        hash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f"
+        category: "Territorial & académico",
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Referencia configurada en la interfaz; este runtime no ha recuperado ni verificado su contenido."
       },
       2: {
         id: "SRC-02",
-        title: "Catálogo Territorial Biocultural — Real del Monte (2,660 msnm)",
+        title: "Referencia declarada: catálogo territorial",
         domain: "realdelmonte.hidalgo.gob.mx / INAH",
         category: "Territorial",
-        level: "E6 Verified Archival",
-        confidence: "99.5%",
-        excerpt: "Panteón Inglés (1851), Mina de Acosta con tiro de 400m y Mina La Dificultad con chimenea monumental de 39m y máquinas de vapor.",
-        hash: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a"
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Referencia declarada en la interfaz; el runtime no ha recuperado ni contrastado los datos del catálogo."
       },
       3: {
         id: "SRC-03",
-        title: "Constitución Operativa AGENTS.md — Regla Invariante",
+        title: "Referencia declarada: constitución operativa AGENTS.md",
         domain: "citemesh.tamv.online / AGENTS.md",
         category: "Constitucional",
-        level: "E6 Supreme Constitutional",
-        confidence: "100.0%",
-        excerpt: "Invariante supremo: CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION. Ninguna máquina ejecuta actos de autoridad sin arbitraje humano.",
-        hash: "0x1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c"
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Texto constitucional descrito por el proyecto; no se afirma que esta URL haya sido recuperada por el runtime."
       },
       4: {
         id: "SRC-04",
-        title: "Especificación Canónica TINA v40.0.0 & CITEMESH Hypercore",
+        title: "Referencia declarada: especificación TINA",
         domain: "specs.tamv.online / v40.0.0",
-        category: "Criptográfica & CQRS",
-        level: "E6 Technical Standard",
-        confidence: "99.8%",
-        excerpt: "Pipeline P-R-P-D-A-A, validación de permisos en BookPI con WORM y compromisos poscuánticos FIPS-203 (ML-KEM) y FIPS-204 (ML-DSA).",
-        hash: "0x7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e"
+        category: "Arquitectura",
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Referencia declarada; las afirmaciones sobre WORM, PQC y firmas requieren implementación y evidencia independientes."
       }
     };
 
@@ -2799,7 +2801,7 @@ app.get("/", (_req, res) => {
       } else {
         narrative = "Estímulo evaluado y admitido conforme al pipeline soberano P-R-P-D-A-A. ";
         if (d.memory && d.memory.length > 0) {
-          narrative += "Recuperé " + d.memory.length + " afirmación(es) verificada(s) en la memoria IKES con grado epistemológico " + d.memory[0].epistemicState + ": \\"" + d.memory[0].object + "\\". El Nodo Cero en Real del Monte (2,660 msnm) preserva este patrimonio con orgullo latinoamericano.";
+          narrative += "Recuperé " + d.memory.length + " afirmación(es) registrada(s) en la memoria IKES con estado epistemológico " + d.memory[0].epistemicState + ": \\"" + d.memory[0].object + "\\". El Nodo Cero en Real del Monte (2,660 msnm) preserva este patrimonio con orgullo latinoamericano.";
         } else {
           narrative += "Modo de respuesta: " + d.crown.responseMode.toUpperCase() + ". La ruta de autoridad se mantiene PRESERVED en modo " + d.plan.hypercore.mode + " anclado a la constitución civilizatoria.";
         }
@@ -3194,7 +3196,7 @@ app.get("/", (_req, res) => {
       }
     }
 
-    // NotebookLM Studio Doc Generator
+    // Generador de guías local (plantillas)
     async function generateStudioDoc(docType) {
       const viewer = document.getElementById('studioDocViewer');
       const titleEl = document.getElementById('studioDocTitle');
