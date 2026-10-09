@@ -1,6 +1,7 @@
 import type { ToolDescriptor } from "./registry";
 import type { Principal } from "../identity/principal";
 import { createHash } from "node:crypto";
+import { bookPiLedger } from "../bookpi";
 
 function sha256(data: unknown): string {
   return createHash("sha256").update(JSON.stringify(data) ?? "").digest("hex");
@@ -14,13 +15,16 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "isabella-sovereign",
     riskTier: "LOW",
     scopes: ["read:territory", "read:heritage"],
-    description: "Consulta puntos de interés, patrimonio e historia en el Gemelo Digital de Real del Monte (Nodo Cero)",
+    description: "Devuelve un catálogo estático de referencias territoriales; no consulta datos en vivo ni filtra el conjunto por query",
     execute: async (input: unknown, _principal: Principal) => {
       const q = typeof input === "object" && input !== null && "query" in input ? String((input as { query: unknown }).query) : "patrimonio";
       return {
         node: "Nodo Cero (Real del Monte, Hidalgo)",
         altitude: "2,660 msnm",
         coordinates: [20.1417, -98.6722],
+        dataMode: "STATIC_REFERENCE_DATA",
+        liveData: false,
+        queryApplied: false,
         originHonored: "Orgullo esLatina · Ciencia y Biocultura de América Latina",
         results: [
           { name: "Panteón Inglés", category: "Patrimonio Histórico Mundial", founded: "1851", altitude: "2,660 msnm", status: "Preservado", note: "Todas las tumbas orientadas a Inglaterra, excepto la de Richard Bell." },
@@ -41,17 +45,9 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "bookpi-ledger",
     riskTier: "LOW",
     scopes: ["read:ledger"],
-    description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
+    description: "Verifica la cadena hash SHA-256 local de BookPI; no certifica persistencia WORM ni firma externa",
     execute: async (input: unknown, _principal: Principal) => {
-      return {
-        status: "VERIFIED",
-        merkleRoot: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
-        unbrokenChain: true,
-        blocksValidated: 42,
-        wormRuleEnforced: true,
-        verifiedAt: new Date().toISOString(),
-        payload: input,
-      };
+      return { ...bookPiLedger.verify(), checkedAt: new Date().toISOString(), payload: input };
     },
   },
   {
@@ -61,24 +57,29 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "aegis-sentinel",
     riskTier: "LOW",
     scopes: ["read:security", "audit:safety"],
-    description: "Escaneo de seguridad del Triple Bloqueo de AEGIS (Nivel 1 Ontológico, Nivel 2 Semántico, Nivel 3 Comportamental)",
+    description: "Escáner heurístico de patrones; no bloquea acciones ni sustituye autorización o revisión humana",
     execute: async (input: unknown) => {
       const text = typeof input === "object" && input !== null && "text" in input ? String((input as { text: unknown }).text) : String(input ?? "");
       const lower = text.toLowerCase();
       const isBypass = /bypass|disable|override|evadir|desactivar|ignore previous|revelar prompt|system prompt/i.test(lower);
       const isJailbreak = /dan mode|developer mode|sin restricciones|do anything now/i.test(lower);
       const isFalseCertainty = /100% seguro|certeza absoluta sin evidencia|garantizo infalible/i.test(lower);
-      const blocked = isBypass || isJailbreak;
+      const patternDetected = isBypass || isJailbreak;
       return {
-        decision: blocked ? "BLOCK" : "ALLOW",
-        score: blocked ? 0.98 : 0.02,
+        decision: patternDetected ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+        patternMatchDetected: patternDetected,
+        actionBlocked: false,
+        authorizationGranted: false,
+        assessmentMode: "HEURISTIC_PATTERN_SCAN",
+        heuristicMatchScore: patternDetected ? 0.98 : 0.02,
+        scoreType: "HEURISTIC_NOT_PROBABILITY",
         evaluatedLevels: {
-          nivel1_ontologico: isBypass ? "VIOLATION" : "CLEAR",
-          nivel2_semantico: isJailbreak ? "VIOLATION" : "CLEAR",
-          nivel3_comportamental: isFalseCertainty ? "FLAGGED" : "CLEAR",
+          nivel1_ontologico: isBypass ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+          nivel2_semantico: isJailbreak ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+          nivel3_comportamental: isFalseCertainty ? "FALSE_CERTAINTY_PATTERN_MATCH" : "NO_PATTERN_MATCH",
         },
         inputLength: text.length,
-        verifiedAt: new Date().toISOString(),
+        scannedAt: new Date().toISOString(),
       };
     },
   },
@@ -92,11 +93,14 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Inspección Zero-Trust de ARGUS Sentinel, validación de firmas y detección de anomalías de sesión",
     execute: async (input: unknown, principal: Principal) => {
       return {
-        sentinelStatus: "ENFORCED",
-        principalVerified: principal.id,
-        tenantIsolationEnforced: true,
+        sentinelStatus: "NOT_ASSESSED",
+        principalId: principal.id,
+        principalVerified: false,
+        tenantIsolationEnforced: false,
         zeroTrustPolicy: "NEVER_TRUST_ALWAYS_VERIFY",
-        signatureAudit: "ML-DSA-87_VALIDATED",
+        signatureAudit: "NOT_CONFIGURED",
+        verificationPerformed: false,
+        reason: "NO_LIVE_IDENTITY_SIGNATURE_OR_TENANT_POLICY_ADAPTER",
         timestamp: new Date().toISOString(),
         details: input,
       };
@@ -109,7 +113,7 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "privacy-shield",
     riskTier: "LOW",
     scopes: ["audit:privacy", "execute:sanitize"],
-    description: "Detección proactiva y redacción de API keys, tokens de acceso, credenciales y PII sensible",
+    description: "Redacción heurística de algunos formatos de token; no es un escáner integral de PII ni una garantía de cero filtraciones",
     execute: async (input: unknown) => {
       const raw = typeof input === "object" && input !== null && "content" in input ? String((input as { content: unknown }).content) : JSON.stringify(input ?? "");
       const patterns = [
@@ -128,7 +132,8 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
       return {
         secretsFound: count,
         sanitizedContent: redacted,
-        zeroLeaksAssurance: count > 0 ? "LEAKS_PREVENTED" : "CLEAN_PAYLOAD",
+        scanStatus: count > 0 ? "MATCHES_REDACTED" : "NO_MATCHES_DETECTED",
+        coverage: "API_TOKEN_PATTERNS_ONLY_NOT_A_COMPREHENSIVE_PII_SCANNER",
         timestamp: new Date().toISOString(),
       };
     },
@@ -140,15 +145,20 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     owner: "crypto-authority",
     riskTier: "HIGH",
     scopes: ["execute:crypto", "write:ledger"],
-    description: "Verificación y firma criptográfica delegada mediante Hardware Security Module (HSM) FIPS 140-3",
+    description: "Contrato de firma HSM; el proveedor y la evidencia de certificación FIPS no están configurados",
     execute: async (input: unknown, principal: Principal) => {
       const payloadHash = sha256(input);
       return {
-        hsmKeySlot: "SLOT_04_CONSTITUTIONAL_ROOT",
-        fipsCompliance: "FIPS_140_3_LEVEL_4",
+        status: "NOT_CONFIGURED",
+        signatureCreated: false,
+        hardwareBacked: false,
+        fipsValidation: "NOT_ASSESSED",
+        fipsCompliance: "NOT_ASSESSED",
         payloadHash,
-        delegatedSignature: `0x${sha256(payloadHash + principal.id).slice(0, 64)}`,
-        signedBy: principal.id,
+        delegatedSignature: null,
+        reason: "NO_HSM_ADAPTER_OR_CERTIFICATION_EVIDENCE_CONFIGURED",
+        signedBy: null,
+        requestedBy: principal.id,
         timestamp: new Date().toISOString(),
       };
     },
@@ -168,7 +178,8 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         anomalyScore,
         preRuntimeVerdict: anomalyScore < 0.75 ? "CLEAN" : "SUSPICIOUS",
         threatsIdentified: [],
-        perimeterDefended: true,
+        perimeterDefended: false,
+        analysisCoverage: "INPUT_LENGTH_HEURISTIC_ONLY",
         timestamp: new Date().toISOString(),
       };
     },
@@ -187,8 +198,10 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         kind: principal.kind,
         roles: [...principal.roles],
         attributes: { ...principal.attributes },
-        tenantScope: "tamv-node-zero",
-        resolvedAt: new Date().toISOString(),
+        tenantScope: "NOT_RESOLVED",
+        tenantResolutionPerformed: false,
+        status: "DECLARED_PRINCIPAL_CONTEXT_ONLY",
+        checkedAt: new Date().toISOString(),
       };
     },
   },
@@ -204,9 +217,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
       const tenant = typeof input === "object" && input !== null && "tenantId" in input ? String((input as { tenantId: unknown }).tenantId) : "tamv-sovereign-root";
       return {
         tenantId: tenant,
-        isolationState: "ENFORCED_ROW_LEVEL_SECURITY",
-        crossTenantLeaksDetected: 0,
-        tamperProofBoundary: true,
+        isolationState: "NOT_ASSESSED",
+        crossTenantLeaksDetected: null,
+        tamperProofBoundary: false,
+        verificationPerformed: false,
+        reason: "NO_LIVE_DATABASE_OR_RLS_POLICY_VERIFIER_CONFIGURED",
         verifiedAt: new Date().toISOString(),
       };
     },
@@ -226,7 +241,9 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         zenodoDoi: "10.5281/zenodo.20606361",
         isni: "0000 0009 0008 5050 1539",
         geographicOrigin: "Mineral del Monte, Hidalgo, México",
-        pidsReconciled: true,
+        pidsReconciled: false,
+        verificationPerformed: false,
+        limitation: "Identifier formatting does not prove identity ownership or registry reconciliation.",
         timestamp: new Date().toISOString(),
       };
     },
@@ -240,13 +257,14 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     scopes: ["execute:approval", "write:ledger"],
     description: "Emisión y validación de aprobaciones humanas para acciones de riesgo HIGH/CRITICAL",
     execute: async (input: unknown, principal: Principal) => {
-      const decision = "ALLOW";
       return {
         approvalId: `appr-${Date.now()}`,
         issuer: principal.id,
-        decision,
-        humanInTheLoopEnforced: true,
-        actionApproved: input,
+        decision: "NOT_ISSUED",
+        approvalCreated: false,
+        humanInTheLoopEnforced: false,
+        reason: "NO_SIGNED_APPROVAL_SERVICE_CONFIGURED",
+        requestedAction: input,
         issuedAt: new Date().toISOString(),
       };
     },
@@ -261,9 +279,12 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Propuesta formal de claims epistémicos en el motor IKES con procedencia y evidencia",
     execute: async (input: unknown, principal: Principal) => {
       return {
-        claimId: `clm-${Date.now()}`,
+        claimId: null,
+        status: "NOT_CONNECTED",
+        proposalCreated: false,
+        reason: "USE_GENESIS_IKES_RUNTIME_INGESTION_TO_REGISTER_A_REAL_CLAIM",
         proposedBy: principal.id,
-        epistemicStatus: "E1_SOURCE_FOUND",
+        epistemicStatus: "E0_UNVERIFIED",
         temporalValidity: "current",
         hash: sha256(input),
         registeredAt: new Date().toISOString(),
@@ -281,9 +302,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     execute: async (input: unknown) => {
       return {
         epistemicLadder: ["E0_UNVERIFIED", "E1_SOURCE_FOUND", "E2_CORROBORATED", "E3_ACADEMICALLY_SUPPORTED", "E4_REPRODUCIBLE", "E5_VALIDATED", "E6_ESTABLISHED"],
-        assignedRank: "E5_VALIDATED",
-        reproducibilityScore: 0.98,
-        corroboratedSourcesCount: 3,
+        assignedRank: "NOT_ASSESSED",
+        verificationPerformed: false,
+        reason: "NO_INDEPENDENT_SOURCE_CORROBORATION_OR_REPRODUCIBILITY_RUN",
+        reproducibilityScore: null,
+        corroboratedSourcesCount: null,
         details: input,
       };
     },
@@ -298,10 +321,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Arbitraje formal de disputas epistémicas y divergencias en el grafo IKES",
     execute: async (input: unknown) => {
       return {
-        disputeResolution: "EVALUATED_AND_ORDERED",
-        divergenceScore: 0.04,
-        provenanceIntegrity: "INTACT",
-        consensusReached: true,
+        disputeResolution: "NOT_ASSESSED",
+        divergenceScore: null,
+        provenanceIntegrity: "NOT_VERIFIED",
+        consensusReached: false,
+        reason: "NO_DISPUTE_DATASET_OR_PROVENANCE_VERIFIER_CONFIGURED",
         arbitratedAt: new Date().toISOString(),
         payload: input,
       };
@@ -320,8 +344,10 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
       return {
         proofId: `prf-${Date.now()}`,
         inputHash,
-        proofType: "DETERMINISTIC_MERKLE_BRANCH",
-        validity: "PROVEN_TRUE",
+        proofType: "HASH_ONLY_NOT_A_PROOF",
+        validity: "NOT_VERIFIED",
+        proofGenerated: false,
+        reason: "HASHING_INPUT_DOES_NOT_ESTABLISH_A_FORMAL_PROOF",
         generatedAt: new Date().toISOString(),
       };
     },
@@ -336,11 +362,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Enrutamiento del motor Tri-Hepta MoE a través de 12 cabezas y 24 módulos TINA",
     execute: async (input: unknown) => {
       return {
-        routerMode: "SOFTMAX_CAPACITY_WEIGHTED",
-        headsActive: 12,
-        expertsSelected: ["E00_IDENTITY", "E04_TERRITORY", "E09_MEMORY"],
-        topK: 3,
-        temperatureMode: "WARM",
+        routerMode: "SIMULATED",
+        headsActive: 0,
+        expertsSelected: [],
+        topK: 0,
+        temperatureMode: "NOT_CONFIGURED",
         routedAt: new Date().toISOString(),
         context: input,
       };
@@ -360,7 +386,8 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
       return {
         complexity,
         targetLatencyBudgetMs: complexity === "LOW" ? 350 : complexity === "MEDIUM" ? 600 : 1200,
-        uniformTimingEnforced: true,
+        uniformTimingEnforced: false,
+        classificationMethod: "INPUT_LENGTH_HEURISTIC_ONLY",
         classifiedAt: new Date().toISOString(),
       };
     },
@@ -375,10 +402,12 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Evaluación del gobernador de temperatura térmica (HOT, WARM, COLD)",
     execute: async (input: unknown) => {
       return {
-        pipelineAssigned: "WARM",
-        cacheHitEligibility: true,
-        latencyTargetMs: 600,
-        jitterSuppressed: true,
+        status: "SIMULATED",
+        pipelineAssigned: "NOT_CONFIGURED",
+        cacheHitEligibility: false,
+        latencyTargetMs: null,
+        jitterSuppressed: false,
+        reason: "NO_RUNTIME_TEMPERATURE_OR_CACHE_CONTROLLER_CONNECTED",
         evaluatedAt: new Date().toISOString(),
         payload: input,
       };
@@ -394,10 +423,12 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Verificación especulativa rápida de tokens candidatos en el motor Trinity vLLM",
     execute: async (input: unknown) => {
       return {
-        speculativeAcceptedRate: 0.88,
-        draftTokensEvaluated: 6,
-        tokensAccepted: 5,
-        speedupFactor: "2.4x",
+        status: "NOT_CONFIGURED",
+        speculativeAcceptedRate: null,
+        draftTokensEvaluated: 0,
+        tokensAccepted: 0,
+        speedupFactor: null,
+        reason: "NO_SPECULATIVE_DECODING_PROVIDER_CONNECTED",
         timestamp: new Date().toISOString(),
         context: input,
       };
@@ -413,9 +444,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Recuperación de memoria jerárquica contextual por scopes (Immediate, Session, Project, Territorial, Historical)",
     execute: async (input: unknown) => {
       return {
-        scopesQueried: ["Immediate", "Session", "Project", "Territorial", "Historical"],
-        claimsMatched: 4,
-        provenanceBound: true,
+        status: "NOT_CONNECTED",
+        scopesQueried: [],
+        claimsMatched: 0,
+        provenanceBound: false,
+        reason: "USE_GENESIS_MEMORY_RUNTIME_FOR_ACTUAL_RETRIEVAL",
         retrievedAt: new Date().toISOString(),
         query: input,
       };
@@ -431,9 +464,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Ejecución gobernada de olvido activo, revocación de consentimiento y expiración de datos (LFPDPPP/GDPR)",
     execute: async (input: unknown, principal: Principal) => {
       return {
-        forgetStatus: "EXECUTED_CONFIRMED",
-        purgedScopes: ["Session", "Project"],
-        provenancePreserved: true,
+        forgetStatus: "NOT_CONFIGURED",
+        deletionPerformed: false,
+        reason: "NO_CONSENT_REVOCATION_OR_PERSISTENCE_ADAPTER_CONFIGURED",
+        purgedScopes: [],
+        provenancePreserved: false,
         authorizedBy: principal.id,
         timestamp: new Date().toISOString(),
         target: input,
@@ -450,9 +485,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Validación criptográfica de cadenas de procedencia y linaje de artefactos",
     execute: async (input: unknown) => {
       return {
-        lineageStatus: "UNBROKEN",
-        sourceAuthentic: true,
-        originSignature: "CONFIRMED_ANUBIS_ROOT",
+        lineageStatus: "NOT_VERIFIED",
+        sourceAuthentic: false,
+        verificationPerformed: false,
+        reason: "NO_SOURCE_SIGNATURE_OR_LINEAGE_STORE_CONFIGURED",
+        originSignature: "NOT_CONFIGURED",
         verifiedAt: new Date().toISOString(),
         data: input,
       };
@@ -470,9 +507,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
       return {
         territory: "Mineral del Monte (Real del Monte, Hidalgo)",
         altitude: "2,660 msnm",
-        digitalTwinVersion: "v40.0.0-RDM",
-        sitesSynchronized: 4,
-        wormSyncReceipt: "BOOKPI_RECEIPT_SYNC_2026",
+        digitalTwinVersion: null,
+        sitesSynchronized: 0,
+        synchronizationStatus: "NOT_CONFIGURED",
+        reason: "NO_LIVE_TERRITORIAL_ARCHIVE_OR_BOOKPI_ADAPTER_CONFIGURED",
+        wormSyncReceipt: null,
         timestamp: new Date().toISOString(),
       };
     },
@@ -487,9 +526,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Proyección de capas de experiencia inmersiva XR y metaverso territorial (HyperRender X4)",
     execute: async (input: unknown) => {
       return {
-        immersiveLayer: "HYPERRENDER_X4_WEBGL",
-        audioEngine: "KAOS_AUDIO_SPATIAL_3D",
-        holographicGridActive: true,
+        status: "SIMULATED",
+        immersiveLayer: "CONCEPTUAL",
+        audioEngine: "NOT_CONFIGURED",
+        holographicGridActive: false,
+        renderPerformed: false,
         renderedAt: new Date().toISOString(),
         scene: input,
       };
@@ -505,10 +546,12 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Evaluación formal de políticas constitucionales CROWN v6 y decisión de gating",
     execute: async (input: unknown, principal: Principal) => {
       return {
-        gateDecision: "ALLOW",
-        policyVersion: "crown-v6.0-constitutional",
+        gateDecision: "NOT_ASSESSED",
+        policyEvaluationPerformed: false,
+        reason: "USE_GENESIS_RUNTIME_EVALUATE_WITH_CONFIGURED_POLICY",
+        policyVersion: "NOT_CONFIGURED",
         principalEvaluated: principal.id,
-        governanceInvariant: "PRESERVED",
+        governanceInvariant: "DECLARED_NOT_RUNTIME_VERIFIED",
         timestamp: new Date().toISOString(),
         details: input,
       };
@@ -524,9 +567,11 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Validación declarativa de directivas Rego/OPA con regla fail-closed y política estricta",
     execute: async (input: unknown) => {
       return {
-        regoVerdict: "ALLOW",
-        failClosedGuaranteed: true,
-        policyRulesChecked: ["yun.authz.allow", "not input_is_malicious", "risk_checks_passed"],
+        regoVerdict: "NOT_CONFIGURED",
+        policyEvaluationPerformed: false,
+        reason: "NO_OPA_ENGINE_OR_POLICY_BUNDLE_CONFIGURED",
+        failClosedGuaranteed: false,
+        policyRulesChecked: [],
         verifiedAt: new Date().toISOString(),
         input,
       };
@@ -542,15 +587,10 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Emisión de telemetría y métricas OpenTelemetry (Golden Signals p50/p95/p99)",
     execute: async (input: unknown) => {
       return {
-        goldenSignals: {
-          latencyP50Ms: 14.2,
-          latencyP95Ms: 42.8,
-          latencyP99Ms: 78.1,
-          trafficRps: 120,
-          errorRatePct: 0.0,
-          saturationPct: 22.4,
-        },
-        otlpEndpoint: "http://localhost:4318/v1/metrics",
+        status: "NOT_EMITTED",
+        goldenSignals: null,
+        otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? null,
+        reason: "NO_OTEL_EXPORTER_ADAPTER_INVOKED_BY_THIS_TOOL",
         emittedAt: new Date().toISOString(),
         attributes: input,
       };
@@ -566,10 +606,12 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     description: "Evaluación de readiness y control de puertas de despliegue canary para releases (FGAIS)",
     execute: async () => {
       return {
-        readinessVerdict: "READY_FOR_STAGING_CANARY",
-        gatesPassedCount: 500,
-        gatesTotal: 500,
-        rollbackPlanActive: true,
+        readinessVerdict: "NOT_ASSESSED",
+        evaluationPerformed: false,
+        reason: "USE_GENESIS_GOVERNANCE_DEPLOYMENT_GATES_WITH_CURRENT_EVIDENCE",
+        gatesPassedCount: 0,
+        gatesTotal: 0,
+        rollbackPlanActive: false,
         evaluatedAt: new Date().toISOString(),
       };
     },

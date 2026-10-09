@@ -56,7 +56,7 @@ export class PennyLaneBridge {
   private readonly defaultBackend: PennyLaneBackend;
 
   constructor(config: PennyLaneBridgeConfig = {}) {
-    this.endpoint = config.endpoint?.replace(/\\/$/, "");
+    this.endpoint = config.endpoint?.replace(/\/$/, "");
     this.timeoutMs = Math.max(100, Math.min(config.timeoutMs ?? 5000, 30000));
     this.defaultBackend = config.defaultBackend ?? "pennylane-lightning";
   }
@@ -153,10 +153,10 @@ function validateCircuit(circuit: QuantumCircuit): string | null {
     if (!operation?.name || !Array.isArray(operation.wires) || operation.wires.length === 0) {
       return "QUANTUM_INVALID_OPERATION";
     }
-    if (operation.wires.some((wire) => !Number.isInteger(wire) || wire < 0 || wire >= circuit.wires)) {
+    if (operation.wires.some((wire: number) => !Number.isInteger(wire) || wire < 0 || wire >= circuit.wires)) {
       return "QUANTUM_WIRE_OUT_OF_RANGE";
     }
-    if (operation.parameters?.some((value) => !Number.isFinite(value))) {
+    if (operation.parameters?.some((value: number) => !Number.isFinite(value))) {
       return "QUANTUM_INVALID_PARAMETER";
     }
   }

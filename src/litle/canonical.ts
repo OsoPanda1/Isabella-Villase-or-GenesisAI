@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-const CHARSET="qpzry9x8gf2tvdw0s3jn54khce6mua7l"; const GENERATOR=[0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b4b]; const CONST=0x2bc830a3;
-function polymod(v:number[]):number{let c=1;for(const x of v){const top=c>>>25;c=((c&0x1ffffff)<<5)^x;for(let i=0;i<5;i++)if(((top>>>i)&1)!==0)c^=GENERATOR[i];}return c>>>0;}
+const CHARSET="qpzry9x8gf2tvdw0s3jn54khce6mua7l"; const GENERATOR=[0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3]; const CONST=0x2bc830a3;
+function polymod(v:number[]):number{let c=1;for(const x of v){const top=c>>>25;c=((c&0x1ffffff)<<5)^x;for(let i=0;i<5;i++)if(((top>>>i)&1)!==0)c^=GENERATOR[i]??0;}return c>>>0;}
 function expand(h:string):number[]{return [...h].map(c=>c.charCodeAt(0)>>>5).concat([0],[...h].map(c=>c.charCodeAt(0)&31));}
 function convert(data:Uint8Array|number[],from:number,to:number,pad:boolean):number[]{let acc=0,bits=0;const out:number[]=[];const max=(1<<to)-1;for(const v of data){if(v<0||(v>>>from)!==0)throw new Error("LITLE canonical: invalid bits");acc=((acc<<from)|v)>>>0;bits+=from;while(bits>=to){bits-=to;out.push((acc>>>bits)&max);}}if(pad&&bits)out.push((acc<<(to-bits))&max);if(!pad&&(bits>=from||((acc<<(to-bits))&max)!==0))throw new Error("LITLE canonical: invalid padding");return out;}
 function checksum(data:number[]):number[]{const mod=polymod(expand("litle").concat(data,[0,0,0,0,0,0]))^CONST;return Array.from({length:6},(_,i)=>(mod>>>(5*(5-i)))&31);}

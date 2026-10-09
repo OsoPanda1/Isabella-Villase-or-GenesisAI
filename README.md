@@ -2,14 +2,20 @@
 
 > **Trusted Intelligence, Native & Adaptive** — runtime cognitivo gobernado, auditable y federable.
 
-**Clasificación auditada (8 oct 2026):** runtime cognitivo gobernado modular, en fase preproductiva.  
-**Runtime canónico:** Isabella Villaseñor GenesisAI. Los demás componentes y repositorios se integran como módulos, protocolos, skills, adaptadores, proveedores, persistencia o infraestructura.  
-**Estado de verificación:** no se declara CI verde, despliegue productivo, certificación jurídica, cumplimiento normativo, criptografía poscuántica activa ni superioridad competitiva sin evidencia específica del commit y entorno correspondiente.
+**Repositorio canónico:** Isabella-Villase-or-GenesisAI
+**Corte de revisión:** 9 de octubre de 2026
+**Clasificación auditada:** runtime cognitivo gobernado modular en fase preproductiva.
+**Rama de evolución en revisión:** `feature/canonical-libraries-governance`
+**Estado de CI:** no declarar verde hasta verificar los checks del SHA final de esta rama.
+**Runtime canónico:** Isabella Villaseñor GenesisAI. Los demás componentes y repositorios se integran como módulos, protocolos, skills, adaptadores, proveedores, persistencia o infraestructura.
+**No es:** un modelo fundacional propio, AGI, certificación jurídica, certificación de seguridad ni una plataforma de producción completa.
 
-> **Regla de veracidad:** `CONTRACT ≠ IMPLEMENTED ≠ TESTED ≠ INTEGRATED ≠ PRODUCTION ≠ CERTIFIED`. Los fixtures, simulaciones y respuestas de ejemplo deben etiquetarse como tales; nunca deben producir `VERIFIED`, `COMPLIANT`, `ANCHORED` o `SYNCED` sin verificación real.
+**Regla de veracidad:** `CONTRACT ≠ IMPLEMENTED ≠ TESTED ≠ INTEGRATED ≠ VERIFIED ≠ DEPLOYED ≠ CERTIFIED`. Los fixtures, simulaciones y proveedores no configurados deben etiquetarse como tales; nunca deben producir `VERIFIED`, `COMPLIANT`, `ANCHORED` o `SYNCED` sin verificación real.
 
-Auditoría detallada: [docs/AUDIT_GENESIS_V6_2026-10-08.md](docs/AUDIT_GENESIS_V6_2026-10-08.md).  
-Política de seguridad: [SECURITY.md](SECURITY.md).
+- Auditoría de evolución del ecosistema: [docs/ECOSYSTEM_EVOLUTION_AUDIT_2026-10-09.md](docs/ECOSYSTEM_EVOLUTION_AUDIT_2026-10-09.md)
+- Auditoría Genesis V6: [docs/AUDIT_GENESIS_V6_2026-10-08.md](docs/AUDIT_GENESIS_V6_2026-10-08.md)
+- Configuración segura: [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)
+- Política de seguridad: [SECURITY.md](SECURITY.md)
 
 ## DIRECTIVA ARQUITECTÓNICA CANÓNICA
 
@@ -69,6 +75,22 @@ POST /api/v1/hsf/invoke
 La implementación actual proporciona contratos y proveedores locales de referencia. PostgreSQL, Qdrant, Neo4j, Redis, Temporal, Kubernetes, MCP y otros proveedores se incorporarán detrás de estos contratos; no se presentan como conectados mientras no exista evidencia de integración real.
 
 Documentación: `docs/ISABELLA_HYPER_SKILL_FABRIC.md`.
+
+## Evolución de seguridad y gobernanza — 9 de octubre de 2026
+
+La rama de evolución incorpora contratos nativos de sanitización, conocimiento canónico IKES, gates de despliegue, manifiestos de evidencia, gobernanza Git, ciclo de vida y observación de diffs. La auditoría detectó y corrigió riesgos en los límites entre simulación y verificación:
+
+- El contenido que activa cuarentena por secretos no se devuelve; el detalle del hallazgo no revela el fragmento sensible.
+- Los documentos sin licencia o procedencia declarada no se admiten como conocimiento.
+- IKES valida el formato del hash SHA-256, fecha y URI, y rechaza reutilizar un identificador de fuente con otro hash.
+- Las rutas administrativas de admisión requieren `GENESIS_ADMIN_API_TOKEN`; HSF requiere `HSF_API_TOKEN`. Las propuestas públicas quedan en una cola volátil de revisión y no mutan IKES. Los roles declarados por el cliente no se aceptan como autoridad. Los endpoints públicos aplican rate limits locales por proceso.
+- La ingesta calcula el hash del contenido aportado, pero **no descarga ni autentica automáticamente el recurso remoto**. La procedencia se etiqueta `USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED`.
+- El pipeline IKES bloquea el release sin claim, evidencia, auditoría, commit Git válido e índice confirmado. Como no hay índice durable conectado en este runtime, una propuesta no se presenta como conocimiento liberado.
+- BookPI dispone de una cadena SHA-256 en memoria verificada durante la vida del proceso, pero no de WORM durable; HSM/criptografía poscuántica, sincronización del gemelo digital, RLS y cumplimiento normativo permanecen `NOT_CONFIGURED`, `NOT_VERIFIED` o `NOT_ASSESSED` hasta que exista un adaptador real y evidencia reproducible.
+
+**Licencias:** el `LICENSE` de este repositorio es MIT. Otros repositorios Isabella pueden declarar licencias híbridas con restricciones separadas para código, marca, documentación y activos propietarios. No se importan automáticamente archivos de otra licencia al árbol MIT; se exige revisar la licencia del archivo, dependencias y derechos sobre datos/marca.
+
+La implementación no equivale a certificación ni a readiness de producción. La validación requerida es `npm run typecheck`, `npm test` y `npm run build` en el SHA exacto que se pretenda liberar.
 
 ## 1. ¿Qué es Isabella Genesis TINA?
 
@@ -947,7 +969,26 @@ src/
 │   ├── ikes.ts
 │   ├── vector.ts
 │   ├── retrieval.ts
-│   └── persistence.ts
+│   ├── persistence.ts
+│   └── knowledge-entry.ts     # IKES_SPEC: entrada canónica KNO + pipeline
+├── sanitization/              # SANITIZATION_POLICY: pipeline + hardening 2.0
+├── bookpi/
+│   ├── merkle.ts              # chunking 64 KiB + Merkle + ZK commitment
+│   └── royalties.ts           # liquidación BigInt de 7 federaciones
+├── atlas/
+│   ├── documents.ts           # document_uid canónico + estados
+│   └── events.ts              # 15 eventos canónicos tipados
+├── governance/                # políticas operativas (ver §31)
+│   ├── evidence-manifest.ts
+│   ├── git-governance.ts
+│   ├── lsp-validation.ts
+│   ├── sync-manager.ts
+│   ├── deployment-gates.ts
+│   ├── verifier.ts
+│   ├── quality-gates.ts
+│   ├── file-schema.ts
+│   └── lifecycle.ts
+├── plugins/                   # Isabella Diff Observatory (read-only)
 ├── inference/
 │   ├── types.ts
 │   ├── router.ts
@@ -983,7 +1024,11 @@ test/
 ├── memory/
 ├── skills/
 ├── veritas/
-└── deployment/
+├── deployment/
+├── sanitization/
+├── governance/
+├── plugins/
+└── territory/
 ```
 
 ---
@@ -1191,6 +1236,154 @@ La regla sigue siendo:
 
 Estas piezas son infraestructura de gobierno y runtime. No constituyen por sí mismas entrenamiento de un modelo fundacional, aprendizaje autónomo, serving GPU ni despliegue distribuido.
 
+
+---
+
+# V6.5 — Librerías canónicas implementadas (IKES, sanitización, gobernanza)
+
+Se implementaron de forma nativa, tipada y operativa las especificaciones canónicas
+que describen las librerías de Isabella. Cada módulo es determinista, sin efectos
+externos por defecto y con pruebas propias. La especificación en `docs/spec/canonical/`
+es la fuente de verdad; el código la materializa sin convertir una capacidad técnica
+en una afirmación de producción.
+
+## Módulos y contratos
+
+| Especificación | Módulo | Contrato implementado |
+| --- | --- | --- |
+| `SANITIZATION_POLICY.md` | `src/sanitization/` | Pipeline de 9 etapas, cuarentena de secretos, PII enmascarada, fingerprints físico/estructural/semántico y clasificación de duplicados sin borrado por similitud. |
+| `IKES_SPEC.md` | `src/memory/knowledge-entry.ts` | Entrada canónica `KNO-XXXXXXXX`, estados epistemológicos y temporales, pipeline de 12 etapas y regla de preservación. |
+| `EVIDENCE_MANIFEST_SCHEMA.md` | `src/governance/evidence-manifest.ts` | Manifest `EVM-XXXXXXXX`, completitud y gate para declarar `stable`. |
+| `GIT_POLICY.md` | `src/governance/git-governance.ts` | Decide (no ejecuta) operaciones destructivas/externas; rechaza borrar rama actual, worktrees sucios y ramas no fusionadas. |
+| `LSP_VALIDATION.md` | `src/governance/lsp-validation.ts` | `open_file`, `save_file`, `wait_for_diagnostics`, `diagnostics_for`; frescura `version >= v`; solo `FRESH_NO_DIAGNOSTICS` es `TECHNICALLY_CLEAN`. |
+| `SYNC_SPEC.md` | `src/governance/sync-manager.ts` | `Lock`, `RLock`, `Semaphore`, `BoundedSemaphore`, `Condition`, `Event`, `Barrier`; mutación serializada por `entity_id`; lifecycle `INITIAL→STARTED→STOPPING→SHUTDOWN`; tokens con scope/expiración/revocación; reconciliación previa a release. |
+| `DEPLOYMENT_POLICY.md` | `src/governance/deployment-gates.ts` | Gates `build→rollback`, separación spec/app/IKES y bloqueo de valores DNS de ejemplo. |
+| `VERIFIER_SPEC.md` | `src/governance/verifier.ts` | Estados `PASS/PASS_WITH_WARNINGS/FAIL/INCONCLUSIVE/NOT_APPLICABLE` con alcance acotado. |
+| `QUALITY_GATES.md` | `src/governance/quality-gates.ts` | Los 15 gates canónicos; fail-closed antes de promoción. |
+| `CONTRIBUTING.md` | `src/governance/file-schema.ts` | Encabezado obligatorio, transparencia radical y detección de contenido prohibido. |
+| `TAMV_INTEGRATION.md` | `src/territory/tamv-integration.ts` | Mapa de madurez por módulo y detección de sobreclamación. |
+| `isabella-diff.*` | `src/plugins/diff-observatory.ts` | Diff Observatory de solo lectura: redacción de secretos, omisión de binarios, señales de riesgo y BookPI solo con metadatos/hashes. |
+
+## Cableado nativo
+
+Los módulos se exponen por el barril raíz (`src/index.ts`) y por el runtime
+(`IsabellaGenesisRuntime`): `sanitize`, `admitKnowledge`, `mutateEntity`, `issueToken`,
+`evaluateGit`, `assessDeployment`, `verifyAgentApp`, `evaluateQuality`, `planLifecycle`
+y `reconcile`. También se registran como capacidades del Hyper Skill Fabric
+(`hsf.sanitization.pipeline`, `hsf.knowledge.admission`, `hsf.git.governance`,
+`hsf.quality.gates`, `hsf.deployment.gates`, `hsf.agent.verifier`, `hsf.lifecycle.plan`,
+`hsf.lsp.validation`) y se exponen vía API:
+
+```text
+POST /api/v1/sanitization/scan
+POST /api/v1/knowledge/admit
+POST /api/v1/governance/git
+POST /api/v1/governance/quality-gates
+POST /api/v1/governance/deployment
+POST /api/v1/governance/verify-agent-app
+POST /api/v1/governance/lifecycle-plan
+POST /api/v1/diff/observe
+```
+
+## Invariantes preservados
+
+- **Ningún módulo ejecuta acciones destructivas**: deciden y proponen; la ejecución
+  requiere policy gate y aprobación humana.
+- **Fail-closed**: sin evidencia, sin gate o sin reconciliación no hay `release`.
+- **Preservar antes que borrar**: solo el artefacto idéntico o el duplicado verificado
+  permiten eliminación automática.
+- **No sobreclamación**: un diagnóstico LSP limpio o un test verde son evidencia
+  técnica acotada, no verdad científica ni certificación de producción.
+- **Correcciones de línea base**: se corrigió la constante generadora bech32m de LITLE
+  (`0x2a1462b3`) y errores de tipado preexistentes que el error de sintaxis ocultaba.
+
+## Pruebas
+
+`test/sanitization/`, `test/governance/`, `test/plugins/` y `test/territory/` cubren
+los contratos anteriores. La validación (`npm run validate` = typecheck + test + build)
+debe ejecutarse en CI; la implementación del código no constituye evidencia de una
+ejecución CI exitosa.
+
+---
+
+# V6.6 — Hardening doble, criptografía triangulada y extensión de API nativa
+
+Actualización masiva derivada de los blueprints (BookPI, Atlas Trascendence,
+Isabella AI Library, TAP v1.0, ISA-API v40). Todo es determinista, tipado y con
+pruebas; ningún módulo ejecuta acciones destructivas ni sustituye firma PQC real.
+
+## Sanitización 2.0 (hardening)
+
+- `src/sanitization/hardening.ts`: entropía de Shannon para secretos de alta
+  aleatoriedad, detección de homóglifos y caracteres de ancho cero (evasión
+  Unicode), PII profunda (IBAN y tarjetas validadas por Luhn) y cuarentena que
+  registra solo hash + motivo (nunca el secreto).
+- Ruta `POST /api/v1/sanitization/harden`.
+
+## Criptografía triangulada (hardening doble)
+
+- `src/security/triangulated-crypto.ts`: tres rutas independientes
+  (SHA3-512 + SHA-256 + BLAKE2b-512) cuyo sello combinado debe coincidir; AEAD
+  AES-256-GCM con KDF scrypt, comparación en tiempo constante y sobre sellado.
+- Honestidad técnica: **no** implementa ML-KEM/ML-DSA/SLH-DSA; la firma
+  post-cuántica requiere HSM/proveedor externo y no se simula.
+- Rutas `POST /api/v1/security/triangulate`.
+
+## BookPI (Merkle + regalías)
+
+- `src/bookpi/merkle.ts`: chunking 64 KiB, árbol de Merkle, pruebas de inclusión
+  O(log N), compromiso ZK `SHA256(root || author || salt)`.
+- `src/bookpi/royalties.ts`: liquidación exacta en BigInt hacia las 7 federaciones,
+  sin pérdida por redondeo (remanente a la última federación).
+
+## Atlas Trascendence (documentos + eventos)
+
+- `src/atlas/documents.ts`: `document_uid` canónico
+  `ATLAS-DOC-{fed}-{ns}-{ULID}-{hash}`, canonicalización y estados
+  `draft → validated → published → archived`.
+- `src/atlas/events.ts`: los 15 eventos canónicos con payloads tipados y clave de
+  idempotencia.
+
+## ISA-API v40 y TAP v1.0
+
+- `src/ingress/isa-api.ts`: pipeline de 12 etapas (fail-closed) y acto operativo
+  canónico TAP v1.0 con controles obligatorios y disparadores de alto impacto.
+- Rutas `POST /api/v1/isa/pipeline` y `POST /api/v1/isa/act`.
+
+## Operaciones de producción
+
+- `src/deployment/production-ops.ts`: readiness fail-closed, rate limiting
+  (token bucket), circuit breaker, timeouts, correlación y ventanas de
+  mantenimiento.
+- Rutas `POST /api/v1/ops/readiness` y `GET /api/v1/ops/snapshot`.
+
+## Catálogos nativos
+
+- `CANONICAL_TOOLS`, `PROTOCOL_TOOLS`, `PROTOCOL_CATALOG` y `CANONICAL_SKILLS`
+  se registran en el runtime (tools, protocolos y skills canónicos).
+- `src/cognition/sophia.ts`: evaluador epistémico E0_AXIOM…E4_UNFOUNDED y puerta
+  del Índice de Resonancia Epistémica (ERI ≥ 95). El ERI es una métrica de
+  promoción separada; no eleva por sí sola una inferencia a verdad.
+- `src/isabella/library.ts`: catálogo de 9 módulos, 8 grupos de API, salvaguardas
+  éticas y marcos de cumplimiento.
+
+## Correcciones aplicadas sobre las actualizaciones previas
+
+- `Semaphore`/`Lock`: se eliminó una carrera de liberación de permiso y una fuga
+  de waiters en timeout; los timers no bloquean el event loop.
+- IKES: la etapa `claims` ya no es una verdad vacua; una entrada sin claims no se
+  libera (fail-closed).
+- Deployment gates: `canary` es opcional; `build`/`tests` y los escaneos son
+  obligatorios; los bloqueadores se deduplican.
+- ULID: corregido a 26 caracteres Crockford (10 de tiempo + 16 aleatorios).
+- SOPHIA: el nivel E1 ya no exige ERI ≥ 95 (se separó nivel de puerta de promoción).
+- Registro de tools/skills: se evita la colisión entre el runtime y el server.
+
+## Pruebas
+
+`test/bookpi/`, `test/atlas/`, `test/security/`, `test/deployment/`,
+`test/ingress/`, `test/cognition/` y `test/isabella/` cubren los contratos nuevos.
+Validación: `npm run validate` (typecheck + 253 tests + build) en verde.
 
 ---
 

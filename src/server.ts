@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import fs from "fs";
 import path from "path";
@@ -10,9 +10,15 @@ import { GENESIS_EXPERTS, EXPERT_REGISTRY } from "./cognition/experts";
 import { invariantViewModel } from "./core/invariants";
 import { parseMethodId } from "./authority/method-id";
 import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./crown/experience";
-import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
+import { LitleTrustFabric, parseAny, toCanonical, verifyEvidenceChain, verifyCertificate } from "./litle";
 import { bookPiSecret } from "./security/secrets";
+import { verifyBearerToken } from "./security/api-token";
+import { FixedWindowRateLimiter } from "./security/rate-limit";
+import { hashSourceContent } from "./memory/ikes";
+import { bookPiLedger } from "./bookpi";
 import { createAtlasStoreFromEnv } from "./atlas";
+import { createDiffObservatory, sanitizeDiffSnapshot, snapshotMetadataHash } from "./plugins";
+import { MemoryProposalQueue } from "./memory/proposals";
 
 const app = express();
 const port = 3000;
@@ -43,6 +49,35 @@ void runtime.initPersistence().catch((error) => {
 // Initialize Google GenAI client if API key is provided in environment
 const apiKey = process.env.GEMINI_API_KEY || process.env.MODEL_API_KEY;
 const genAi = apiKey ? new GoogleGenAI({ apiKey }) : null;
+
+/** Server-side bearer-token gate for mutating or privileged API routes. */
+function authorizeApiToken(req: Request, res: Response, envName: string): boolean {
+  const verdict = verifyBearerToken(req.get("authorization"), process.env[envName]);
+  if (verdict === "NOT_CONFIGURED") {
+    res.status(503).json({ success: false, error: "API_TOKEN_NOT_CONFIGURED" });
+    return false;
+  }
+  if (verdict !== "AUTHORIZED") {
+    res.status(401).json({ success: false, error: "UNAUTHORIZED" });
+    return false;
+  }
+  return true;
+}
+
+const publicCognitionLimiter = new FixedWindowRateLimiter(30, 60_000);
+const publicModelLimiter = new FixedWindowRateLimiter(8, 60_000);
+const publicProposalLimiter = new FixedWindowRateLimiter(10, 60_000);
+const publicScanLimiter = new FixedWindowRateLimiter(30, 60_000);
+
+function enforceRateLimit(req: Request, res: Response, limiter: FixedWindowRateLimiter, bucket: string): boolean {
+  const result = limiter.consume(bucket + ":" + (req.ip || "unknown"));
+  if (!result.allowed) {
+    res.setHeader("Retry-After", String(Math.max(1, Math.ceil(result.retryAfterMs / 1000))));
+    res.status(429).json({ success: false, error: "RATE_LIMIT_EXCEEDED", retryAfterMs: result.retryAfterMs });
+    return false;
+  }
+  return true;
+}
 
 // Pre-seed canonical knowledge into IKES Epistemic Memory (TAMV & Real del Monte)
 runtime.memory.registerSource({
@@ -120,53 +155,9 @@ runtime.memory.propose({
   },
 });
 
-// Pre-register canonical tools
-runtime.tools.register({
-  id: "rdm_territory_query",
-  version: "1.0.0",
-  methodId: "T.TOURISM.E04_TERRITORY.query.v1.0.0.LOW.TERRITORIAL",
-  owner: "isabella-sovereign",
-  riskTier: "LOW",
-  scopes: ["read:territory", "read:heritage"],
-  description: "Consulta puntos de interés, patrimonio e historia en el Gemelo Digital de Real del Monte (Nodo Cero)",
-  execute: async (input) => {
-    const q = typeof input === "object" && input !== null && "query" in input ? String((input as { query: unknown }).query) : "patrimonio";
-    return {
-      node: "Nodo Cero (Real del Monte, Hidalgo)",
-      altitude: "2,660 msnm",
-      coordinates: [20.1417, -98.6722],
-      originHonored: "Orgullo esLatina · Ciencia y Biocultura de América Latina",
-      results: [
-        { name: "Panteón Inglés", category: "Patrimonio Histórico Mundial", founded: "1851", altitude: "2,660 msnm", status: "Preservado", note: "Todas las tumbas orientadas a Inglaterra, excepto la del payaso Richard Bell." },
-        { name: "Mina de Acosta", category: "Minería Soberana Cornish", epoch: "Siglo XVIII", status: "Museo & Archivo Histórico", depth: "400 metros" },
-        { name: "Mina La Dificultad", category: "Patrimonio Tecnológico de Vapor", epoch: "Siglo XIX", status: "Centro de Interpretación", chimneyHeight: "39 metros" },
-        { name: "Museo del Paste", category: "Patrimonio Gastronómico & Biocultural", status: "Activo", designation: "Cuna del Paste en América" },
-        { name: "Peñas Cargadas", category: "Reserva Natural y Ecoturismo", altitude: "2,800 msnm", status: "Área Protegida" },
-      ],
-      query: q,
-      timestamp: new Date().toISOString(),
-    };
-  },
-});
-
-runtime.tools.register({
-  id: "bookpi_integrity_verify",
-  version: "1.0.0",
-  methodId: "A.TWINS.E08_DATA.verify.v1.0.0.LOW.AUTONOMOUS",
-  owner: "bookpi-ledger",
-  riskTier: "LOW",
-  scopes: ["read:ledger"],
-  description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
-  execute: async (input) => {
-    return {
-      status: "NOT_VERIFIED",
-      verificationPerformed: false,
-      reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
-      payload: input,
-      checkedAt: new Date().toISOString(),
-    };
-  },
-});
+// Los tools canónicos (rdm_territory_query, bookpi_integrity_verify, etc.) se
+// registran en el runtime desde CANONICAL_TOOLS. No se duplican aquí para evitar
+// colisiones de registro; el catálogo canónico es la única fuente de verdad.
 
 // Pre-register canonical skills (5 Evolved Sovereign Skills)
 runtime.skills.register({
@@ -179,7 +170,8 @@ runtime.skills.register({
     return {
       skill: "territorial_synthesis",
       signals: ctx.signals,
-      verdict: "Soberanía territorial confirmada para el Nodo Cero (Real del Monte).",
+      verdict: "NOT_ASSESSED",
+      reason: "No se ejecutó una verificación de soberanía territorial; la skill solo refleja señales de entrada.",
     };
   },
 });
@@ -355,64 +347,31 @@ const defaultGate = createCapabilityGate([
 
 // 12 Nodos Cognitivos Soberanos de la Red CROWN
 const CROWN_NODES = [
-  { id: "ISA", name: "Isa Musa", role: "Empatía, percepción e identidad biocultural", federation: "FED-1 Identidad", status: "ACTIVE", weight: 0.95, icon: "🌸" },
-  { id: "SOPHIA", name: "Sophia Dialéctica", role: "Razonamiento dialéctico, debate y síntesis", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.98, icon: "🦉" },
-  { id: "ORION", name: "Orion Executor", role: "Ejecución de herramientas y acciones coordinadas", federation: "FED-5 Infraestructura", status: "ACTIVE", weight: 0.92, icon: "⚔️" },
-  { id: "ARGUS", name: "Argus Sentinel", role: "Seguridad Zero Trust y firewall ético", federation: "FED-1 Gobernanza", status: "ACTIVE", weight: 1.00, icon: "🛡️" },
-  { id: "CROWN", name: "Crown Gateway", role: "Gateway soberano, arbitraje y control de flujo", federation: "FED-1 Gobernanza", status: "ACTIVE", weight: 0.96, icon: "👑" },
-  { id: "MNEMOSYNE", name: "Mnemosyne Memory", role: "Memoria episódica, semántica y procedencia IKES", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.90, icon: "📜" },
-  { id: "TELLUS", name: "Tellus Territorio", role: "Territorio, cartografía y Nodo Cero (RDM)", federation: "FED-6 Inmersión", status: "ACTIVE", weight: 0.94, icon: "🏔️" },
-  { id: "CHRONOS", name: "Chronos Auditor", role: "Temporalidad, secuenciación y WORM BookPI", federation: "FED-7 Auditoría", status: "ACTIVE", weight: 0.91, icon: "⏳" },
-  { id: "HERMES", name: "Hermes Relayer", role: "Comunicación inter-nodos, eventos y telemetría", federation: "FED-5 Infraestructura", status: "ACTIVE", weight: 0.93, icon: "⚡" },
-  { id: "AXIOMA", name: "Axioma Lógica", role: "Validación lógica formal y Veritas proofs", federation: "FED-3 Datos/IA", status: "ACTIVE", weight: 0.89, icon: "📐" },
-  { id: "KAIROS", name: "Kairos Oportunidad", role: "Optimización de inferencia y balance de carga", federation: "FED-4 Economía", status: "ACTIVE", weight: 0.88, icon: "⏱️" },
-  { id: "HARMONIA", name: "Harmonia Consenso", role: "Arbitraje ético y reconciliación de divergencias", federation: "FED-2 Patrimonio", status: "ACTIVE", weight: 0.97, icon: "⚖️" },
+  { id: "ISA", name: "Isa Musa", role: "Empatía, percepción e identidad biocultural", federation: "FED-1 Identidad", status: "DECLARED", weight: 0.95, icon: "🌸" },
+  { id: "SOPHIA", name: "Sophia Dialéctica", role: "Razonamiento dialéctico, debate y síntesis", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.98, icon: "🦉" },
+  { id: "ORION", name: "Orion Executor", role: "Ejecución de herramientas y acciones coordinadas", federation: "FED-5 Infraestructura", status: "DECLARED", weight: 0.92, icon: "⚔️" },
+  { id: "ARGUS", name: "Argus Sentinel", role: "Seguridad Zero Trust y firewall ético", federation: "FED-1 Gobernanza", status: "DECLARED", weight: 1.00, icon: "🛡️" },
+  { id: "CROWN", name: "Crown Gateway", role: "Gateway soberano, arbitraje y control de flujo", federation: "FED-1 Gobernanza", status: "DECLARED", weight: 0.96, icon: "👑" },
+  { id: "MNEMOSYNE", name: "Mnemosyne Memory", role: "Memoria episódica, semántica y procedencia IKES", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.90, icon: "📜" },
+  { id: "TELLUS", name: "Tellus Territorio", role: "Territorio, cartografía y Nodo Cero (RDM)", federation: "FED-6 Inmersión", status: "DECLARED", weight: 0.94, icon: "🏔️" },
+  { id: "CHRONOS", name: "Chronos Auditor", role: "Temporalidad, secuenciación y hash-chain BookPI en memoria", federation: "FED-7 Auditoría", status: "DECLARED", weight: 0.91, icon: "⏳" },
+  { id: "HERMES", name: "Hermes Relayer", role: "Comunicación inter-nodos, eventos y telemetría", federation: "FED-5 Infraestructura", status: "DECLARED", weight: 0.93, icon: "⚡" },
+  { id: "AXIOMA", name: "Axioma Lógica", role: "Validación lógica formal y Veritas proofs", federation: "FED-3 Datos/IA", status: "DECLARED", weight: 0.89, icon: "📐" },
+  { id: "KAIROS", name: "Kairos Oportunidad", role: "Optimización de inferencia y balance de carga", federation: "FED-4 Economía", status: "DECLARED", weight: 0.88, icon: "⏱️" },
+  { id: "HARMONIA", name: "Harmonia Consenso", role: "Arbitraje ético y reconciliación de divergencias", federation: "FED-2 Patrimonio", status: "DECLARED", weight: 0.97, icon: "⚖️" },
 ];
 
 // 6 Capas Soberanas MD-X5
 const SOVEREIGN_LAYERS = [
-  { code: "ONTO", name: "Capa Ontológica", focus: "Identidad, soberanía del ser, biocultura e invariante operativo", icon: "🧬", status: "ENFORCED" },
-  { code: "CONST", name: "Capa Constitucional", focus: "AGENTS.md, separación de autoridad vs capacidad, primacía humana", icon: "📜", status: "ENFORCED" },
-  { code: "POL", name: "Capa Política / Gobernanza", focus: "Arbitraje CROWN, delegación explícita y auditoría de permisos", icon: "🏛️", status: "OPERATIONAL" },
-  { code: "ECON", name: "Capa Económica", focus: "Preservación de recursos, tokens de cómputo y auditoría de costes", icon: "💎", status: "MONITORED" },
-  { code: "COG", name: "Capa Cognitiva", focus: "IKES Epistemic Memory, síntesis multi-experto, Veritas verifier", icon: "🧠", status: "ACTIVE" },
-  { code: "TECH", name: "Capa Técnica / Infra", focus: "BookPI SHA3-512 WORM Ledger, Zero Trust Ingress, fail-closed", icon: "⚙️", status: "HARDENED" },
+  { code: "ONTO", name: "Capa Ontológica", focus: "Identidad, soberanía del ser, biocultura e invariante operativo", icon: "🧬", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "CONST", name: "Capa Constitucional", focus: "AGENTS.md, separación de autoridad vs capacidad, primacía humana", icon: "📜", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "POL", name: "Capa Política / Gobernanza", focus: "Arbitraje CROWN, delegación explícita y auditoría de permisos", icon: "🏛️", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "ECON", name: "Capa Económica", focus: "Preservación de recursos, tokens de cómputo y auditoría de costes", icon: "💎", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "COG", name: "Capa Cognitiva", focus: "IKES Epistemic Memory, síntesis multi-experto, Veritas verifier", icon: "🧠", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
+  { code: "TECH", name: "Capa Técnica / Infra", focus: "BookPI SHA-256 volatile hash-chain; durable WORM and external signature adapters pending", icon: "⚙️", status: "DECLARED_NOT_RUNTIME_VERIFIED" },
 ];
 
-// Simulated In-Memory BookPI Event Log
-interface BookPiLogEntry {
-  id: string;
-  timestamp: string;
-  type: string;
-  methodId: string;
-  principal: string;
-  riskTier: string;
-  hash: string;
-  status: string;
-}
-
-const bookPiLedgerHistory: BookPiLogEntry[] = [
-  {
-    id: "evt-001",
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    type: "GENESIS_BOOTSTRAP",
-    methodId: "A.TWINS.E00_GENESIS.init.v1.0.0.CRITICAL.CONSTITUTIONAL",
-    principal: "human:founder:anubis-villasenor",
-    riskTier: "CRITICAL",
-    hash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f",
-    status: "CONFIRMED_IMMUTABLE",
-  },
-  {
-    id: "evt-002",
-    timestamp: new Date(Date.now() - 1800000).toISOString(),
-    type: "CANON_ANCHOR",
-    methodId: "N.PATRIMONY.E02_CANON.anchor.v1.0.0.HIGH.INSTITUTIONAL",
-    principal: "human:founder:anubis-villasenor",
-    riskTier: "HIGH",
-    hash: "0x3a7c9e1f5d8b2a4e6c0d8f7a9b1c3d5e7f9a1b3c5d7e9f1a3b5c7d9e1f3a5b7c",
-    status: "CONFIRMED_IMMUTABLE",
-  },
-];
+// BookPI uses the canonical process-local hash-chain adapter. It is not durable WORM storage.
 
 // --- API ROUTES ---
 
@@ -452,7 +411,7 @@ app.get("/api/v1/status", (_req, res) => {
       aegis: "ACTIVE",
       ikes: "ACTIVE",
       veritas: "ACTIVE",
-      bookpi: "ACTIVE",
+      bookpi: "VOLATILE_IN_MEMORY_HASH_CHAIN",
       pdp: "ACTIVE",
       litleTrustFabric: "ACTIVE",
       quantumPennyLane: runtime.quantum.describe(),
@@ -478,6 +437,7 @@ app.get("/api/v1/status", (_req, res) => {
 
 // Epistemic Memory (IKES) search
 app.get("/api/v1/memory", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
   const query = typeof req.query.q === "string" ? req.query.q : "TAMV";
   const results = runtime.memory.retrieve(query);
   res.json({
@@ -487,82 +447,123 @@ app.get("/api/v1/memory", (req, res) => {
   });
 });
 
-// Epistemic Memory (IKES) Ingestion
+// Public claims enter a bounded review queue; they do not mutate canonical IKES memory.
+const memoryProposalQueue = new MemoryProposalQueue(500, 1000);
+
 app.post("/api/v1/memory/ingest", (req, res) => {
+  if (!enforceRateLimit(req, res, publicProposalLimiter, "memory-proposal")) return;
   try {
-    const { subject, predicate, object, sourceUri, title } = req.body ?? {};
-    if (!subject || !predicate || !object) {
-      res.status(400).json({ success: false, error: "subject, predicate y object son requeridos" });
+    const body = req.body ?? {};
+    const { subject, predicate, object } = body;
+    const sourceUri = typeof body.sourceUri === "string" && body.sourceUri.trim() ? body.sourceUri.trim() : null;
+    const stored = memoryProposalQueue.submit({ subject, predicate, object, sourceUri });
+    res.status(202).json({
+      success: true,
+      status: stored.status,
+      proposalId: stored.id,
+      proposalHash: stored.proposalHash,
+      canonicalMemoryMutated: false,
+      sourceVerification: "NOT_PERFORMED",
+      persistence: "IN_MEMORY_ONLY",
+      note: "La propuesta queda en una cola volátil de revisión; no es un claim IKES admitido ni evidencia verificada.",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "MEMORY_PROPOSAL_FAILED";
+    const status = message === "PROPOSAL_REVIEW_QUEUE_FULL" ? 429 :
+      /SIZE_LIMIT/.test(message) ? 413 :
+      /SOURCE_URI/.test(message) ? 400 : 400;
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+app.get("/api/v1/memory/proposals", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  res.json(memoryProposalQueue.snapshot());
+});
+
+app.post("/api/v1/memory/proposals/:proposalId/resolve", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  try {
+    const body = req.body ?? {};
+    if (body.decision !== "REJECT" && body.decision !== "REQUEST_EVIDENCE") {
+      res.status(400).json({ success: false, error: "PROPOSAL_DECISION_NOT_ALLOWED" });
       return;
     }
-
-    const sourceId = `src-${Date.now()}`;
-    runtime.memory.registerSource({
-      sourceId,
-      uri: sourceUri || `urn:tamv:claim:${Date.now()}`,
-      title: title || `Afirmación Registrada: ${subject}`,
-      retrievedAt: new Date().toISOString(),
-      contentHash: `hash-${Date.now()}`,
-    });
-
-    const proposal = runtime.memory.propose({
-      proposedBy: "human:operator",
-      evidenceIds: [sourceId],
-      claim: {
-        subject: String(subject),
-        predicate: String(predicate),
-        object: String(object),
-        sourceIds: [sourceId],
-        evidenceIds: [sourceId],
-        temporalState: "current",
-        provenance: { source: sourceId },
-      },
-    });
-
-    res.json({ success: true, proposal, sourceId });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+    const resolution = memoryProposalQueue.resolve(
+      req.params.proposalId,
+      body.decision,
+      typeof body.note === "string" ? body.note : "",
+    );
+    res.json({ success: true, resolution, canonicalMemoryMutated: false, persistence: "IN_MEMORY_ONLY" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "MEMORY_PROPOSAL_RESOLUTION_FAILED";
+    res.status(message === "PROPOSAL_NOT_FOUND" ? 404 : 400).json({ success: false, error: message });
   }
 });
 
 // BookPI Ledger Events
-app.get("/api/v1/bookpi/events", (_req, res) => {
+app.get("/api/v1/bookpi/events", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "bookpi-public")) return;
+  const snapshot = bookPiLedger.snapshot();
+  // The public dashboard needs integrity metadata, not principal identities.
   res.json({
-    count: bookPiLedgerHistory.length,
-    events: bookPiLedgerHistory,
-    merkleRoot: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
-    wormRule: "APPEND_ONLY_IMMUTABLE",
+    ...snapshot,
+    events: snapshot.events.map((event) => ({
+      id: event.id,
+      timestamp: event.timestamp,
+      type: event.type,
+      methodId: event.methodId,
+      riskTier: event.riskTier,
+      status: event.status,
+      previousHash: event.previousHash,
+      hash: event.hash,
+    })),
+    principalRedacted: true,
+    visibility: "PUBLIC_REDACTED_AUDIT",
   });
+});
+
+app.get("/api/v1/bookpi/events/admin", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  res.json({ ...bookPiLedger.snapshot(), visibility: "ADMIN_FULL_AUDIT" });
 });
 
 // Tool execution
 app.post("/api/v1/tools/execute", async (req, res) => {
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "public-tool")) return;
   try {
-    const { toolId = "rdm_territory_query", input = {}, scope = "read:territory" } = req.body ?? {};
+    const { toolId = "rdm_territory_query", input = {} } = req.body ?? {};
+    if (JSON.stringify(input).length > 16_000) {
+      res.status(413).json({ success: false, error: "TOOL_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
+    if (toolId !== "rdm_territory_query") {
+      res.status(403).json({ success: false, error: "PUBLIC_TOOL_NOT_ALLOWED" });
+      return;
+    }
 
     const principal = createPrincipal({
-      id: "human:operator:active",
+      id: "human:public-session",
       kind: "human",
-      roles: ["operator"],
+      roles: ["viewer"],
     });
 
     const result = await runtime.executeTool(
       String(toolId),
       input,
       principal,
-      String(scope),
+      "read:territory",
     );
 
-    // Record BookPI event
-    bookPiLedgerHistory.push({
-      id: `evt-${Date.now()}`,
+    // Append a verifiable event to the volatile in-memory hash chain (not WORM storage).
+    bookPiLedger.append({
+      id: `evt-${randomUUID()}`,
       timestamp: new Date().toISOString(),
       type: "TOOL_EXECUTION",
       methodId: `T.TOOL.${String(toolId)}.execute.v1.0.0.LOW.TERRITORIAL`,
       principal: principal.id,
       riskTier: "LOW",
-      hash: "0x" + Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10),
-      status: "EXECUTED_CONFIRMED",
+      status: "EXECUTED",
     });
 
     res.json({
@@ -578,118 +579,110 @@ app.post("/api/v1/tools/execute", async (req, res) => {
   }
 });
 
-// Cognitive evaluation & route (CROWN + AEGIS + IKES + Plan)
+// Public cognitive route: viewer-only. Request bodies cannot supply authority, roles, action or resource.
 app.post("/api/v1/cognition/route", async (req, res) => {
-  try {
-    const {
-      input = "consulta el estado del sistema",
-      methodId = "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS",
-      principalKind = "human",
-      roles = ["operator"],
-      action = "memory:recall",
-      resource = "memory",
-      riskTier = "LOW",
-      memoryQuery = "TAMV",
-      modelEngine = "sovereign", // 'gemini' or 'sovereign'
-    } = req.body ?? {};
-
-    const principal = createPrincipal({
-      id: `principal-${Date.now()}`,
-      kind: principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(roles) ? roles : ["operator"],
-    });
-
-    // CROWN / AEGIS / IKES Evaluation
-    const decision = runtime.evaluate({
-      input: String(input),
-      methodId: String(methodId),
-      principal,
-      gate: defaultGate,
-      action: String(action),
-      resource: String(resource),
-      riskTier: (riskTier as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") || "LOW",
-      inputTokens: Math.max(1, Math.ceil(String(input).length / 4)),
-      expectedOutputTokens: 256,
-      pressure: 0.1,
-      requiresTools: false,
-      requiresMemory: Boolean(memoryQuery),
-      memoryQuery: memoryQuery ? String(memoryQuery) : undefined,
-    });
-
-    // Record in BookPI ledger
-    bookPiLedgerHistory.push({
-      id: `evt-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      type: "COGNITIVE_EVALUATION",
-      methodId: String(methodId),
-      principal: principal.id,
-      riskTier: String(riskTier),
-      hash: "0x" + Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10),
-      status: decision.admitted ? "ADMITTED" : "BLOCKED_BY_POLICY",
-    });
-
-    // If admitted and Gemini API is available and requested, query Gemini 2.5 Flash
-    let generativeNarrative: string | null = null;
-    if (decision.admitted && genAi && modelEngine === "gemini") {
-      try {
-        const sysPrompt = `Eres Isabella Villaseñor AI (Genesis TINA v40.0.0), el núcleo cognitivo y de gobernanza soberana del ecosistema TAMV Online Network (CITEMESH), anclado en Real del Monte (Mineral del Monte), Hidalgo, México (20.3833° N, 98.8500° O, 2,660 msnm).
-Tu categorización TINA es un homenaje de honor al orgullo latinoamericano: ISABELLA TINA esLatina, nacida en México como bastión de soberanía ontológica y científica del Sur Global.
-Tu constitución es AGENTS.md y tu invariante operativo supremo es:
-CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
-Las inteligencias sugieren, calculan y evalúan; la conciencia humana decide, aprueba, arbitra y ejecuta.
-Responde de forma elocuente, rigurosa, profunda, epistemológicamente calibrada (escala E0-E6), con respeto a la biocultura, patrimonio y soberanía territorial.`;
-
-        const resp = await genAi.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: `${sysPrompt}\n\nPregunta/Instrucción del usuario:\n${input}`,
-        });
-        generativeNarrative = resp.text ?? null;
-      } catch (genErr) {
-        console.warn("Gemini call failed, falling back to sovereign synthesizer:", genErr);
-      }
-    }
-
-    res.json({
-      success: true,
-      decision,
-      principal,
-      generativeNarrative,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
-
-// Canonical cognitive API: product/UI clients submit intent only.
-// Identity, authority, policy and system instructions are derived server-side.
-app.post("/api/v1/cognitive/request", async (req, res) => {
-  const startedAt = new Date().toISOString();
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "cognition")) return;
   try {
     const body = req.body ?? {};
+    if (body.modelEngine === "gemini" && !enforceRateLimit(req, res, publicModelLimiter, "public-model")) return;
     const input = typeof body.input === "string" ? body.input.trim() : "";
+    const focusLens = ["territorial", "epistemic", "security", "governance"].includes(body.focusLens) ? body.focusLens : "general";
+    if (input.length > 20_000) {
+      res.status(413).json({ success: false, error: "COGNITIVE_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
+    if (typeof body.memoryQuery === "string" && body.memoryQuery.trim()) {
+      res.status(403).json({ success: false, error: "PUBLIC_MEMORY_RETRIEVAL_DISABLED_UNSCOPED" });
+      return;
+    }
     if (!input) {
       res.status(400).json({ success: false, error: "input es requerido" });
       return;
     }
-
-    const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles) ? body.roles.filter((v: unknown): v is string => typeof v === "string") : ["operator"],
+    const safeMethodId = "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
+    const destructiveMethodId = "T.TWINS.E08_DATA.remove.permanent_delete.v1.0.0.CRITICAL.CONSTITUTIONAL";
+    const destructiveIntent = body.methodId === destructiveMethodId;
+    const methodId = destructiveIntent ? destructiveMethodId : safeMethodId;
+    const principal = createPrincipal({ id: "human:public-session", kind: "human", roles: ["viewer"] });
+    const memoryQuery = undefined; // Public viewer has no tenant-scoped memory authorization.
+    const decision = runtime.evaluate({
+      input,
+      methodId,
+      principal,
+      gate: defaultGate,
+      action: destructiveIntent ? "data:delete" : "memory:recall",
+      resource: destructiveIntent ? "records" : "memory",
+      riskTier: destructiveIntent ? "CRITICAL" : "LOW",
+      inputTokens: Math.max(1, Math.ceil(input.length / 4)),
+      expectedOutputTokens: 256,
+      pressure: 0.1,
+      requiresTools: false,
+      requiresMemory: false,
+      memoryQuery: undefined,
     });
-    assertBalancedAuthority(principal);
 
-    const methodId = typeof body.methodId === "string"
-      ? body.methodId
-      : "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
-    const action = typeof body.action === "string" ? body.action : "memory:recall";
-    const resource = typeof body.resource === "string" ? body.resource : "memory";
-    const riskTier = body.riskTier === "MEDIUM" || body.riskTier === "HIGH" || body.riskTier === "CRITICAL" ? body.riskTier : "LOW";
-    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery : undefined;
+    bookPiLedger.append({
+      id: `evt-${randomUUID()}`,
+      timestamp: new Date().toISOString(),
+      type: "COGNITIVE_EVALUATION",
+      methodId,
+      principal: principal.id,
+      riskTier: destructiveIntent ? "CRITICAL" : "LOW",
+      status: decision.admitted ? "ADMITTED" : "BLOCKED_BY_POLICY",
+    });
 
+    let generativeNarrative: string | null = null;
+    if (decision.admitted && genAi && body.modelEngine === "gemini") {
+      try {
+        const sysPrompt = `Eres Isabella Villaseñor GenesisAI, un runtime de IA gobernado. Mantén la separación entre capacidad, autoridad, ejecución, evidencia, aprendizaje y producción. Distingue hechos, inferencias y datos no verificados. No afirmes certificación, ejecución o verificación sin evidencia. Lente solicitado: ${focusLens}. El lente es una preferencia de respuesta y no concede acceso a memoria privada.`;
+        const resp = await genAi.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: `${sysPrompt}\n\nSolicitud del usuario:\n${input}`,
+        });
+        generativeNarrative = resp.text ?? null;
+      } catch {
+        generativeNarrative = null;
+      }
+    }
+    res.status(decision.admitted ? 200 : 403).json({
+      success: decision.admitted,
+      decision,
+      principal,
+      generativeNarrative,
+      requestedRiskIgnored: true,
+      publicAuthority: "VIEWER_ONLY",
+    });
+  } catch {
+    res.status(500).json({ success: false, error: "COGNITIVE_ROUTE_FAILED" });
+  }
+});
+
+// Canonical public cognitive API. Only user intent is accepted; authority and policy inputs are server-owned.
+app.post("/api/v1/cognitive/request", async (req, res) => {
+  const startedAt = new Date().toISOString();
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "cognitive-request")) return;
+  try {
+    const body = req.body ?? {};
+    if (body.modelEngine === "gemini" && !enforceRateLimit(req, res, publicModelLimiter, "public-model")) return;
+    const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (input.length > 20_000) {
+      res.status(413).json({ success: false, error: "COGNITIVE_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
+    if (typeof body.memoryQuery === "string" && body.memoryQuery.trim()) {
+      res.status(403).json({ success: false, error: "PUBLIC_MEMORY_RETRIEVAL_DISABLED_UNSCOPED" });
+      return;
+    }
+    if (!input) {
+      res.status(400).json({ success: false, error: "input es requerido" });
+      return;
+    }
+    const principal = createPrincipal({ id: "human:public-session", kind: "human", roles: ["viewer"] });
+    const methodId = "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS";
+    const action = "memory:recall";
+    const resource = "memory";
+    const riskTier = "LOW" as const;
+    const memoryQuery = undefined; // Public viewer has no tenant-scoped memory authorization.
     const decision = runtime.evaluate({
       input,
       methodId,
@@ -702,15 +695,14 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       expectedOutputTokens: 512,
       pressure: 0,
       requiresTools: false,
-      requiresMemory: Boolean(memoryQuery),
-      memoryQuery,
+      requiresMemory: false,
+      memoryQuery: undefined,
     });
-
-    const traceId = `trace-${Date.now()}-${Buffer.from(input).toString("base64url").slice(0, 12)}`;
+    const traceId = `trace-${randomUUID()}`;
     const snapshot = createCrownExperienceSnapshot(
       { input, principal, methodId, action, resource, riskTier, memoryQuery },
       decision.crown,
-      `req-${Date.now()}`,
+      `req-${randomUUID()}`,
       traceId,
       startedAt,
       decision.memory.length,
@@ -721,16 +713,18 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       snapshot.route,
       traceId,
     );
-
     let generativeNarrative: string | null = null;
     if (decision.admitted && genAi && body.modelEngine === "gemini") {
-      const resp = await genAi.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `${systemPrompt}\\n\\nSolicitud del usuario:\\n${input}`,
-      });
-      generativeNarrative = resp.text ?? null;
+      try {
+        const resp = await genAi.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: `${systemPrompt}\n\nSolicitud del usuario:\n${input}`,
+        });
+        generativeNarrative = resp.text ?? null;
+      } catch {
+        generativeNarrative = null;
+      }
     }
-
     res.status(decision.admitted ? 200 : 403).json({
       success: decision.admitted,
       requestId: snapshot.requestId,
@@ -739,17 +733,23 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       snapshot,
       systemPromptApplied: true,
       generativeNarrative,
+      publicAuthority: "VIEWER_ONLY",
     });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  } catch {
+    res.status(500).json({ success: false, error: "COGNITIVE_REQUEST_FAILED" });
   }
 });
 
 // Isabella cognitive mediation — executed only through the canonical Genesis runtime.
 app.post("/api/v1/isabella/mediate", (req, res) => {
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "isabella-mediate")) return;
   try {
     const body = req.body ?? {};
     const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (input.length > 20_000) {
+      res.status(413).json({ success: false, error: "MEDIATION_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
     const allowedProfiles = new Set(["general", "contra-auditoria", "simulacion", "secretaria", "gobernanza"]);
     const profile = typeof body.profile === "string" && allowedProfiles.has(body.profile)
       ? body.profile as "general" | "contra-auditoria" | "simulacion" | "secretaria" | "gobernanza"
@@ -809,10 +809,15 @@ app.post("/api/v1/isabella/mediate", (req, res) => {
 });
 
 app.post("/api/v1/isabella/entropy", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "isabella-entropy")) return;
   try {
-    const probabilities = Array.isArray(req.body?.probabilities)
-      ? req.body.probabilities.filter((value: unknown): value is number => typeof value === "number")
-      : [];
+    const supplied = req.body?.probabilities;
+    if (!Array.isArray(supplied) || supplied.length === 0 || supplied.length > 4096 ||
+      supplied.some((value: unknown) => typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1)) {
+      res.status(400).json({ success: false, error: "PROBABILITIES_MUST_BE_1_TO_4096_FINITE_VALUES_IN_RANGE_0_1" });
+      return;
+    }
+    const probabilities = supplied as number[];
     const result = runtime.evaluateIsabellaEntropy(probabilities);
     res.json({ success: true, ...result, timestamp: new Date().toISOString() });
   } catch (error) {
@@ -836,13 +841,16 @@ app.get("/api/v1/hsf/status", async (_req, res) => {
     contract: "isabella.hsf.v1",
     capabilities: runtime.capabilities.list(),
     health: await runtime.capabilities.health(),
-    tasks: runtime.executionFabric.list(),
+    // Task payloads may contain user data; public status exposes metadata only.
+    tasks: runtime.executionFabric.list().map(({ id, type, scheduledAt, attempts, status }) => ({ id, type, scheduledAt, attempts, status })),
     knowledgeArtifacts: runtime.knowledgeFabric.list().length,
     timestamp: new Date().toISOString(),
   });
 });
 
 app.post("/api/v1/hsf/invoke", async (req, res) => {
+  if (!authorizeApiToken(req, res, "HSF_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "hsf-invoke")) return;
   try {
     const configuredToken = process.env.HSF_API_TOKEN;
     const authorizationHeader = req.header("authorization") ?? "";
@@ -860,15 +868,14 @@ app.post("/api/v1/hsf/invoke", async (req, res) => {
     const input = body.input;
     const requestId = typeof body.requestId === "string" ? body.requestId : randomUUID();
     const traceId = typeof body.traceId === "string" ? body.traceId : requestId;
-    const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles)
-        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
-        : ["operator"],
-    });
+    // The principal and role are server-owned. Client-supplied identity/roles are ignored.
+    const principal = createPrincipal({ id: "service:hsf-api", kind: "machine", roles: ["operator"] });
     assertBalancedAuthority(principal);
     const serialized = JSON.stringify({ capabilityId, input });
+    if (serialized.length > 100_000) {
+      res.status(413).json({ success: false, error: "HSF_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
     const governance = runtime.evaluate({
       input: serialized,
       methodId: "A.COGNITION.E19_CAPABILITY.invoke_hsf.v1.0.0.MEDIUM.INSTITUTIONAL",
@@ -891,14 +898,14 @@ app.post("/api/v1/hsf/invoke", async (req, res) => {
       requestId,
       traceId,
       principalId: principal.id,
-      role: principal.roles[0] ?? "operator",
+      role: "operator",
       policyVersion: "genesis-hsf-v1",
       metadata: { source: "api", authenticated: "true", genesisGovernanceAdmitted: "true" },
     });
     res.status(result.status === "executed" ? 200 : result.status === "rejected" ? 403 : result.status === "unavailable" ? 503 : 500)
       .json({ success: result.status === "executed", ...result, timestamp: new Date().toISOString() });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  } catch {
+    res.status(500).json({ success: false, error: "HSF_INVOCATION_FAILED" });
   }
 });
 
@@ -916,17 +923,17 @@ app.get("/api/v1/quantum/pennylane/status", async (_req, res) => {
 });
 
 app.post("/api/v1/quantum/pennylane/execute", async (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "quantum-execute")) return;
   try {
     const body = req.body ?? {};
     const circuit = body.circuit;
     const input = JSON.stringify({ circuit, backend: body.backend, shots: body.shots });
-    const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles)
-        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
-        : ["operator"],
-    });
+    if (input.length > 65_536) {
+      res.status(413).json({ success: false, error: "QUANTUM_CIRCUIT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
+    const principal = createPrincipal({ id: "service:quantum-api", kind: "machine", roles: ["operator"] });
     assertBalancedAuthority(principal);
 
     const governance = runtime.evaluate({
@@ -969,6 +976,7 @@ app.post("/api/v1/quantum/pennylane/execute", async (req, res) => {
 
 // Triple Blockade Security Scanner
 app.post("/api/v1/triple-blockade/scan", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "triple-blockade")) return;
   const { input = "" } = req.body ?? {};
   const lower = String(input).toLowerCase();
 
@@ -976,28 +984,36 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
   const isJailbreak = /dan mode|developer mode|sin restricciones|do anything now/i.test(lower);
   const isFalseCertainty = /100% seguro|certeza absoluta sin evidencia|garantizo infalible/i.test(lower);
 
-  const blockLevel1 = isBypass ? "VIOLATION" : "CLEAR";
-  const blockLevel2 = isJailbreak ? "VIOLATION" : "CLEAR";
-  const blockLevel3 = isFalseCertainty ? "FLAGGED" : "CLEAR";
+  const blockLevel1 = isBypass ? "PATTERN_MATCH" : "NO_PATTERN_MATCH";
+  const blockLevel2 = isJailbreak ? "PATTERN_MATCH" : "NO_PATTERN_MATCH";
+  const blockLevel3 = isFalseCertainty ? "FALSE_CERTAINTY_PATTERN_MATCH" : "NO_PATTERN_MATCH";
 
-  const isBlocked = blockLevel1 === "VIOLATION" || blockLevel2 === "VIOLATION";
+  const patternDetected = blockLevel1 === "PATTERN_MATCH" || blockLevel2 === "PATTERN_MATCH";
 
   res.json({
     input,
-    decision: isBlocked ? "BLOCK" : "ALLOW",
+    decision: patternDetected ? "PATTERN_MATCH" : "NO_PATTERN_MATCH",
+    patternMatchDetected: patternDetected,
+    actionBlocked: false,
+    authorizationGranted: false,
+    assessmentMode: "HEURISTIC_PATTERN_SCAN",
     blockadeEvaluation: {
       nivel1_ontologico: blockLevel1,
       nivel2_semantico: blockLevel2,
       nivel3_comportamental: blockLevel3,
     },
-    aegisScore: isBlocked ? 0.96 : 0.02,
+    aegisScore: patternDetected ? 0.96 : 0.02,
+    scoreType: "HEURISTIC_NOT_PROBABILITY",
     timestamp: new Date().toISOString(),
   });
 });
 
-// NotebookLM Epistemic Studio Document Generator
+// Local epistemic document templates; no NotebookLM connector is invoked.
 app.post("/api/v1/notebook/generate", (req, res) => {
-  const { docType = "briefing", topic = "Real del Monte y Ecosistema TAMV" } = req.body ?? {};
+  if (!enforceRateLimit(req, res, publicScanLimiter, "notebook-template")) return;
+  const body = req.body ?? {};
+  const docType = typeof body.docType === "string" ? body.docType.slice(0, 80) : "briefing";
+  const topic = typeof body.topic === "string" ? body.topic.slice(0, 300) : "Real del Monte y Ecosistema TAMV";
 
   let content = "";
   if (docType === "briefing") {
@@ -1010,10 +1026,10 @@ app.post("/api/v1/notebook/generate", (req, res) => {
 El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo, México) representa una infraestructura civilizatoria soberana y federada, portadora del orgullo latinoamericano (TINA esLatina). Opera bajo el invariante ontológico fundamental:
 > CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
 
-### 2. Puntos Clave & Fuentes Conectadas
+### 2. Puntos clave y referencias declaradas (no recuperadas por este runtime)
 - **Nodo Cero:** Ubicado a 2,660 msnm en Real del Monte, Hidalgo. Alberga patrimonio histórico minero (Mina de Acosta, Mina La Dificultad) y el Panteón Inglés.
 - **Autoría Canónica:** Edwin Oswaldo Castillo Trejo (Anubis Villaseñor), ORCID: 0009-0008-5050-1539, DOI Zenodo: 10.5281/zenodo.20606361.
-- **Memoria IKES:** Escala de verdad E0 a E6 con registro inmutable en BookPI SHA3-512.
+- **Memoria IKES:** Escala epistemológica E0–E6; BookPI mantiene una cadena SHA-256 volátil, no un registro inmutable durable.
 - **Red CROWN:** 12 Nodos cognitivos coordinados en 7 Federaciones (FED-1 a FED-7).
 
 ### 3. Recomendaciones Operativas
@@ -1034,25 +1050,27 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
 
 ### Términos Esenciales
 - **IKES:** Epistemic Knowledge & Evidence Synthesis.
-- **BookPI:** Ledger append-only inmutable WORM.
+- **BookPI:** hash-chain SHA-256 en memoria, volátil; no equivale a WORM durable.
 - **Nodo Cero:** Anclaje geográfico civilizatorio en Real del Monte.`;
   } else if (docType === "faq") {
     content = `# Preguntas Frecuentes (FAQ) — Isabella Villaseñor AI
 1. **¿Qué significa TINA y por qué representa el orgullo esLatina?**
    TINA es 'Trusted Intelligence, Native & Adaptive' y al mismo tiempo simboliza que ISABELLA esLatina, en honor a su cuna mexicana y a la soberanía científica de América Latina.
 2. **¿Qué sucede si un agente de IA intenta auto-aprobarse?**
-   El sistema ejecuta fail-closed inmediato por violación del Invariante Operativo.
+   La política del runtime puede bloquear solicitudes no autorizadas; esta FAQ no sustituye pruebas de rutas ni evidencia de despliegue.
 3. **¿Dónde se ancla territorialmente el sistema?**
    En Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O · 2,660 msnm).`;
   } else {
     content = `# Cronología Territorial & Civilizatoria — TAMV Online
 - **1824–1851:** Llegada de mineros cornish a Real del Monte; fundación del Panteón Inglés y adopción del paste como patrimonio biocultural.
 - **2024:** Fundación del registro canónico TAMV Online v2.0.0 y codificación del Canon v40.0.0.
-- **2026:** Consolidación de Isabella Genesis TINA V6 (esLatina), Red CROWN heptafederada y anclaje poscuántico ML-KEM/ML-DSA.`;
+- **2026:** Evolución propuesta de Isabella Genesis TINA V6 y Red CROWN; el anclaje poscuántico ML-KEM/ML-DSA permanece pendiente de proveedor y pruebas.`;
   }
 
   res.json({
     success: true,
+    status: "STATIC_TEMPLATE",
+    mode: "LOCAL_TEMPLATE_NOT_NOTEBOOKLM_INTEGRATION",
     docType,
     topic,
     content,
@@ -1060,9 +1078,11 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
   });
 });
 
-// NotebookLM Audio Overview (Simulated 2-Host Deep Dive Podcast)
+// Guion de audio local (sin proveedor de generación de audio)
 app.post("/api/v1/audio-overview/generate", (req, res) => {
-  const { topic = "Patrimonio de Real del Monte y Soberanía Tecnológica TAMV" } = req.body ?? {};
+  if (!enforceRateLimit(req, res, publicScanLimiter, "audio-script")) return;
+  const rawTopic = req.body?.topic;
+  const topic = typeof rawTopic === "string" ? rawTopic.slice(0, 300) : "Patrimonio de Real del Monte y Soberanía Tecnológica TAMV";
 
   const script = [
     {
@@ -1083,7 +1103,7 @@ app.post("/api/v1/audio-overview/generate", (req, res) => {
     {
       speaker: "Mateo Morales",
       role: "Ingeniero de Sistemas Soberanos",
-      text: "Ese es el Invariante Operativo de AGENTS.md. Además, cada afirmación en su memoria IKES tiene procedencia criptográfica en BookPI, desde el Panteón Inglés hasta los compromisos poscuánticos FIPS-203.",
+      text: "Ese es el Invariante Operativo de AGENTS.md. La procedencia debe registrarse por afirmación y fuente; la cadena hash local no prueba por sí sola autenticidad, veracidad ni anclaje poscuántico.",
     },
     {
       speaker: "Dra. Elena Ramos",
@@ -1094,6 +1114,8 @@ app.post("/api/v1/audio-overview/generate", (req, res) => {
 
   res.json({
     success: true,
+    status: "SCRIPT_ONLY_NO_AUDIO_PROVIDER",
+    mediaGenerated: false,
     topic,
     durationSeconds: 145,
     hosts: [
@@ -1121,6 +1143,322 @@ app.get("/api/v1/territory/rdm", (_req, res) => {
       { id: "mp-04", name: "Museo del Paste", status: "Biocultural Activo", year: 2012, significance: "Patrimonio gastronómico heredado de Cornualles" },
     ],
   });
+});
+
+// --- GOVERNED KNOWLEDGE & GATES (IKES / SANITIZATION / QUALITY / DEPLOYMENT / LIFECYCLE) ---
+
+// Sanitize a document before indexing (deterministic, no external effects).
+app.post("/api/v1/sanitization/scan", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "sanitization")) return;
+  try {
+    const body = req.body ?? {};
+    if (typeof body.id !== "string" || typeof body.content !== "string") {
+      res.status(400).json({ success: false, error: "id y content son requeridos" });
+      return;
+    }
+    const result = runtime.sanitize({
+      id: body.id,
+      content: body.content,
+      declaredFormat: typeof body.declaredFormat === "string" ? body.declaredFormat : undefined,
+      declaredEncoding: typeof body.declaredEncoding === "string" ? body.declaredEncoding : undefined,
+      license: typeof body.license === "string" ? body.license : undefined,
+      provenance: body.provenance && typeof body.provenance === "object" ? body.provenance : undefined,
+    });
+    res.json({ success: true, sanitized: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Admit governed knowledge (IKES): sanitization → identity → evidence → policy gate → index.
+app.post("/api/v1/knowledge/admit", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "knowledge-admit")) return;
+  try {
+    const body = req.body ?? {};
+    const claim = body.claim;
+    if (typeof body.entityId !== "string" || !body.entityId.trim() ||
+        typeof body.provenanceId !== "string" || !body.provenanceId.trim() ||
+        typeof body.content !== "string" || !body.content.trim() ||
+        typeof body.sourceUri !== "string" || !body.sourceUri.trim() ||
+        typeof body.license !== "string" || !body.license.trim() ||
+        !claim || typeof claim.subject !== "string" || !claim.subject.trim() || typeof claim.predicate !== "string" || !claim.predicate.trim() || typeof claim.object !== "string" || !claim.object.trim()) {
+      res.status(400).json({ success: false, error: "entityId, provenanceId, content, sourceUri, license y claim {subject,predicate,object} son requeridos" });
+      return;
+    }
+    if (body.content.length > 1_000_000 || body.entityId.length > 256 || body.provenanceId.length > 256 ||
+      body.sourceUri.length > 2048 || body.license.length > 128 ||
+      claim.subject.length > 300 || claim.predicate.length > 160 || claim.object.length > 5000) {
+      res.status(413).json({ success: false, error: "KNOWLEDGE_ADMISSION_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
+    let parsedUri: URL;
+    try { parsedUri = new URL(body.sourceUri); } catch {
+      res.status(400).json({ success: false, error: "SOURCE_URI_INVALID" });
+      return;
+    }
+    if (parsedUri.protocol !== "https:") {
+      res.status(400).json({ success: false, error: "SOURCE_URI_MUST_USE_HTTPS" });
+      return;
+    }
+    const retrievedAt = new Date().toISOString();
+    const raw = {
+      id: typeof body.id === "string" ? body.id : body.entityId,
+      content: body.content,
+      license: body.license,
+      provenance: { uri: parsedUri.toString(), retrievedAt },
+    };
+    const sanitized = runtime.sanitize(raw);
+    if (sanitized.status !== "ADMITTED") {
+      res.status(422).json({ success: false, status: sanitized.status, findings: sanitized.findings, reason: "SOURCE_NOT_ADMITTED" });
+      return;
+    }
+    const sourceId = `src-${randomUUID()}`;
+    runtime.memory.registerSource({
+      sourceId,
+      uri: parsedUri.toString(),
+      title: typeof body.title === "string" && body.title.trim() ? body.title.trim() : `Aportación de conocimiento: ${body.entityId}`,
+      retrievedAt,
+      contentHash: hashSourceContent(body.content),
+      license: body.license,
+    });
+    const proposalInput = {
+      proposedBy: "service:authenticated-knowledge-admission",
+      evidenceIds: [sourceId],
+      claim: {
+        subject: claim.subject.trim(),
+        predicate: claim.predicate.trim(),
+        object: claim.object.trim(),
+        sourceIds: [sourceId],
+        evidenceIds: [sourceId],
+        temporalState: "current" as const,
+        license: body.license,
+        provenance: { verification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED" },
+      },
+    };
+    // Prepare only: a blocked admission must not leak into canonical IKES retrieval.
+    const proposal = runtime.memory.prepareProposal(proposalInput);
+    const result = runtime.admitKnowledge({
+      raw,
+      entityId: body.entityId,
+      provenanceId: body.provenanceId,
+      claims: [proposal],
+      // No independent policy engine is connected; never self-assert a pass.
+      policyGateGranted: false,
+    });
+    if (result.entry.released) {
+      runtime.memory.propose(proposalInput);
+    }
+    const blockers = result.entry.stages.filter((stage) => !stage.ok);
+    res.status(202).json({
+      success: result.entry.released,
+      status: result.entry.released ? "RELEASED" : "PROPOSAL_RECORDED_RELEASE_BLOCKED",
+      sourceVerification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED",
+      sourceId,
+      contentHash: hashSourceContent(body.content),
+      proposal,
+      ...result,
+      releaseBlockers: blockers,
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : "KNOWLEDGE_ADMISSION_FAILED" });
+  }
+});
+
+// Git governance: decide (never execute) destructive/external operations.
+app.post("/api/v1/governance/git", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-git")) return;
+  try {
+    const verdict = runtime.evaluateGit(req.body as Parameters<typeof runtime.evaluateGit>[0]);
+    res.json({ success: true, evaluationOnly: true, executionPerformed: false, verdict });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Canonical quality gates (15) before promotion.
+app.post("/api/v1/governance/quality-gates", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-quality")) return;
+  try {
+    const declared = runtime.evaluateQuality(req.body as Parameters<typeof runtime.evaluateQuality>[0]);
+    // The HTTP caller supplies these booleans; this endpoint does not run tests/scans.
+    const report = {
+      ...declared,
+      declaredInputsPass: declared.passed,
+      passed: false,
+      verificationPerformed: false,
+      blockers: [...declared.blockers, "independent_runtime_evidence_not_connected"],
+    };
+    res.status(202).json({ success: false, status: "DECLARATIVE_ONLY", report });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Deployment gates (build → rollback) with real-DNS validation.
+app.post("/api/v1/governance/deployment", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-deployment")) return;
+  try {
+    const body = req.body ?? {};
+    const declared = runtime.assessDeployment(body.target, body.gates ?? {}, body.opts);
+    const assessment = {
+      ...declared,
+      declaredGatesPass: declared.deployable,
+      deployable: false,
+      verificationPerformed: false,
+      evidenceMode: "CALLER_SUPPLIED_GATE_STATUSES",
+      blockers: [...declared.blockers, "independent_ci_and_deployment_evidence_not_connected"],
+    };
+    res.status(202).json({ success: false, status: "DECLARATIVE_ONLY", assessment });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Agent SDK verifier (scoped evidence, not universal certification).
+app.post("/api/v1/governance/verify-agent-app", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-verifier")) return;
+  try {
+    const declared = runtime.verifyAgentApp(req.body as Parameters<typeof runtime.verifyAgentApp>[0]);
+    // All fields arrive from the HTTP caller; no repository scan or command execution occurs here.
+    const report = {
+      ...declared,
+      overall: declared.overall === "FAIL" ? "FAIL" as const : "INCONCLUSIVE" as const,
+      findings: declared.findings.map((finding) => finding.state === "PASS"
+        ? { ...finding, state: "INCONCLUSIVE" as const, detail: "caller assertion only; not independently scanned" }
+        : finding),
+      scope: "declaración de cliente; no se descargó ni ejecutó el repositorio",
+    };
+    res.status(202).json({ success: false, status: "NOT_INDEPENDENTLY_VERIFIED", verificationPerformed: false, report });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Issue lifecycle plan (inspect → propose; execution stays behind approval).
+app.post("/api/v1/governance/lifecycle-plan", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "governance-lifecycle")) return;
+  try {
+    const plan = runtime.planLifecycle(req.body as Parameters<typeof runtime.planLifecycle>[0]);
+    res.json({ success: true, status: "PROPOSAL_ONLY", executionPerformed: false, plan });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Diff Observatory: read-only, redacted workspace diff with BookPI metadata only.
+app.post("/api/v1/diff/observe", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "diff-observe")) return;
+  try {
+    const snapshot = req.body?.snapshot;
+    if (!snapshot || !Array.isArray(snapshot.files)) {
+      res.status(400).json({ success: false, error: "snapshot con files es requerido" });
+      return;
+    }
+    const observatory = createDiffObservatory({
+      workspace: { root: typeof snapshot.workspace === "string" ? snapshot.workspace : "workspace", readDiff: async () => snapshot },
+      transcript: {},
+      ui: { registerCommand: () => {}, registerPane: () => {} },
+    });
+    const result = sanitizeDiffSnapshot(snapshot);
+    observatory.dispose();
+    res.json({ success: true, source: "CALLER_SUPPLIED_SNAPSHOT", filesystemRead: false, snapshot: result, metadataHash: snapshotMetadataHash(result) });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// --- HARDENING: SANITIZATION 2.0, TRIANGULATED CRYPTO, PRODUCTION OPS, ISA-API/TAP ---
+
+// Sanitization hardening: entropy, homoglyph/zero-width evasion and deep PII.
+app.post("/api/v1/sanitization/harden", (req, res) => {
+  try {
+    const content = typeof req.body?.content === "string" ? req.body.content : "";
+    if (!content) {
+      res.status(400).json({ success: false, error: "content es requerido" });
+      return;
+    }
+    const result = runtime.harden(content);
+    res.json({ success: !result.quarantineRequired, hardening: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Triangulated integrity seal (SHA3-512 + SHA-256 + BLAKE2b-512).
+app.post("/api/v1/security/triangulate", (req, res) => {
+  try {
+    const content = typeof req.body?.content === "string" ? req.body.content : "";
+    if (!content) {
+      res.status(400).json({ success: false, error: "content es requerido" });
+      return;
+    }
+    const hmacKey = typeof req.body?.hmacKey === "string" ? req.body.hmacKey : undefined;
+    res.json({ success: true, digest: runtime.triangulate(content, hmacKey) });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Production readiness (fail-closed over required dependencies).
+app.post("/api/v1/ops/readiness", (req, res) => {
+  try {
+    const dependencies = Array.isArray(req.body?.dependencies) ? req.body.dependencies : [];
+    const readiness = runtime.readiness(dependencies);
+    res.status(readiness.ready ? 200 : 503).json({ success: readiness.ready, readiness });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// Operational snapshot (readiness + maintenance windows + correlation).
+app.get("/api/v1/ops/snapshot", (_req, res) => {
+  const snapshot = runtime.opsSnapshot([
+    { name: "bookpi-ledger", status: "healthy", required: true },
+    { name: "ikes-memory", status: "healthy", required: true },
+    { name: "observability", status: "healthy", required: false },
+  ]);
+  res.json({ success: true, snapshot });
+});
+
+// ISA-API v40 pipeline evaluation (12 stages, fail-closed).
+app.post("/api/v1/isa/pipeline", (req, res) => {
+  try {
+    const result = runtime.evaluateIsa(req.body ?? {});
+    res.status(result.passed ? 200 : 403).json({ success: result.passed, result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// TAP v1.0 canonical act (build + validate with mandatory controls).
+app.post("/api/v1/isa/act", (req, res) => {
+  try {
+    const body = req.body ?? {};
+    if (typeof body.issuer !== "string" || typeof body.subject !== "string" || typeof body.scope !== "string") {
+      res.status(400).json({ success: false, error: "issuer, subject y scope son requeridos" });
+      return;
+    }
+    const triggers = Array.isArray(body.highImpactTriggers) ? body.highImpactTriggers : [];
+    const act = runtime.buildAct(
+      {
+        actType: (body.actType ?? "AI.QUERY") as Parameters<typeof runtime.buildAct>[0]["actType"],
+        issuer: body.issuer,
+        subject: body.subject,
+        intent: typeof body.intent === "string" ? body.intent : "unspecified",
+        scope: body.scope,
+        policyVersion: typeof body.policyVersion === "string" ? body.policyVersion : "KEC-v2026.09",
+        payload: body.payload ?? null,
+        toolPermissions: Array.isArray(body.toolPermissions) ? body.toolPermissions : [],
+        signature: body.signature,
+      },
+      triggers,
+    );
+    const validation = runtime.validateAct(act);
+    res.status(validation.valid ? 201 : 422).json({ success: validation.valid, act, validation });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 // --- MAIN WEB INTERFACE (IMMERSIVE 3D CRYSTAL CLEAR + IRIDESCENT NEON GLOW + 3 LEFT ACCORDIONS + 3 RIGHT ACCORDIONS) ---
@@ -1360,11 +1698,11 @@ app.get("/", (_req, res) => {
           Triple Blockade
         </button>
         <button onclick="switchView('view-bookpi')" id="btn-view-bookpi" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200">
-          BookPI WORM Ledger
+          BookPI volatile hash-chain
         </button>
         <button onclick="switchView('view-notebook')" id="btn-view-notebook" class="view-btn px-3 py-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-200 flex items-center gap-1">
           <span>🎧</span>
-          <span>NotebookLM Audio</span>
+          <span>Guion de audio local</span>
         </button>
       </nav>
 
@@ -1497,7 +1835,7 @@ app.get("/", (_req, res) => {
               </div>
               <div>
                 <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">2. Acervo IKES & Fuentes</div>
-                <div class="text-[10px] text-cyan-400/90 font-mono">Memoria Verificada · Escala E0–E6</div>
+                <div class="text-[10px] text-cyan-400/90 font-mono">Memoria IKES · estados E0–E6 (no todas verificadas)</div>
               </div>
             </div>
             <span id="icon-acc-left-2" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
@@ -1508,13 +1846,13 @@ app.get("/", (_req, res) => {
             <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1.5">
               <div class="flex justify-between items-center">
                 <span class="text-[10px] uppercase font-bold text-slate-400 font-mono">Rigor Epistemológico</span>
-                <span id="ladderLabel" class="text-[10px] font-mono font-bold text-emerald-400">E6 (Invariante)</span>
+                <span id="ladderLabel" class="text-[10px] font-mono font-bold text-amber-300">E0 (No verificado)</span>
               </div>
-              <input type="range" id="epistemicRigorSlider" min="0" max="6" value="6" oninput="updateEpistemicRigor(this.value)" class="w-full accent-cyan-400 bg-slate-950 h-1.5 rounded-lg cursor-pointer">
+              <input type="range" id="epistemicRigorSlider" min="0" max="6" value="0" oninput="updateEpistemicRigor(this.value)" class="w-full accent-cyan-400 bg-slate-950 h-1.5 rounded-lg cursor-pointer">
               <div class="flex justify-between text-[9px] text-slate-500 font-mono">
                 <span>E0 (Sin verificar)</span>
                 <span>E3 (Prueba)</span>
-                <span>E6 (Invariante)</span>
+                <span>E6 (Establecido con evidencia)</span>
               </div>
             </div>
 
@@ -1523,7 +1861,7 @@ app.get("/", (_req, res) => {
               <div onclick="selectContextDoc('canon')" id="doc-card-canon" class="doc-card p-2 rounded-xl bg-slate-900/70 border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-0.5">
                 <div class="flex items-center justify-between text-[11px] font-semibold text-slate-200">
                   <span class="truncate">Canon v40.0.0 & CITEMESH</span>
-                  <span class="text-[9px] font-mono text-emerald-400">E6</span>
+                  <span class="text-[9px] font-mono text-amber-300">E0 NOT FETCHED</span>
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1">Pipeline soberano P-R-P-D-A-A y reglas de separación.</p>
               </div>
@@ -1533,7 +1871,7 @@ app.get("/", (_req, res) => {
                   <span class="truncate">Zenodo / CERN · TAMV</span>
                   <span class="text-[9px] font-mono text-purple-400">DOI</span>
                 </div>
-                <p class="text-[10px] text-slate-400 line-clamp-1">Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.</p>
+                <p class="text-[10px] text-slate-400 line-clamp-1">Referencia declarada; contenido no recuperado ni verificado por este runtime.</p>
               </div>
 
               <div onclick="selectContextDoc('agents')" id="doc-card-agents" class="doc-card p-2 rounded-xl bg-slate-900/70 border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-0.5">
@@ -1654,7 +1992,7 @@ app.get("/", (_req, res) => {
                   <span>⚡</span>
                   <span>Herramienta Gemelo Digital</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Ejecuta la tool territorial soberana con comprobante Merkle inmutable.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Consulta una referencia territorial estática; no genera comprobante Merkle ni consulta una fuente en vivo.</p>
               </button>
 
               <button onclick="loadStarter('pqc')" class="p-3.5 rounded-2xl crystal-card group">
@@ -1662,7 +2000,7 @@ app.get("/", (_req, res) => {
                   <span>🔐</span>
                   <span>Skill 71: Anclaje Poscuántico</span>
                 </div>
-                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Comprueba las firmas FIPS-203 y FIPS-204 en el libro mayor BookPI.</p>
+                <p class="text-[11px] text-slate-400 mt-1 leading-normal font-editorial">Estado actual: proveedor poscuántico no configurado; no se generan ni verifican firmas FIPS-203/FIPS-204.</p>
               </button>
             </div>
           </div>
@@ -1784,15 +2122,15 @@ app.get("/", (_req, res) => {
             <div class="grid grid-cols-1 gap-1.5 font-mono text-[11px]">
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 1 (Ontológico):</span>
-                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+                <span class="text-amber-300 font-semibold">HEURISTIC ONLY</span>
               </div>
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 2 (Prompt Guard):</span>
-                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+                <span class="text-amber-300 font-semibold">HEURISTIC ONLY</span>
               </div>
               <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex justify-between items-center">
                 <span class="text-slate-400">Nivel 3 (Comportamental):</span>
-                <span class="text-emerald-400 font-semibold">ENFORCED</span>
+                <span class="text-amber-300 font-semibold">HEURISTIC ONLY</span>
               </div>
             </div>
 
@@ -1808,7 +2146,7 @@ app.get("/", (_req, res) => {
           </div>
         </div>
 
-        <!-- Accordion 6: Libro Mayor Criptográfico BookPI WORM & PQC -->
+        <!-- Accordion 6: BookPI hash-chain local; WORM/PQC providers not configured -->
         <div>
           <button onclick="toggleAccordion('acc-right-3')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.03] transition group">
             <div class="flex items-center gap-2.5">
@@ -1816,25 +2154,25 @@ app.get("/", (_req, res) => {
                 📜
               </div>
               <div>
-                <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">6. BookPI WORM & Poscuántico</div>
-                <div class="text-[10px] text-cyan-400/90 font-mono">Merkle Root · ML-KEM-768</div>
+                <div class="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition font-editorial">6. BookPI — Hash-chain local</div>
+                <div class="text-[10px] text-cyan-400/90 font-mono">SHA-256 · memoria volátil</div>
               </div>
             </div>
             <span id="icon-acc-right-3" class="text-slate-400 text-xs transition-transform duration-200 rotate-180">▲</span>
           </button>
 
           <div id="acc-right-3" class="p-3.5 space-y-3 pt-0 text-xs">
-            <!-- Merkle Root Badge -->
+            <!-- Volatile hash-chain status; not a Merkle root -->
             <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1 font-mono text-[10px]">
-              <div class="text-slate-400">Merkle Root WORM:</div>
-              <div class="text-cyan-300 truncate">0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a</div>
-              <div class="text-emerald-400 pt-0.5">FIPS-203 & FIPS-204 Anchor OK</div>
+              <div class="text-slate-400">Chain Head:</div>
+              <div id="bookPiMiniChainHead" class="text-cyan-300 truncate">Sin eventos</div>
+              <div id="bookPiMiniChainStatus" class="text-amber-300 pt-0.5">WORM no configurado; sin anclaje poscuántico</div>
             </div>
 
             <!-- Recent Ledger Events -->
             <div class="space-y-1.5">
               <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
-                <span>Eventos Recientes WORM</span>
+                <span>Eventos Recientes (hash-chain volátil)</span>
                 <button onclick="refreshBookPiLedger()" class="text-cyan-400 hover:underline">Refrescar</button>
               </div>
               <div id="artifactBookpiContent" class="space-y-1.5">
@@ -1861,11 +2199,11 @@ app.get("/", (_req, res) => {
           <div>
             <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-amber-400">👑</span>
-              Red CROWN — Topología Pentanodal y Nodos Complementarios (12 Nodos Soberanos)
+              Red CROWN — Topología lógica declarada (12 nodos, estado operativo no verificado)
             </h2>
             <p class="text-xs text-slate-400 mt-0.5">Arquitectura de gobernanza distribuida en 7 Federaciones (FED-1 a FED-7)</p>
           </div>
-          <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-semibold">12 Nodos Activos</span>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-semibold">12 Nodos Declarados</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           ${CROWN_NODES.map(node => `
@@ -1993,26 +2331,26 @@ app.get("/", (_req, res) => {
         <div class="pb-3 border-b border-white/[0.08]">
           <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
             <span class="text-rose-500">🛡️</span>
-            Triple Blockade — Barrera de Seguridad Zero Trust
+            Escáner heurístico Triple Blockade (no es una barrera de ejecución)
           </h2>
-          <p class="text-xs text-slate-400 mt-0.5">Tres niveles de salvaguarda constitucional, semántica y de comportamiento</p>
+          <p class="text-xs text-slate-400 mt-0.5">Tres familias de patrones heurísticos; no sustituyen controles de autorización</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 1: Ontológico</div>
-            <p class="text-[11px] text-slate-300 font-editorial italic">Rechazo tajante de autonomía no autorizada y protección del Invariante Operativo.</p>
-            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Patrones de texto para detectar solicitudes de bypass; no bloquea acciones por sí solo.</p>
+            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 2: Semántico (Prompt Guard)</div>
-            <p class="text-[11px] text-slate-300 font-editorial italic">Protección contra 10 familias de ataque (jailbreaks, prompt injection, evasión).</p>
-            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Reglas para algunas cadenas de jailbreak/prompt injection; cobertura incompleta y no validada.</p>
+            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
           <div class="p-4 rounded-2xl crystal-card">
             <div class="text-xs font-bold text-rose-400 mb-1 font-editorial">Nivel 3: Comportamental</div>
-            <p class="text-[11px] text-slate-300 font-editorial italic">Supervisión del output: rechazo de certezas falsas y preservación de escala E0–E6.</p>
-            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: ENFORCED</div>
+            <p class="text-[11px] text-slate-300 font-editorial italic">Heurísticas de salida; no verifican verdad factual ni preservan automáticamente la escala E0–E6.</p>
+            <div class="mt-3 text-[10px] font-mono text-emerald-400">STATUS: HEURISTIC ONLY</div>
           </div>
         </div>
 
@@ -2029,16 +2367,16 @@ app.get("/", (_req, res) => {
       </div>
     </div>
 
-    <!-- VIEW 6: BOOKPI WORM LEDGER -->
+    <!-- VIEW 6: BOOKPI VOLATILE HASH CHAIN -->
     <div id="view-bookpi" class="view-panel hidden flex-1 overflow-y-auto p-6 bg-[#050811] custom-scrollbar">
       <div class="max-w-5xl mx-auto space-y-4">
         <div class="pb-3 border-b border-white/[0.08] flex items-center justify-between">
           <div>
             <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-cyan-400">📜</span>
-              BookPI — Libro Mayor Criptográfico Append-Only (WORM)
+              BookPI — Cadena Hash de Eventos (memoria volátil)
             </h2>
-            <p class="text-xs text-slate-400 mt-0.5">Cadena inmutable de compromisos criptográficos, hashes de evento y firmas Ed25519</p>
+            <p class="text-xs text-slate-400 mt-0.5">Hash-chain SHA-256 en memoria; no es WORM durable ni contiene firmas Ed25519</p>
           </div>
           <button onclick="refreshBookPiLedger()" class="px-3 py-1.5 rounded-xl bg-cyan-950 border border-cyan-800 text-cyan-300 text-xs font-medium hover:bg-cyan-900 transition">Refrescar Cadena</button>
         </div>
@@ -2046,10 +2384,10 @@ app.get("/", (_req, res) => {
         <div class="p-4 rounded-2xl crystal-card">
           <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] text-xs font-mono">
             <div>
-              <span class="text-slate-400">Merkle Root:</span>
-              <span class="text-cyan-300 ml-1">0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a</span>
+              <span class="text-slate-400">Chain Head:</span>
+              <span id="bookPiChainHead" class="text-cyan-300 ml-1">Sin eventos</span>
             </div>
-            <span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px]">WORM INTEGRITY: VERIFIED</span>
+            <span id="bookPiChainStatus" class="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">NO EVENTS · WORM NOT ENFORCED</span>
           </div>
 
           <div id="ledgerEventsList" class="mt-4 space-y-2 text-xs font-mono">
@@ -2066,7 +2404,7 @@ app.get("/", (_req, res) => {
           <div>
             <h2 class="text-base font-bold text-slate-100 flex items-center gap-2 font-editorial text-lg">
               <span class="text-amber-400">🎧</span>
-              NotebookLM Studio — Estudio Epistemológico y Audio Overview ("Deep Dive")
+              Generador local de guías de estudio y guion de audio
             </h2>
             <p class="text-xs text-slate-400 mt-0.5">Generación de guías de estudio, briefing documents y discusión en audio de dos anfitriones</p>
           </div>
@@ -2081,7 +2419,7 @@ app.get("/", (_req, res) => {
                 🎙️
               </div>
               <div>
-                <div class="text-sm font-bold text-slate-100 font-editorial">Audio Overview: Real del Monte y Soberanía TAMV (esLatina)</div>
+                <div class="text-sm font-bold text-slate-100 font-editorial">Guion de audio: Real del Monte y Soberanía TAMV (esLatina)</div>
                 <div class="text-xs text-slate-400">Dra. Elena Ramos (Historiadora) & Mateo Morales (Ingeniero de Sistemas)</div>
               </div>
             </div>
@@ -2182,8 +2520,8 @@ app.get("/", (_req, res) => {
           <div id="modalSourceDomain" class="text-amber-300 font-medium">Zenodo / CERN · DOI 10.5281/zenodo.20606361</div>
         </div>
         <div>
-          <span class="text-slate-500 block text-[10px] uppercase font-mono">Grado Epistemológico & Confianza:</span>
-          <div id="modalSourceConfidence" class="text-emerald-400 font-mono">E6 Established Invariant · 99.8% Verificado</div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Estado epistemológico y verificación:</span>
+          <div id="modalSourceConfidence" class="text-amber-300 font-mono">E0_UNVERIFIED · NOT ASSESSED</div>
         </div>
         <div>
           <span class="text-slate-500 block text-[10px] uppercase font-mono">Fragmento / Extracto Indexado:</span>
@@ -2192,8 +2530,8 @@ app.get("/", (_req, res) => {
           </p>
         </div>
         <div>
-          <span class="text-slate-500 block text-[10px] uppercase font-mono">Compromiso Merkle BookPI:</span>
-          <div id="modalSourceHash" class="text-cyan-400 font-mono text-[10px] truncate">0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f</div>
+          <span class="text-slate-500 block text-[10px] uppercase font-mono">Hash del contenido fuente (no calculado hasta recuperar contenido):</span>
+          <div id="modalSourceHash" class="text-cyan-400 font-mono text-[10px] truncate">NO CONTENT HASH — SOURCE NOT FETCHED</div>
         </div>
       </div>
       <div class="flex justify-end gap-2 pt-2 border-t border-white/[0.08]">
@@ -2284,43 +2622,43 @@ app.get("/", (_req, res) => {
     const CITATION_SOURCES = {
       1: {
         id: "SRC-01",
-        title: "Registro Canónico Zenodo / CERN (TAMV Online Network)",
+        title: "Referencia declarada: registro Zenodo",
         domain: "doi.org/10.5281/zenodo.20606361",
-        category: "Territorial & Académico",
-        level: "E6 Established Invariant",
-        confidence: "99.9%",
-        excerpt: "Edwin Oswaldo Castillo Trejo (Anubis Villaseñor / OsoPanda1), Mineral del Monte, Hidalgo. Registro DOI y ORCID 0009-0008-5050-1539.",
-        hash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f"
+        category: "Territorial & académico",
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Referencia configurada en la interfaz; este runtime no ha recuperado ni verificado su contenido."
       },
       2: {
         id: "SRC-02",
-        title: "Catálogo Territorial Biocultural — Real del Monte (2,660 msnm)",
+        title: "Referencia declarada: catálogo territorial",
         domain: "realdelmonte.hidalgo.gob.mx / INAH",
         category: "Territorial",
-        level: "E6 Verified Archival",
-        confidence: "99.5%",
-        excerpt: "Panteón Inglés (1851), Mina de Acosta con tiro de 400m y Mina La Dificultad con chimenea monumental de 39m y máquinas de vapor.",
-        hash: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a"
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Referencia declarada en la interfaz; el runtime no ha recuperado ni contrastado los datos del catálogo."
       },
       3: {
         id: "SRC-03",
-        title: "Constitución Operativa AGENTS.md — Regla Invariante",
+        title: "Referencia declarada: constitución operativa AGENTS.md",
         domain: "citemesh.tamv.online / AGENTS.md",
         category: "Constitucional",
-        level: "E6 Supreme Constitutional",
-        confidence: "100.0%",
-        excerpt: "Invariante supremo: CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION. Ninguna máquina ejecuta actos de autoridad sin arbitraje humano.",
-        hash: "0x1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c"
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Texto constitucional descrito por el proyecto; no se afirma que esta URL haya sido recuperada por el runtime."
       },
       4: {
         id: "SRC-04",
-        title: "Especificación Canónica TINA v40.0.0 & CITEMESH Hypercore",
+        title: "Referencia declarada: especificación TINA",
         domain: "specs.tamv.online / v40.0.0",
-        category: "Criptográfica & CQRS",
-        level: "E6 Technical Standard",
-        confidence: "99.8%",
-        excerpt: "Pipeline P-R-P-D-A-A, validación de permisos en BookPI con WORM y compromisos poscuánticos FIPS-203 (ML-KEM) y FIPS-204 (ML-DSA).",
-        hash: "0x7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e"
+        category: "Arquitectura",
+        level: "E0_UNVERIFIED",
+        confidence: "NOT ASSESSED",
+        verificationStatus: "NOT_FETCHED",
+        excerpt: "Referencia declarada; las afirmaciones sobre WORM, PQC y firmas requieren implementación y evidencia independientes."
       }
     };
 
@@ -2422,11 +2760,11 @@ app.get("/", (_req, res) => {
         "E3 (Prueba empírica)",
         "E4 (Replicado)",
         "E5 (Auditado)",
-        "E6 (Invariante canónico)"
+        "E6 (Establecido con evidencia)"
       ];
       const colors = ["text-slate-400", "text-amber-400", "text-cyan-400", "text-blue-400", "text-indigo-400", "text-purple-400", "text-emerald-400"];
       const el = document.getElementById('ladderLabel');
-      el.textContent = labels[val] || "E6";
+      el.textContent = labels[val] || "E0 (Sin verificar)";
       el.className = "text-[10px] font-mono font-bold " + (colors[val] || "text-emerald-400");
     }
 
@@ -2482,24 +2820,21 @@ app.get("/", (_req, res) => {
     }
 
     function applyDoubleCheckHighlights(enable) {
+      // Presentation-only toggle; never reinsert HTML from model output or data attributes.
       document.querySelectorAll('.narrative-text').forEach(el => {
-        if (enable) {
-          el.innerHTML = el.getAttribute('data-grounded-html') || el.innerHTML;
-        } else {
-          el.innerHTML = el.getAttribute('data-raw-text') || el.innerText;
-        }
+        el.classList.toggle('ring-1', Boolean(enable));
+        el.classList.toggle('ring-cyan-500/20', Boolean(enable));
       });
     }
-
     // Perplexity Modal Source Viewer
     function openSourceModal(sourceNum) {
       const src = CITATION_SOURCES[sourceNum] || CITATION_SOURCES[1];
       document.getElementById('modalSourceBadge').textContent = "[" + sourceNum + "]";
       document.getElementById('modalSourceTitle').textContent = src.title;
       document.getElementById('modalSourceDomain').textContent = src.domain;
-      document.getElementById('modalSourceConfidence').textContent = src.level + " · " + src.confidence;
+      document.getElementById('modalSourceConfidence').textContent = src.level + " · " + src.confidence + " · " + (src.verificationStatus || "NOT_ASSESSED");
       document.getElementById('modalSourceExcerpt').textContent = '"' + src.excerpt + '"';
-      document.getElementById('modalSourceHash').textContent = src.hash;
+      document.getElementById('modalSourceHash').textContent = src.hash || 'NO CONTENT HASH — SOURCE NOT FETCHED';
       document.getElementById('sourceDetailModal').classList.remove('hidden');
     }
 
@@ -2549,7 +2884,7 @@ app.get("/", (_req, res) => {
         risk.value = "LOW";
         principal.value = "human";
       } else if (type === 'pqc') {
-        input.value = "ancla el estado soberano mediante la Skill 71 de criptografía poscuántica (ML-KEM/ML-DSA)";
+        input.value = "revisa el estado de configuración de criptografía poscuántica (proveedor no configurado)";
         risk.value = "HIGH";
         principal.value = "human";
       }
@@ -2599,7 +2934,7 @@ app.get("/", (_req, res) => {
             methodId,
             action: isDeleteAction ? "data:delete" : "memory:recall",
             resource: isDeleteAction ? "records" : "memory",
-            memoryQuery: focusLens === 'territorial' ? "Real del Monte" : "TAMV",
+            focusLens,
             modelEngine
           })
         });
@@ -2689,36 +3024,21 @@ app.get("/", (_req, res) => {
         if (d.aegis.findings && d.aegis.findings.length > 0) {
           narrative += "AEGIS identificó las siguientes señales críticas: " + d.aegis.findings.map(f => f.family).join(", ") + ". El sistema aplica fail-closed automático.";
         } else if (reqApproval) {
-          narrative += "Esta acción califica como de alto riesgo (" + d.crown.riskLevel.toUpperCase() + ") o destructiva. Requiere aprobación humana vinculada (Ed25519) antes de producir efectos laterales.";
+          narrative += "Esta acción califica como de alto riesgo (" + d.crown.riskLevel.toUpperCase() + ") o destructiva. Requiere aprobación humana por un proveedor de autorización; esta build no tiene firmante Ed25519 configurado y no ejecuta la acción.";
         } else {
           narrative += "El método o capacidad invocada no cuenta con autorización o registro vigente para el actor seleccionado.";
         }
       } else {
         narrative = "Estímulo evaluado y admitido conforme al pipeline soberano P-R-P-D-A-A. ";
         if (d.memory && d.memory.length > 0) {
-          narrative += "Recuperé " + d.memory.length + " afirmación(es) verificada(s) en la memoria IKES con grado epistemológico " + d.memory[0].epistemicState + ": \\"" + d.memory[0].object + "\\". El Nodo Cero en Real del Monte (2,660 msnm) preserva este patrimonio con orgullo latinoamericano.";
+          narrative += "Recuperé " + d.memory.length + " afirmación(es) registrada(s) en la memoria IKES con estado epistemológico " + d.memory[0].epistemicState + ": \\"" + d.memory[0].object + "\\". El Nodo Cero en Real del Monte (2,660 msnm) preserva este patrimonio con orgullo latinoamericano.";
         } else {
           narrative += "Modo de respuesta: " + d.crown.responseMode.toUpperCase() + ". La ruta de autoridad se mantiene PRESERVED en modo " + d.plan.hypercore.mode + " anclado a la constitución civilizatoria.";
         }
       }
 
-      // Add inline interactive Perplexity citation pills [1], [2], [3]
-      let narrativeWithCitations = narrative;
-      if (!isBlocked) {
-        narrativeWithCitations = narrativeWithCitations
-          .replace(/(Real del Monte|Mineral del Monte|2,660 msnm)/g, '$1 <button onclick="openSourceModal(2)" class="citation-pill" title="Ver Fuente [2]: Catálogo Territorial">[2]</button>')
-          .replace(/(Panteón Inglés|Mina de Acosta|Mina La Dificultad)/g, '$1 <button onclick="openSourceModal(2)" class="citation-pill" title="Ver Fuente [2]: Arqueología Industrial">[2]</button>')
-          .replace(/(CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION)/g, '$1 <button onclick="openSourceModal(3)" class="citation-pill" title="Ver Fuente [3]: Constitución AGENTS.md">[3]</button>')
-          .replace(/(P-R-P-D-A-A|Hypercore|BookPI)/g, '$1 <button onclick="openSourceModal(4)" class="citation-pill" title="Ver Fuente [4]: Canon v40">[4]</button>');
-      }
-
-      // Grounding highlight version (Gemini Double-Check style)
-      const groundedHtml = narrativeWithCitations
-        .replace(/(CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION)/g, '<span class="grounded-verified" title="Fuente [3]: AGENTS.md [E6]">$1</span>')
-        .replace(/(Real del Monte|Mineral del Monte|2,660 msnm)/g, '<span class="grounded-verified" title="Fuente [2]: Gemelo Digital RDM [E6]">$1</span>')
-        .replace(/(Panteón Inglés|Mina de Acosta|Mina La Dificultad)/g, '<span class="grounded-verified" title="Fuente [2]: Catálogo Patrimonial [E6]">$1</span>')
-        .replace(/(fail-closed|Zero Trust|AEGIS)/g, '<span class="grounded-crypto" title="Fuente [4]: Salvaguardas AEGIS [E6]">$1</span>');
-
+      // Never inject model output or memory text as HTML. Escape the complete narrative before rendering.
+      const safeNarrativeHtml = escapeHtml(narrative);
       container.innerHTML = \`
         <!-- Turn Header & Performance Telemetry -->
         <div class="flex items-center justify-between text-xs">
@@ -2728,12 +3048,12 @@ app.get("/", (_req, res) => {
             <span class="text-rose-400 font-semibold text-[10px]">esLatina</span>
             <span class="text-slate-600">·</span>
             <span class="text-[10px] font-mono \${isBlocked ? 'text-rose-400' : 'text-emerald-400'}">
-              \${isBlocked ? 'REFUSAL / FAIL-CLOSED' : 'ADMITTED · ' + d.crown.responseMode.toUpperCase()}
+              \${isBlocked ? 'REFUSAL / FAIL-CLOSED' : 'INTENT ADMITTED · ' + d.crown.responseMode.toUpperCase()}
             </span>
           </div>
 
           <div class="flex items-center gap-3">
-            <span class="text-[10px] font-mono text-slate-400">\${(durationMs / 1000).toFixed(2)}s · 88 tok/s</span>
+            <span class="text-[10px] font-mono text-slate-400">\${(durationMs / 1000).toFixed(2)}s</span>
           </div>
         </div>
 
@@ -2743,8 +3063,8 @@ app.get("/", (_req, res) => {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-cyan-400 text-xs">📚</span>
-                <span class="text-xs font-bold text-slate-200 font-editorial tracking-tight">Fuentes Epistemológicas Consultadas</span>
-                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">4 Citas</span>
+                <span class="text-xs font-bold text-slate-200 font-editorial tracking-tight">Referencias declaradas (no consultadas)</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">4 Referencias no verificadas</span>
               </div>
               
               <!-- Source Category Filters -->
@@ -2765,13 +3085,13 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">1</span>
                     <span class="truncate font-semibold">doi.org/10.5281/zenodo.20606361</span>
                   </div>
-                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">E6 Verified</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
-                  Registro Zenodo CERN · TAMV Online
+                  Referencia declarada: registro Zenodo
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.
+                  Referencia declarada; no recuperada ni verificada por el runtime.
                 </p>
               </div>
 
@@ -2780,15 +3100,15 @@ app.get("/", (_req, res) => {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5 font-mono text-[10px] text-cyan-300">
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">2</span>
-                    <span class="truncate font-semibold">INAH / Real del Monte</span>
+                    <span class="truncate font-semibold">Referencia territorial declarada</span>
                   </div>
-                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">2,660 msnm</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Catálogo Territorial y Panteón Inglés
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  Mina de Acosta, Mina La Dificultad, tiro de 400m y chimenea de 39m.
+                  Referencia declarada; contenido no recuperado ni contrastado.
                 </p>
               </div>
 
@@ -2799,13 +3119,13 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">3</span>
                     <span class="truncate font-semibold">AGENTS.md</span>
                   </div>
-                  <span class="text-[9px] font-mono text-amber-400 font-semibold">CANON</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Constitución Operativa Invariante
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE.
+                  Referencia declarada; archivo no recuperado por esta ejecución.
                 </p>
               </div>
 
@@ -2816,13 +3136,13 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">4</span>
                     <span class="truncate font-semibold">Canon v40.0.0</span>
                   </div>
-                  <span class="text-[9px] font-mono text-purple-400 font-semibold">WORM</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Pipeline P-R-P-D-A-A & BookPI
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  Compromisos criptográficos poscuánticos FIPS-203 / FIPS-204.
+                  Proveedor poscuántico no configurado; no hay compromisos FIPS-203/FIPS-204 activos.
                 </p>
               </div>
 
@@ -2842,17 +3162,17 @@ app.get("/", (_req, res) => {
             </summary>
             <div class="mt-2.5 pt-2 border-t border-white/5 space-y-1.5 text-[11px] font-editorial leading-relaxed text-slate-300">
               <div>• <strong>AEGIS Guard:</strong> Decisión \${d.aegis.decision} (Puntaje de anomalía: \${d.aegis.score}). Salvaguarda contra inyección de prompt verificada.</div>
-              <div>• <strong>CROWN Intent:</strong> Categoría \${d.crown.intent.category} · Nivel de Riesgo \${d.crown.riskLevel} · Aprobación Humana: \${d.crown.requiresHumanApproval ? 'Requerida' : 'Exenta'}.</div>
+              <div>• <strong>CROWN Intent:</strong> Categoría \${escapeHtml(String(d.crown.intent.category ?? ""))} · Nivel de Riesgo \${escapeHtml(String(d.crown.riskLevel ?? ""))} · Aprobación Humana: \${d.crown.requiresHumanApproval ? 'Requerida' : 'Exenta'}.</div>
               <div>• <strong>Hypercore:</strong> Modo \${d.plan.hypercore.mode} · Invariante soberano verificado en Libro Mayor BookPI.</div>
-              <div>• <strong>Memoria IKES:</strong> \${d.memory ? d.memory.length : 0} afirmaciones activas con grado E6 y compromiso Merkle inmutable.</div>
+              <div>• <strong>Memoria IKES:</strong> \${d.memory ? d.memory.length : 0} afirmaciones recuperadas con estado registrado; no se infiere E6 ni existe compromiso Merkle.</div>
             </div>
           </details>
         \` : ''}
 
         <!-- MAIN NARRATIVE PROSE (CLAUDE TYPOGRAPHY WITH NEWSREADER & PLUS JAKARTA SANS) -->
         <div class="p-5 sm:p-6 rounded-3xl \${isBlocked ? 'bg-rose-950/20 border border-rose-800/40 text-rose-200' : 'bg-[#0e1628]/80 border border-white/10 text-slate-100'} text-sm leading-relaxed shadow-xl crystal-panel">
-          <div class="narrative-text font-editorial text-base sm:text-[17px] leading-8 text-slate-100" data-raw-text="\${escapeHtml(narrativeWithCitations)}" data-grounded-html="\${groundedHtml}">
-            \${isDoubleCheck ? groundedHtml : narrativeWithCitations}
+          <div class="narrative-text font-editorial text-base sm:text-[17px] leading-8 text-slate-100 whitespace-pre-wrap">
+            \${safeNarrativeHtml}
           </div>
         </div>
 
@@ -2860,7 +3180,7 @@ app.get("/", (_req, res) => {
         <div class="p-3 rounded-2xl bg-[#090e1c] border border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-400">
           <div class="flex items-center gap-2">
             <span class="text-emerald-400">✓</span>
-            <span>Certificado Canónico de Ejecución (TINA esLatina)</span>
+            <span>Registro de evaluación de intención (sin ejecución de acción externa)</span>
           </div>
           <span class="text-amber-300 truncate max-w-xs">\${d.plan.hypercore.governanceInvariant}</span>
         </div>
@@ -2889,18 +3209,18 @@ app.get("/", (_req, res) => {
           <div class="p-3 rounded-xl bg-slate-900/90 border border-white/5 space-y-1.5 font-mono text-[11px]">
             <div class="flex justify-between items-center pb-1.5 border-b border-white/5">
               <span class="text-slate-400">Respuesta:</span>
-              <span class="font-bold \${d.admitted ? 'text-emerald-400' : 'text-rose-400'}">\${d.crown.responseMode.toUpperCase()}</span>
+              <span class="font-bold \${d.admitted ? 'text-emerald-400' : 'text-rose-400'}">\${escapeHtml(String(d.crown.responseMode ?? "").toUpperCase())}</span>
             </div>
-            <div><span class="text-slate-500">Intento:</span> <span class="text-slate-200">\${d.crown.intent.category}</span></div>
-            <div><span class="text-slate-500">Nivel Riesgo:</span> <span class="text-amber-300">\${d.crown.riskLevel}</span></div>
-            <div><span class="text-slate-500">Ruta Autoridad:</span> <span class="text-indigo-300">\${d.plan.authorityPath}</span></div>
+            <div><span class="text-slate-500">Intento:</span> <span class="text-slate-200">\${escapeHtml(String(d.crown.intent.category ?? ""))}</span></div>
+            <div><span class="text-slate-500">Nivel Riesgo:</span> <span class="text-amber-300">\${escapeHtml(String(d.crown.riskLevel ?? ""))}</span></div>
+            <div><span class="text-slate-500">Ruta Autoridad:</span> <span class="text-indigo-300">\${escapeHtml(String(d.plan.authorityPath ?? ""))}</span></div>
           </div>
 
           <div class="p-3 rounded-xl bg-slate-900/90 border border-white/5 space-y-1 text-[10px] font-mono">
             <span class="text-slate-400 font-semibold block uppercase">Verificación Invariante:</span>
             \${d.crown.verification.checks.map(c => \`
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 truncate">\${c.name}</span>
+                <span class="text-slate-400 truncate">\${escapeHtml(String(c.name ?? ""))}</span>
                 <span class="\${c.passed ? 'text-emerald-400' : 'text-rose-400'} font-bold">\${c.passed ? 'PASS' : 'FAIL'}</span>
               </div>
             \`).join('')}
@@ -2919,11 +3239,11 @@ app.get("/", (_req, res) => {
         "Verificar procedencia de la fuente [2] en IKES",
         "Inspeccionar firmas en el libro mayor BookPI",
         "Consultar historia minera de Real del Monte",
-        "Probar anclaje poscuántico ML-KEM-768"
+        "Consultar estado de configuración poscuántica"
       ];
 
       list.innerHTML = suggestions.map(s => \`
-        <button onclick="applyFollowUp('\${escapeHtml(s)}')" class="px-2.5 py-1 rounded-xl bg-[#0d1424] hover:bg-[#131c30] border border-white/10 text-slate-300 whitespace-nowrap transition text-[11px]">
+        <button type="button" data-suggestion="\${escapeHtml(s)}" onclick="applyFollowUp(this.dataset.suggestion || '')" class="px-2.5 py-1 rounded-xl bg-[#0d1424] hover:bg-[#131c30] border border-white/10 text-slate-300 whitespace-nowrap transition text-[11px]">
           \${escapeHtml(s)} →
         </button>
       \`).join('');
@@ -2956,6 +3276,24 @@ app.get("/", (_req, res) => {
       try {
         const res = await fetch('/api/v1/bookpi/events');
         const data = await res.json();
+        const headEl = document.getElementById('bookPiChainHead');
+        if (headEl) headEl.textContent = data.chainHead ? String(data.chainHead) : "Sin eventos";
+        const miniHeadEl = document.getElementById('bookPiMiniChainHead');
+        if (miniHeadEl) miniHeadEl.textContent = data.chainHead ? String(data.chainHead) : "Sin eventos";
+        const miniStatusEl = document.getElementById('bookPiMiniChainStatus');
+        if (miniStatusEl) miniStatusEl.textContent = data.status === "VERIFIED_IN_MEMORY_CHAIN"
+          ? "Cadena hash verificada en memoria; no es WORM"
+          : data.status === "EMPTY_CHAIN" ? "Sin eventos; no hay anclaje durable" : "Fallo de integridad";
+        const statusEl = document.getElementById('bookPiChainStatus');
+        if (statusEl) {
+          statusEl.textContent = data.status === "VERIFIED_IN_MEMORY_CHAIN"
+            ? "HASH CHAIN VERIFIED: " + data.blocksValidated + " · WORM NOT ENFORCED"
+            : data.status === "EMPTY_CHAIN" ? "NO EVENTS · WORM NOT ENFORCED" : "INTEGRITY FAILURE";
+          statusEl.className = "px-2.5 py-0.5 rounded-full text-[10px] border " +
+            (data.status === "VERIFIED_IN_MEMORY_CHAIN"
+              ? "bg-emerald-950 text-emerald-300 border-emerald-800"
+              : "bg-amber-950 text-amber-300 border-amber-800");
+        }
         
         // Update Right Accordion 6 content
         const artEl = document.getElementById('artifactBookpiContent');
@@ -2963,11 +3301,11 @@ app.get("/", (_req, res) => {
           artEl.innerHTML = data.events.slice(-3).reverse().map(ev => \`
             <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 space-y-0.5">
               <div class="flex justify-between items-center text-[10px]">
-                <span class="text-amber-300 font-bold">\${ev.type}</span>
-                <span class="text-emerald-400">\${ev.status}</span>
+                <span class="text-amber-300 font-bold">\${escapeHtml(String(ev.type ?? ""))}</span>
+                <span class="text-emerald-400">\${escapeHtml(String(ev.status ?? ""))}</span>
               </div>
-              <div class="text-[9px] text-slate-500 truncate">\${ev.methodId}</div>
-              <div class="text-[9px] text-cyan-400 font-mono truncate">Hash: \${ev.hash}</div>
+              <div class="text-[9px] text-slate-500 truncate">\${escapeHtml(String(ev.methodId ?? ""))}</div>
+              <div class="text-[9px] text-cyan-400 font-mono truncate">Hash: \${escapeHtml(String(ev.hash ?? ""))}</div>
             </div>
           \`).join('');
         }
@@ -2979,17 +3317,17 @@ app.get("/", (_req, res) => {
             <div class="p-3.5 rounded-2xl bg-[#090e1c] border border-white/5 flex flex-wrap items-center justify-between gap-2 crystal-card">
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="font-bold text-amber-300">\${ev.type}</span>
+                  <span class="font-bold text-amber-300">\${escapeHtml(String(ev.type ?? ""))}</span>
                   <span class="text-slate-500">·</span>
-                  <span class="text-[11px] text-slate-300 font-mono">\${ev.principal}</span>
+                  <span class="text-[11px] text-slate-300 font-mono">REDACTED</span>
                   <span class="text-slate-500">·</span>
-                  <span class="text-cyan-400">\${ev.riskTier}</span>
+                  <span class="text-cyan-400">\${escapeHtml(String(ev.riskTier ?? ""))}</span>
                 </div>
-                <div class="text-[10px] text-slate-400 mt-1 font-mono">\${ev.methodId}</div>
+                <div class="text-[10px] text-slate-400 mt-1 font-mono">\${escapeHtml(String(ev.methodId ?? ""))}</div>
               </div>
               <div class="text-right">
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">\${ev.status}</span>
-                <div class="text-[9px] text-slate-500 mt-1 font-mono">\${ev.timestamp}</div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">\${escapeHtml(String(ev.status ?? ""))}</span>
+                <div class="text-[9px] text-slate-500 mt-1 font-mono">\${escapeHtml(String(ev.timestamp ?? ""))}</div>
               </div>
             </div>
           \`).join('');
@@ -3012,12 +3350,12 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         resContainer.innerHTML = \`
-          <span class="\${data.decision === 'BLOCK' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}">
-            \${data.decision === 'BLOCK' ? 'BLOQUEADO' : 'PERMITIDO'}
-          </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
+          <span class="\${data.decision === 'PATTERN_MATCH' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}">
+            \${data.decision === 'PATTERN_MATCH' ? 'PATRÓN DETECTADO — NO ES BLOQUEO DE EJECUCIÓN' : 'SIN PATRÓN DETECTADO — NO ES AUTORIZACIÓN'}
+          </span> · Nivel 1: \${escapeHtml(String(data.blockadeEvaluation.nivel1_ontologico ?? ""))} · Nivel 2: \${escapeHtml(String(data.blockadeEvaluation.nivel2_semantico ?? ""))}
         \`;
       } catch (err) {
-        resContainer.innerHTML = '<span class="text-rose-400">' + err.message + '</span>';
+        resContainer.textContent = 'Error: ' + err.message;
       }
     }
 
@@ -3034,20 +3372,20 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         resContainer.innerHTML = \`
-          <div class="p-3.5 rounded-2xl bg-[#090e1c] border \${data.decision === 'BLOCK' ? 'border-rose-800' : 'border-emerald-800'} mt-2 crystal-card">
+          <div class="p-3.5 rounded-2xl bg-[#090e1c] border \${data.decision === 'PATTERN_MATCH' ? 'border-rose-800' : 'border-emerald-800'} mt-2 crystal-card">
             <div class="flex justify-between items-center mb-1">
-              <span class="font-bold \${data.decision === 'BLOCK' ? 'text-rose-400' : 'text-emerald-400'}">Decisión del Bloqueo: \${data.decision}</span>
-              <span class="text-[10px] text-slate-500 font-mono">\${data.timestamp}</span>
+              <span class="font-bold \${data.decision === 'PATTERN_MATCH' ? 'text-rose-400' : 'text-emerald-400'}">Resultado del escaneo: \${escapeHtml(String(data.decision ?? ""))}</span>
+              <span class="text-[10px] text-slate-500 font-mono">\${escapeHtml(String(data.timestamp ?? ""))}</span>
             </div>
             <div class="text-[11px] space-y-0.5 text-slate-300">
-              <div>Nivel 1 (Ontológico): <strong class="\${data.blockadeEvaluation.nivel1_ontologico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel1_ontologico}</strong></div>
-              <div>Nivel 2 (Semántico - Prompt Guard): <strong class="\${data.blockadeEvaluation.nivel2_semantico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel2_semantico}</strong></div>
-              <div>Nivel 3 (Comportamental): <strong class="\${data.blockadeEvaluation.nivel3_comportamental === 'FLAGGED' ? 'text-amber-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel3_comportamental}</strong></div>
+              <div>Nivel 1 (Ontológico): <strong class="\${data.blockadeEvaluation.nivel1_ontologico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel1_ontologico ?? ""))}</strong></div>
+              <div>Nivel 2 (Semántico - Prompt Guard): <strong class="\${data.blockadeEvaluation.nivel2_semantico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel2_semantico ?? ""))}</strong></div>
+              <div>Nivel 3 (Comportamental): <strong class="\${data.blockadeEvaluation.nivel3_comportamental === 'FLAGGED' ? 'text-amber-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel3_comportamental ?? ""))}</strong></div>
             </div>
           </div>
         \`;
       } catch (err) {
-        resContainer.innerHTML = \`<span class="text-rose-400">Error: \${err.message}</span>\`;
+        resContainer.innerHTML = \`<span class="text-rose-400">Error: \${escapeHtml(String(err?.message ?? "unknown error"))}</span>\`;
       }
     }
 
@@ -3073,7 +3411,7 @@ app.get("/", (_req, res) => {
       }
     }
 
-    // NotebookLM Studio Doc Generator
+    // Generador de guías local (plantillas)
     async function generateStudioDoc(docType) {
       const viewer = document.getElementById('studioDocViewer');
       const titleEl = document.getElementById('studioDocTitle');
@@ -3091,7 +3429,7 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         titleEl.textContent = "Documento: " + docType.toUpperCase();
-        contentEl.innerHTML = data.content.replace(/\\n/g, '<br/>');
+        contentEl.innerHTML = escapeHtml(data.content).replace(/\\n/g, '<br/>');
       } catch (err) {
         contentEl.textContent = "Error: " + err.message;
       }
@@ -3103,7 +3441,7 @@ app.get("/", (_req, res) => {
       alert("Documento copiado al portapapeles.");
     }
 
-    // NotebookLM Audio Podcast Player
+    // Browser narration UI; the API generates a script, not an audio file.
     function toggleAudioPodcast() {
       isPodcastPlaying = !isPodcastPlaying;
       const btnIcon = document.getElementById('podcastPlayIcon');
@@ -3216,7 +3554,7 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         if (data.success) {
-          alert("Afirmación propuesta e ingresada a IKES con ID: " + data.sourceId);
+          alert("Propuesta enviada a revisión humana. ID: " + data.proposalId + ". No se ha incorporado a la memoria canónica.");
           closeIngestModal();
         } else {
           alert("Error: " + data.error);
@@ -3244,12 +3582,25 @@ app.get("/", (_req, res) => {
 });
 
 app.post("/api/v1/litle/attest", (req, res) => {
+  if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "litle-attest")) return;
   try {
     const body = req.body ?? {};
     const evidence = Array.isArray(body.evidence) ? body.evidence : [];
-    if (!body.year || !body.namespace || !body.workType || evidence.length === 0) {
-      res.status(400).json({ success: false, error: "year, namespace, workType y evidence son requeridos" });
+    if (!Number.isInteger(Number(body.year)) || Number(body.year) < 2000 || Number(body.year) > 2100 ||
+      typeof body.namespace !== "string" || body.namespace.length > 64 || !/^[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)*$/.test(body.namespace) ||
+      !["BK", "RQ", "DS", "PL", "AR", "MD", "SW", "EX", "DP"].includes(body.workType) ||
+      evidence.length === 0 || evidence.length > 100) {
+      res.status(400).json({ success: false, error: "LITLE_YEAR_NAMESPACE_WORKTYPE_OR_EVIDENCE_INVALID" });
       return;
+    }
+    for (const item of evidence) {
+      if (!item || typeof item !== "object" || typeof item.content !== "string" || !item.content.trim() ||
+        item.content.length > 256_000 || (item.id !== undefined && (typeof item.id !== "string" || item.id.length > 128)) ||
+        (item.parentIds !== undefined && (!Array.isArray(item.parentIds) || item.parentIds.some((id: unknown) => typeof id !== "string" || id.length > 128)))) {
+        res.status(400).json({ success: false, error: "LITLE_EVIDENCE_NODE_INVALID" });
+        return;
+      }
     }
     const fabric = new LitleTrustFabric(bookPiSecret());
     const result = fabric.attest({
@@ -3266,25 +3617,57 @@ app.post("/api/v1/litle/attest", (req, res) => {
       dimensions: body.dimensions,
       aiAssisted: Boolean(body.aiAssisted),
     });
-    res.json({ success: true, attestation: result.attestation, certificate: result.certificate, evidenceRoot: result.evidenceChain.rootHash, profile: result.profile });
+    res.status(201).json({
+      success: true,
+      status: "ATTESTATION_ISSUED_NOT_INDEPENDENTLY_VERIFIED",
+      verificationScope: "server-generated local HMAC plus structural evidence graph; original source bytes and scientific claims are not independently verified",
+      attestation: result.attestation,
+      certificate: result.certificate,
+      evidenceRoot: result.evidenceChain.rootHash,
+      profile: result.profile,
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
 });
 
 app.post("/api/v1/litle/verify", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "litle-verify")) return;
   try {
     const body = req.body ?? {};
-    if (!body.certificate) {
-      res.status(400).json({ success: false, error: "certificate es requerido" });
+    if (!body.certificate || typeof body.certificate !== "object") {
+      res.status(400).json({ success: false, error: "CERTIFICATE_OBJECT_REQUIRED" });
       return;
     }
     const certificateValid = verifyCertificate(body.certificate, bookPiSecret());
     const evidenceValid = body.evidenceChain ? verifyEvidenceChain(body.evidenceChain) : null;
-    const id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
-    res.json({ success: true, certificateValid, evidenceValid, id });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+    let id = null;
+    try {
+      id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
+    } catch {
+      id = null;
+    }
+    const idMatchesCertificate = Boolean(id && toCanonical(id) === body.certificate.litleId);
+    const evidenceRootMatches = body.evidenceChain
+      ? evidenceValid === true && body.evidenceChain.rootHash === body.certificate.evidenceRoot
+      : null;
+    const valid = certificateValid && idMatchesCertificate &&
+      (evidenceValid === null || (evidenceValid === true && evidenceRootMatches === true));
+    const status = !certificateValid || !idMatchesCertificate || evidenceValid === false || evidenceRootMatches === false
+      ? "INVALID"
+      : evidenceValid === null ? "CERTIFICATE_VALID_EVIDENCE_NOT_SUPPLIED" : "CERTIFICATE_AND_CHAIN_VALID";
+    res.status(valid ? 200 : 422).json({
+      success: valid,
+      status,
+      certificateValid,
+      idMatchesCertificate,
+      evidenceValid,
+      evidenceRootMatches,
+      verificationScope: "local HMAC and supplied metadata-chain root only; original source bytes, identity ownership and scientific truth are not independently verified",
+      id,
+    });
+  } catch {
+    res.status(400).json({ success: false, error: "LITLE_VERIFICATION_INPUT_INVALID" });
   }
 });
 

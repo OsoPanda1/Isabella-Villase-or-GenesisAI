@@ -1,48 +1,66 @@
-# GenesisAI environment configuration
+# Configuración de entorno de Isabella GenesisAI
 
-This document lists configuration required by optional integrations. It contains names only; never commit real values.
+Este archivo documenta nombres de variables, no valores. Nunca se deben almacenar secretos reales en Git, documentación, registros, respuestas HTTP o bundles del cliente.
 
-## HSF API
+## API privilegiada
 
-`HSF_API_TOKEN` is required to enable `POST /api/v1/hsf/invoke`. If it is absent, the endpoint returns HTTP 503. If the bearer token is invalid, it returns HTTP 401.
+- `HSF_API_TOKEN`: obligatorio para `POST /api/v1/hsf/invoke`. El endpoint responde `503 API_TOKEN_NOT_CONFIGURED` si falta o no alcanza la longitud mínima y `401 UNAUTHORIZED` si el bearer token no coincide.
+- `GENESIS_ADMIN_API_TOKEN`: obligatorio para `POST /api/v1/memory/ingest` y `POST /api/v1/knowledge/admit`. Protege la admisión que muta la memoria del runtime. Usa un valor aleatorio de al menos 32 caracteres, distinto del token HSF.
 
-Generate a unique high-entropy value using a trusted password/secret manager. Store it only in the deployment secret manager or GitHub Actions secrets. Do not use a shared development token in production. Define rotation, revocation, and incident response before enabling access.
+Formato esperado del encabezado:
 
-The current API credential is a service-level boundary, not a complete per-user identity system. Production deployments should integrate the selected identity provider, short-lived credentials, scoped authorization, rate limiting, and audit events.
+```http
+Authorization: Bearer <token>
+```
 
-## Optional Atlas persistence
+Los tokens de servicio son un límite de servicio, no sustituyen una integración completa con proveedor de identidad, tokens de corta duración, RBAC/ABAC por usuario, rate limiting ni auditoría durable. Antes de exponer las rutas a usuarios finales, integra esos controles.
+
+## Persistencia Atlas opcional
 
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` — server-side only; never expose in browser/client bundles.
-- `ATLAS_STORE_TIMEOUT_MS` — defaults to 10000 in the documented configuration.
+- `SUPABASE_SERVICE_ROLE_KEY`: solo en servidor; nunca debe llegar al cliente.
+- `ATLAS_STORE_TIMEOUT_MS`: timeout de conexión, si el adaptador lo admite.
 
-Use least privilege, separate development/staging/production projects, and test row-level security and schema migrations.
+Usa proyectos separados por entorno, mínimo privilegio, migraciones revisadas y pruebas de RLS. Sin esquema y políticas verificados, el sistema no debe presentar datos de producción.
 
-## Optional Atlas GitHub inventory
+## Inventario Atlas en GitHub (opcional)
 
 - `GITHUB_OWNER`
-- `ATLAS_READ_TOKEN` — optional read token for inventory across private repositories where authorized.
-- `INCLUDE_FORKS` — defaults to false.
-- `MAX_REPOS` — defaults to 500.
+- `ATLAS_READ_TOKEN`: token de lectura opcional para inventario de repositorios privados autorizados.
+- `INCLUDE_FORKS`: por defecto `false`.
+- `MAX_REPOS`: por defecto `500`.
 
-Use the minimum repository permissions required. The workflow's `GITHUB_TOKEN` is for the current repository write; do not reuse a broad personal token for publishing.
+Usa el mínimo de permisos de repositorio necesarios. El `GITHUB_TOKEN` del workflow es para escritura en el repositorio actual; no reutilices un token personal amplio para publicar.
 
-## Optional PennyLane bridge
+## Puente cuántico opcional
 
 - `PENNYLANE_BRIDGE_ENDPOINT`
-- `PENNYLANE_BRIDGE_TIMEOUT_MS` — default 5000 ms in the TypeScript bridge.
+- `PENNYLANE_BRIDGE_TIMEOUT_MS`: por defecto 5000 ms en el puente TypeScript.
 
-If no endpoint is configured, quantum execution must report unavailable. A configured URL does not prove that a PennyLane backend or QPU is healthy; use the health endpoint and backend integration tests.
+Una URL configurada no demuestra que el proveedor esté sano ni que exista un QPU conectado. Sin endpoint o backend válido, la ejecución debe permanecer como no configurada/no disponible.
 
-## Model and approval keys
+## Modelos, firma y auditoría
 
-Existing variables include `GEMINI_API_KEY`, `MODEL_API_KEY`, `INFERENCE_API_KEY`, `ISABELLA_APPROVAL_PRIVATE_KEY_PEM`, and `BOOKPI_INTEGRITY_SECRET`. Their exact use depends on the corresponding module. Keep them out of source control, logs, telemetry attributes, API responses, and error messages.
+Variables que usan módulos existentes según configuración:
 
-## Release checklist
+- `GEMINI_API_KEY`
+- `MODEL_API_KEY`
+- `INFERENCE_API_KEY`
+- `ISABELLA_APPROVAL_KEY_ID`: identificador de la clave de firma.
+- `ISABELLA_APPROVAL_TRUSTED_APPROVER_ID`: principal humano autenticado exacto vinculado a la clave de firma confiable.
+- `ISABELLA_APPROVAL_TRUSTED_KEY_ID`: key ID aceptado por el verificador; debe coincidir con la clave pública aprobada.
+- `ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM`: clave pública Ed25519 aprovisionada por separado para verificar aprobaciones. La clave pública embebida en una aprobación no es un ancla de confianza.
+- `ISABELLA_APPROVAL_PRIVATE_KEY_PEM`
+- `BOOKPI_INTEGRITY_SECRET`
 
-- [ ] All required variables exist in the secret manager.
-- [ ] Missing secrets disable the integration safely.
-- [ ] Credentials are scoped and rotated.
-- [ ] No secret appears in Git history, logs, traces, or frontend bundles.
-- [ ] Authentication and negative authorization tests pass.
-- [ ] CI is green for the release SHA.
+Verifica el uso real de cada variable en el código antes de asumir que el módulo está activo. No expongas claves en telemetría, mensajes de error, archivos de configuración versionados o respuestas HTTP.
+
+## Criterios de habilitación
+
+- [ ] Los secretos existen en el gestor de secretos del entorno.
+- [ ] La ausencia de secretos deshabilita la integración de forma segura.
+- [ ] Las credenciales son independientes entre desarrollo, staging y producción.
+- [ ] Se probaron tokens incorrectos, rutas sin autenticación y roles no autorizados.
+- [ ] No hay secretos en Git, logs, trazas ni bundles.
+- [ ] La CI pasa para el SHA exacto que se va a desplegar.
+- [ ] La integridad BookPI y la criptografía poscuántica solo se anuncian como activas después de ejecutar sus verificadores reales.

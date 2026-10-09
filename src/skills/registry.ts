@@ -54,6 +54,10 @@ export class SkillRegistry {
     return skill;
   }
 
+  has(id: string): boolean {
+    return this.skills.has(id);
+  }
+
   async invoke(id: string, ctx: SkillContext, authorization: SkillAuthorization = {}): Promise<SkillInvocation> {
     const skill = this.get(id);
     const startedAt = new Date().toISOString();

@@ -6,8 +6,8 @@ import { issueHumanApproval, verifyHumanApproval, createApprovalReplayRegistry }
 import { callGate, createCapabilityGate } from "../../src/crown/capability";
 import { inspectAegis } from "../../src/security/aegis";
 import { planExecution } from "../../src/intelligence/adaptive-router";
-import { IKESEngine } from "../../src/memory/ikes";
-import { createEvidence, canPromoteToVerified } from "../../src/evolution/evidence";
+import { IKESEngine, hashSourceContent, verifyKnowledgeClaimIntegrity } from "../../src/memory/ikes";
+import { createEvidence, canPromoteToVerified, verifyEvidenceIntegrity, type ControlEvidence } from "../../src/evolution/evidence";
 import { generateControls } from "../../src/evolution/catalog";
 
 describe("Genesis V6 security and cognition", () => {
@@ -24,9 +24,18 @@ describe("Genesis V6 security and cognition", () => {
   it("human approval is signed and tamper evident", () => {
     const approver = createPrincipal({ id: "h1", kind: "human", roles: ["admin"] });
     const approval = issueHumanApproval(approver, { methodId: "m", action: "admin:escale" }, "ALLOW");
+    const trustedKeyId = process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID;
+    const trustedPublicKey = process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM;
+    delete process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID;
+    delete process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM;
+    expect(verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" })).toBe(false);
+    if (trustedKeyId) process.env.ISABELLA_APPROVAL_TRUSTED_KEY_ID = trustedKeyId;
+    if (trustedPublicKey) process.env.ISABELLA_APPROVAL_TRUSTED_PUBLIC_KEY_PEM = trustedPublicKey;
     expect(verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" })).toBe(true);
     const tampered = { ...approval, action: "delete:all" };
     expect(verifyHumanApproval(tampered, { methodId: "m", action: "delete:all" })).toBe(false);
+    const forgedTimestamp = { ...approval, decidedAt: new Date().toISOString() };
+    expect(verifyHumanApproval(forgedTimestamp, { methodId: "m", action: "admin:escale" })).toBe(false);
   });
 
   it("approval replay is rejected", () => {
@@ -35,6 +44,13 @@ describe("Genesis V6 security and cognition", () => {
     const replay = createApprovalReplayRegistry();
     expect(verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" }, replay)).toBe(true);
     expect(() => verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" }, replay)).toThrow(/replay/i);
+  });
+
+  it("approval replay registry has a hard capacity bound", () => {
+    const replay = createApprovalReplayRegistry(1);
+    const expiry = new Date(Date.now() + 60_000).toISOString();
+    replay.consume("nonce-one", expiry);
+    expect(() => replay.consume("nonce-two", expiry)).toThrow(/capacity exceeded/);
   });
 
   it("unknown capabilities always deny", () => {
@@ -61,7 +77,7 @@ describe("Genesis V6 security and cognition", () => {
     const ikes = new IKESEngine();
     ikes.registerSource({
       sourceId: "s1", uri: "https://example.invalid/source", title: "Source",
-      retrievedAt: new Date().toISOString(), contentHash: "abc",
+      retrievedAt: new Date().toISOString(), contentHash: hashSourceContent("source content"),
     });
     const claim = ikes.propose({
       proposedBy: "human:h1",
@@ -72,16 +88,138 @@ describe("Genesis V6 security and cognition", () => {
       },
     });
     expect(claim.epistemicState).toBe("E1_SOURCE_FOUND");
+    expect(verifyKnowledgeClaimIntegrity(claim)).toBe(true);
     expect(ikes.retrieve("TAMV")).toHaveLength(1);
+  });
+
+  it("IKES prepares an admission candidate without mutating canonical retrieval", () => {
+    const ikes = new IKESEngine();
+    ikes.registerSource({
+      sourceId: "staged-source", uri: "https://example.invalid/staged", title: "Staged source",
+      retrievedAt: new Date().toISOString(), contentHash: hashSourceContent("staged body"),
+    });
+    const proposal = {
+      proposedBy: "service:review",
+      evidenceIds: ["staged-source"],
+      claim: {
+        subject: "Staged", predicate: "status", object: "pending",
+        sourceIds: ["staged-source"], evidenceIds: ["staged-source"], temporalState: "current" as const,
+        provenance: { source: "staged-source" },
+      },
+    };
+    const candidate = ikes.prepareProposal(proposal);
+    expect(candidate.claimId).toMatch(/^clm_/);
+    expect(ikes.retrieve("Staged")).toHaveLength(0);
+    const committed = ikes.propose(proposal);
+    expect(committed.claimId).toBe(candidate.claimId);
+    expect(ikes.retrieve("Staged")).toHaveLength(1);
+  });
+
+  it("IKES rejects malformed source hashes and conflicting source identity", () => {
+    const ikes = new IKESEngine();
+    expect(() => ikes.registerSource({ sourceId: "bad", uri: "https://example.invalid/source", title: "Bad", retrievedAt: new Date().toISOString(), contentHash: "abc" })).toThrow(/SHA256/);
+    const source = { sourceId: "stable", uri: "https://example.invalid/source", title: "Source", retrievedAt: new Date().toISOString(), contentHash: hashSourceContent("source A") };
+    ikes.registerSource(source);
+    expect(() => ikes.registerSource({ ...source, contentHash: hashSourceContent("source B") })).toThrow(/CONFLICT/);
+  });
+
+  it("IKES freezes nested claim data and refuses evidence-free corroboration", () => {
+    const ikes = new IKESEngine();
+    ikes.registerSource({
+      sourceId: "immutable-source",
+      uri: "https://example.invalid/immutable-source",
+      title: "Immutable source",
+      retrievedAt: new Date().toISOString(),
+      contentHash: hashSourceContent("immutable source body"),
+    });
+    expect(() => ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: [],
+      claim: {
+        subject: "X", predicate: "status", object: "unknown",
+        sourceIds: ["immutable-source"], evidenceIds: [], temporalState: "current",
+        provenance: { source: "immutable-source" },
+      },
+    })).toThrow(/IKES_EVIDENCE_REQUIRED/);
+
+    const claim = ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["immutable-source"],
+      claim: {
+        subject: "X", predicate: "status", object: "unknown",
+        sourceIds: ["immutable-source"], evidenceIds: ["immutable-source"], temporalState: "current",
+        provenance: { source: "immutable-source" },
+      },
+    });
+    expect(Object.isFrozen(claim)).toBe(true);
+    expect(Object.isFrozen(claim.sourceIds)).toBe(true);
+    expect(Object.isFrozen(claim.evidenceIds)).toBe(true);
+    expect(Object.isFrozen(claim.provenance)).toBe(true);
+    expect(() => ikes.corroborate(claim.claimId, [])).toThrow(/IKES_CORROBORATION_EVIDENCE_REQUIRED/);
+  });
+
+  it("IKES keeps claim identity stable across evidence updates and never downgrades state", () => {
+    const ikes = new IKESEngine();
+    for (const [sourceId, body] of [["s-one", "source one"], ["s-two", "source two"]] as const) {
+      ikes.registerSource({
+        sourceId, uri: "https://example.invalid/" + sourceId, title: sourceId,
+        retrievedAt: new Date().toISOString(), contentHash: hashSourceContent(body),
+      });
+    }
+    const claim = ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["s-one"],
+      claim: {
+        subject: "TAMV", predicate: "status", object: "active",
+        sourceIds: ["s-one"], evidenceIds: ["s-one"], temporalState: "current",
+        provenance: { source: "canonical" },
+      },
+    });
+    expect(() => ikes.corroborate(claim.claimId, ["s-one"])).toThrow(/IKES_CORROBORATION_REQUIRES_NEW_EVIDENCE/);
+    const corroborated = ikes.corroborate(claim.claimId, ["s-two"]);
+    expect(corroborated.epistemicState).toBe("E2_CORROBORATED");
+    expect(verifyKnowledgeClaimIntegrity(corroborated)).toBe(true);
+    const reproposed = ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["s-two"],
+      claim: {
+        subject: "TAMV", predicate: "status", object: "active",
+        sourceIds: ["s-two"], evidenceIds: ["s-two"], temporalState: "current",
+        provenance: { source: "different-source" },
+      },
+    });
+    expect(reproposed.claimId).toBe(claim.claimId);
+    expect(reproposed.epistemicState).toBe("E2_CORROBORATED");
+    expect(verifyKnowledgeClaimIntegrity(reproposed)).toBe(true);
+    expect(reproposed.evidenceIds).toEqual(expect.arrayContaining(["s-one", "s-two"]));
+
+    const deprecated = ikes.deprecate(claim.claimId);
+    expect(deprecated.epistemicState).toBe("DP_DEPRECATED");
+    expect(verifyKnowledgeClaimIntegrity(deprecated)).toBe(true);
+    expect(() => ikes.corroborate(claim.claimId, ["s-one"])).toThrow(/IKES_CLAIM_STATE_BLOCKS_CORROBORATION/);
+    expect(ikes.retrieve("TAMV")).toHaveLength(0);
+    expect(ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["s-one"],
+      claim: {
+        subject: "TAMV", predicate: "status", object: "active",
+        sourceIds: ["s-one"], evidenceIds: ["s-one"], temporalState: "current",
+        provenance: { source: "canonical" },
+      },
+    }).epistemicState).toBe("DP_DEPRECATED");
   });
 
   it("verified evolution requires independent evidence plus runtime/review evidence", () => {
     const control = generateControls().find((c) => c.state === "declared")!;
     const wired = { ...control, state: "wired" as const };
     const evidence = [
-      createEvidence({ controlId: wired.id, kind: "TEST", observedAt: new Date().toISOString(), passed: true, details: "unit", commitSha: "abc" }),
-      createEvidence({ controlId: wired.id, kind: "HUMAN_REVIEW", observedAt: new Date().toISOString(), passed: true, details: "review", commitSha: "abc" }),
+      createEvidence({ controlId: wired.id, kind: "TEST", uri: "https://ci.example/runs/123", observedAt: new Date().toISOString(), passed: true, details: "unit", commitSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }),
+      createEvidence({ controlId: wired.id, kind: "HUMAN_REVIEW", uri: "https://review.example/records/123", observedAt: new Date().toISOString(), passed: true, details: "review", commitSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }),
     ];
-    expect(canPromoteToVerified(wired, evidence)).toBe(true);
+    expect(evidence.every(verifyEvidenceIntegrity)).toBe(true);
+    expect(canPromoteToVerified(wired, evidence)).toBe(false);
+    expect(canPromoteToVerified(wired, evidence, (item) => Boolean(item.uri?.startsWith("https://") && item.commitSha === "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))).toBe(true);
+    const tampered: ControlEvidence = { ...evidence[0]!, details: "altered after hashing" };
+    expect(verifyEvidenceIntegrity(tampered)).toBe(false);
   });
 });

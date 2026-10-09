@@ -6,3 +6,5 @@ export {
 export { bodySizeBytes, checkBodySize, createBodyBudget, consumeBodyBudget, type BodyBudget } from "./limits";
 export { createTraceContext, beginSpan, propagateTrace, isTraceWellFormed, type TraceContext } from "./trace";
 export { evaluateAdmission, DENY_ALL, type AdmissionContext, type AdmissionEffect, type AdmissionRule, type AdmissionVerdict } from "./admission";
+
+export * from "./isa-api";

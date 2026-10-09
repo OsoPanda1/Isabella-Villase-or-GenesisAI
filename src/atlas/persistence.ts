@@ -110,7 +110,7 @@ export function createAtlasStoreFromEnv(env: NodeJS.ProcessEnv = process.env): A
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("AtlasStore requiere SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY");
   }
-  if (rawTimeout && (!Number.isFinite(requestTimeoutMs) || requestTimeoutMs <= 0)) {
+  if (rawTimeout && (requestTimeoutMs === undefined || !Number.isFinite(requestTimeoutMs) || requestTimeoutMs <= 0)) {
     throw new Error("ATLAS_STORE_TIMEOUT_MS debe ser un número mayor que cero");
   }
 

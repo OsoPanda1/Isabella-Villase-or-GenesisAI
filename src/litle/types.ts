@@ -7,5 +7,5 @@ export interface EvidenceNode { id:string; type:EvidenceNodeType; contentHash:st
 export interface EvidenceChain { nodes:readonly EvidenceNode[]; rootHash:string; algorithm:"SHA3-512"; }
 export type EpistemicDimension = "methodological_rigor" | "reproducibility" | "citation_integrity" | "peer_review_status" | "data_transparency" | "ai_provenance" | "longevity_potential" | "epistemological_novelty";
 export type QualityScore = 0 | 1 | 2 | 3 | 4 | 5;
-export interface EpistemicProfile { litleId:string; dimensions:Record<EpistemicDimension,QualityScore>; compositeScore:number; aiAssisted:boolean; hasEvidenceChain:boolean; hasCryptoSignature:boolean; }
+export interface EpistemicProfile { litleId:string; dimensions:Record<EpistemicDimension,QualityScore>; compositeScore:number; assessmentBasis:"SELF_REPORTED"|"INDEPENDENTLY_VERIFIED"; aiAssisted:boolean; hasEvidenceChain:boolean; hasCryptoSignature:boolean; }
 export interface LitleAttestation { litleId:LitleId; canonicalId:string; evidenceRoot:string; epistemicScore:number; qualityTier:"platinum"|"gold"|"silver"|"bronze"|"unrated"; attestedAt:string; verifier:"genesisai-litle-fabric"; cryptographicBinding:string; }
