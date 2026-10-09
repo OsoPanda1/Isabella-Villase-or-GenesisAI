@@ -13,6 +13,15 @@ describe("deployment gates", () => {
     expect(ok.deployable).toBe(true);
   });
 
+  it("blocks deployment when any non-critical required gate is skipped", () => {
+    const skippedTests = assessDeployment(
+      { layer: "tamv-app", provider: "vercel" },
+      { ...passing, tests: "skipped" },
+    );
+    expect(skippedTests.deployable).toBe(false);
+    expect(skippedTests.blockers).toContain("tests");
+  });
+
   it("blocks on missing critical gates and example DNS values", () => {
     const missing = assessDeployment({ layer: "tamv-app", provider: "vercel" }, { ...passing, secret_scan: "skipped" });
     expect(missing.deployable).toBe(false);
