@@ -1,8 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { CapabilityGateway, CapabilityRegistry, InMemoryMemoryFabric, KnowledgeFabric } from "../src/capabilities";
 import type { CapabilityGatewayPolicy } from "../src/capabilities";
+import { IsabellaGenesisRuntime } from "../src/genesis/runtime";
 
 describe("HSF", () => {
+  it("registers canonical HSF capabilities during Genesis runtime initialization", () => {
+    const runtime = new IsabellaGenesisRuntime();
+    const ids = runtime.capabilities.list().map((capability) => capability.id);
+    expect(ids).toContain("hsf.memory.fabric");
+    expect(ids).toContain("hsf.execution.fabric");
+    expect(ids).toContain("hsf.knowledge.fabric");
+    expect(ids.length).toBeGreaterThanOrEqual(10);
+  });
+
+
   it("invokes a registered capability", async () => {
     const registry = new CapabilityRegistry();
     registry.register({
