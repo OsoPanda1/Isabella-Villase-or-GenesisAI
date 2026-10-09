@@ -57,6 +57,21 @@ describe("governed issue lifecycle", () => {
     expect(adjudicateDuplicate({ issueNumber: 1, duplicateOf: 2, confidence: 0.95, authorDisagreed: true }).action).toBe("ESCALATE");
   });
 
+  it("escalates sensitive stale issues and never proposes their closure", () => {
+    const plan = planLifecycleRun({
+      issues: [issue({
+        number: 99,
+        labels: ["stale"],
+        updatedAt: "2025-12-01T00:00:00Z",
+        title: "Security vulnerability",
+        body: "Potential credential disclosure",
+      })],
+      now,
+    });
+    expect(plan.humanGate).toContain(99);
+    expect(plan.proposeClose).not.toContainEqual({ issue: 99, label: "stale" });
+  });
+
   it("produces an inspect/propose plan without executing", () => {
     const plan = planLifecycleRun({
       issues: [issue({ number: 7, labels: ["stale"], updatedAt: "2025-12-01T00:00:00Z" })],
