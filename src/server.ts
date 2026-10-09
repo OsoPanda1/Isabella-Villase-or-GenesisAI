@@ -3144,7 +3144,7 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         resContainer.innerHTML = \`
-          <div class="p-3.5 rounded-2xl bg-[#090e1c] border \${data.decision === 'BLOCK' ? 'border-rose-800' : 'border-emerald-800'} mt-2 crystal-card">
+          <div class="p-3.5 rounded-2xl bg-[#090e1c] border \${data.decision === 'PATTERN_MATCH' ? 'border-rose-800' : 'border-emerald-800'} mt-2 crystal-card">
             <div class="flex justify-between items-center mb-1">
               <span class="font-bold \${data.decision === 'BLOCK' ? 'text-rose-400' : 'text-emerald-400'}">Decisión del Bloqueo: \${data.decision}</span>
               <span class="text-[10px] text-slate-500 font-mono">\${data.timestamp}</span>
