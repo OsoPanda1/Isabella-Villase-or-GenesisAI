@@ -98,12 +98,32 @@ export class IKESEngine {
       provenance: { ...proposal.claim.provenance },
       epistemicState: "E1_SOURCE_FOUND" as const,
     };
-    const claimId = `clm_${hash(base).slice(0, 24)}`;
+    // Claim identity is the claim itself, not the evidence bundle. New sources
+    // revise one claim instead of creating a fresh E1 claim that bypasses review.
+    const identity = {
+      subject: base.subject,
+      predicate: base.predicate,
+      object: base.object,
+      temporalState: base.temporalState,
+      validFrom: base.validFrom,
+      validUntil: base.validUntil,
+      license: base.license,
+      provenance: base.provenance,
+    };
+    const claimId = `clm_${hash(identity).slice(0, 24)}`;
     const existing = this.claims.get(claimId);
-    const record: KnowledgeClaim = {
+    const merged = {
       ...base,
+      sourceIds: [...new Set([...(existing?.sourceIds ?? []), ...base.sourceIds])],
+      evidenceIds: [...new Set([...(existing?.evidenceIds ?? []), ...base.evidenceIds])],
+      epistemicState: existing?.epistemicState ?? base.epistemicState,
+      temporalState: existing?.temporalState ?? base.temporalState,
+      provenance: { ...base.provenance, ...(existing?.provenance ?? {}) },
+    };
+    const record: KnowledgeClaim = {
+      ...merged,
       claimId,
-      contentHash: hash(base),
+      contentHash: hash(merged),
       version: existing ? existing.version + 1 : 1,
     };
     const frozen = freezeClaim(record);
@@ -116,6 +136,9 @@ export class IKESEngine {
     if (!Array.isArray(evidenceIds) || evidenceIds.length === 0) {
       throw new Error("IKES_CORROBORATION_EVIDENCE_REQUIRED");
     }
+    if (["ED_DISPUTED", "EX_REJECTED", "DP_DEPRECATED"].includes(claim.epistemicState)) {
+      throw new Error("IKES_CLAIM_STATE_BLOCKS_CORROBORATION");
+    }
     if (evidenceIds.some((id) => !this.sources.has(id))) {
       throw new Error("IKES: no se puede corroborar con evidencia inexistente.");
     }
@@ -123,7 +146,9 @@ export class IKESEngine {
       ...claim,
       sourceIds: [...new Set([...claim.sourceIds, ...evidenceIds])],
       evidenceIds: [...new Set([...claim.evidenceIds, ...evidenceIds])],
-      epistemicState: "E2_CORROBORATED",
+      epistemicState: epistemicRank(claim.epistemicState) >= epistemicRank("E2_CORROBORATED")
+        ? claim.epistemicState
+        : "E2_CORROBORATED",
       version: claim.version + 1,
     };
     next.contentHash = hash({ ...next, contentHash: undefined });
@@ -145,7 +170,9 @@ export class IKESEngine {
     const q = query.toLowerCase();
     return [...this.claims.values()]
       .filter((c) => opts.temporal ? c.temporalState === opts.temporal : c.temporalState === "current")
-      .filter((c) => !opts.minEvidence || epistemicRank(c.epistemicState) >= epistemicRank(opts.minEvidence))
+      .filter((c) => opts.minEvidence
+        ? epistemicRank(c.epistemicState) >= epistemicRank(opts.minEvidence)
+        : !["ED_DISPUTED", "EX_REJECTED", "DP_DEPRECATED"].includes(c.epistemicState))
       .filter((c) => `${c.subject} ${c.predicate} ${c.object}`.toLowerCase().includes(q))
       .sort((a, b) => epistemicRank(b.epistemicState) - epistemicRank(a.epistemicState));
   }
