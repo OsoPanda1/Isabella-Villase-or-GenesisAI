@@ -118,6 +118,54 @@ describe("Genesis V6 security and cognition", () => {
     expect(() => ikes.corroborate(claim.claimId, [])).toThrow(/IKES_CORROBORATION_EVIDENCE_REQUIRED/);
   });
 
+  it("IKES keeps claim identity stable across evidence updates and never downgrades state", () => {
+    const ikes = new IKESEngine();
+    for (const [sourceId, body] of [["s-one", "source one"], ["s-two", "source two"]] as const) {
+      ikes.registerSource({
+        sourceId, uri: "https://example.invalid/" + sourceId, title: sourceId,
+        retrievedAt: new Date().toISOString(), contentHash: hashSourceContent(body),
+      });
+    }
+    const claim = ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["s-one"],
+      claim: {
+        subject: "TAMV", predicate: "status", object: "active",
+        sourceIds: ["s-one"], evidenceIds: ["s-one"], temporalState: "current",
+        provenance: { source: "canonical" },
+      },
+    });
+    expect(() => ikes.corroborate(claim.claimId, ["s-one"])).toThrow(/IKES_CORROBORATION_REQUIRES_NEW_EVIDENCE/);
+    const corroborated = ikes.corroborate(claim.claimId, ["s-two"]);
+    expect(corroborated.epistemicState).toBe("E2_CORROBORATED");
+    const reproposed = ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["s-two"],
+      claim: {
+        subject: "TAMV", predicate: "status", object: "active",
+        sourceIds: ["s-two"], evidenceIds: ["s-two"], temporalState: "current",
+        provenance: { source: "canonical" },
+      },
+    });
+    expect(reproposed.claimId).toBe(claim.claimId);
+    expect(reproposed.epistemicState).toBe("E2_CORROBORATED");
+    expect(reproposed.evidenceIds).toEqual(expect.arrayContaining(["s-one", "s-two"]));
+
+    const deprecated = ikes.deprecate(claim.claimId);
+    expect(deprecated.epistemicState).toBe("DP_DEPRECATED");
+    expect(() => ikes.corroborate(claim.claimId, ["s-one"])).toThrow(/IKES_CLAIM_STATE_BLOCKS_CORROBORATION/);
+    expect(ikes.retrieve("TAMV")).toHaveLength(0);
+    expect(ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["s-one"],
+      claim: {
+        subject: "TAMV", predicate: "status", object: "active",
+        sourceIds: ["s-one"], evidenceIds: ["s-one"], temporalState: "current",
+        provenance: { source: "canonical" },
+      },
+    }).epistemicState).toBe("DP_DEPRECATED");
+  });
+
   it("verified evolution requires independent evidence plus runtime/review evidence", () => {
     const control = generateControls().find((c) => c.state === "declared")!;
     const wired = { ...control, state: "wired" as const };
