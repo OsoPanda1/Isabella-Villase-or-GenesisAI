@@ -13,6 +13,8 @@ Do not publish exploitable details, secrets, access tokens, private personal dat
 - Public endpoints have process-local rate limits. These reduce abuse but are not a distributed WAF or a substitute for edge-level rate limiting.
 - IKES release requires source/evidence, audit, valid commit and indexing evidence. A proposal is not a released knowledge artifact.
 - BookPI currently provides a volatile in-memory SHA-256 hash chain. It is not durable WORM storage, a Merkle tree, or a signed external audit log.
+- Human approval verification requires a separately provisioned trusted Ed25519 public key, matching key ID, and bound approver principal. The public key embedded in an approval is not trusted by itself; production approval also requires an authorized approver role.
+- Evolution evidence cannot promote a control from self-reported passed=true records alone; an external evidence verifier must be wired.
 - The post-quantum and HSM providers are not configured. The system must not claim FIPS/ML-DSA/ML-KEM verification until an actual provider and test evidence exist.
 
 ## Secret handling
