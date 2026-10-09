@@ -5,6 +5,7 @@ export * from "./identity";
 export * from "./crown";
 export * from "./evolution";
 export * from "./memory";
+export * from "./bookpi";
 export * from "./security";
 export * from "./tools";
 export * from "./skills";
