@@ -13,6 +13,7 @@ import { buildCanonicalSystemPrompt, createCrownExperienceSnapshot } from "./cro
 import { LitleTrustFabric, parseAny, verifyEvidenceChain, verifyCertificate } from "./litle";
 import { bookPiSecret } from "./security/secrets";
 import { verifyBearerToken } from "./security/api-token";
+import { FixedWindowRateLimiter } from "./security/rate-limit";
 import { hashSourceContent } from "./memory/ikes";
 import { bookPiLedger } from "./bookpi";
 import { createAtlasStoreFromEnv } from "./atlas";
@@ -57,6 +58,21 @@ function authorizeApiToken(req: Request, res: Response, envName: string): boolea
   }
   if (verdict !== "AUTHORIZED") {
     res.status(401).json({ success: false, error: "UNAUTHORIZED" });
+    return false;
+  }
+  return true;
+}
+
+const publicCognitionLimiter = new FixedWindowRateLimiter(30, 60_000);
+const publicModelLimiter = new FixedWindowRateLimiter(8, 60_000);
+const publicProposalLimiter = new FixedWindowRateLimiter(10, 60_000);
+const publicScanLimiter = new FixedWindowRateLimiter(30, 60_000);
+
+function enforceRateLimit(req: Request, res: Response, limiter: FixedWindowRateLimiter, bucket: string): boolean {
+  const result = limiter.consume(bucket + ":" + (req.ip || "unknown"));
+  if (!result.allowed) {
+    res.setHeader("Retry-After", String(Math.max(1, Math.ceil(result.retryAfterMs / 1000))));
+    res.status(429).json({ success: false, error: "RATE_LIMIT_EXCEEDED", retryAfterMs: result.retryAfterMs });
     return false;
   }
   return true;
@@ -413,6 +429,7 @@ const pendingMemoryProposals: PendingMemoryProposal[] = [];
 const MAX_PENDING_MEMORY_PROPOSALS = 500;
 
 app.post("/api/v1/memory/ingest", (req, res) => {
+  if (!enforceRateLimit(req, res, publicProposalLimiter, "memory-proposal")) return;
   try {
     const body = req.body ?? {};
     const { subject, predicate, object } = body;
@@ -529,8 +546,10 @@ app.post("/api/v1/tools/execute", async (req, res) => {
 
 // Public cognitive route: viewer-only. Request bodies cannot supply authority, roles, action or resource.
 app.post("/api/v1/cognition/route", async (req, res) => {
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "cognition")) return;
   try {
     const body = req.body ?? {};
+    if (body.modelEngine === "gemini" && !enforceRateLimit(req, res, publicModelLimiter, "public-model")) return;
     const input = typeof body.input === "string" ? body.input.trim() : "";
     if (!input) {
       res.status(400).json({ success: false, error: "input es requerido" });
@@ -599,6 +618,7 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
   const startedAt = new Date().toISOString();
   try {
     const body = req.body ?? {};
+    if (body.modelEngine === "gemini" && !enforceRateLimit(req, res, publicModelLimiter, "public-model")) return;
     const input = typeof body.input === "string" ? body.input.trim() : "";
     if (!input) {
       res.status(400).json({ success: false, error: "input es requerido" });
@@ -866,6 +886,7 @@ app.post("/api/v1/quantum/pennylane/execute", async (req, res) => {
 
 // Triple Blockade Security Scanner
 app.post("/api/v1/triple-blockade/scan", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "triple-blockade")) return;
   const { input = "" } = req.body ?? {};
   const lower = String(input).toLowerCase();
 
@@ -894,7 +915,10 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
 
 // NotebookLM Epistemic Studio Document Generator
 app.post("/api/v1/notebook/generate", (req, res) => {
-  const { docType = "briefing", topic = "Real del Monte y Ecosistema TAMV" } = req.body ?? {};
+  if (!enforceRateLimit(req, res, publicScanLimiter, "notebook-template")) return;
+  const body = req.body ?? {};
+  const docType = typeof body.docType === "string" ? body.docType.slice(0, 80) : "briefing";
+  const topic = typeof body.topic === "string" ? body.topic.slice(0, 300) : "Real del Monte y Ecosistema TAMV";
 
   let content = "";
   if (docType === "briefing") {
@@ -961,7 +985,9 @@ El ecosistema TAMV Online articulado desde el Nodo Cero (Real del Monte, Hidalgo
 
 // NotebookLM Audio Overview (Simulated 2-Host Deep Dive Podcast)
 app.post("/api/v1/audio-overview/generate", (req, res) => {
-  const { topic = "Patrimonio de Real del Monte y Soberanía Tecnológica TAMV" } = req.body ?? {};
+  if (!enforceRateLimit(req, res, publicScanLimiter, "audio-script")) return;
+  const rawTopic = req.body?.topic;
+  const topic = typeof rawTopic === "string" ? rawTopic.slice(0, 300) : "Patrimonio de Real del Monte y Soberanía Tecnológica TAMV";
 
   const script = [
     {
@@ -1026,6 +1052,7 @@ app.get("/api/v1/territory/rdm", (_req, res) => {
 
 // Sanitize a document before indexing (deterministic, no external effects).
 app.post("/api/v1/sanitization/scan", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "sanitization")) return;
   try {
     const body = req.body ?? {};
     if (typeof body.id !== "string" || typeof body.content !== "string") {
@@ -3185,7 +3212,7 @@ app.get("/", (_req, res) => {
         });
         const data = await res.json();
         titleEl.textContent = "Documento: " + docType.toUpperCase();
-        contentEl.innerHTML = data.content.replace(/\\n/g, '<br/>');
+        contentEl.innerHTML = escapeHtml(data.content).replace(/\\n/g, '<br/>');
       } catch (err) {
         contentEl.textContent = "Error: " + err.message;
       }
