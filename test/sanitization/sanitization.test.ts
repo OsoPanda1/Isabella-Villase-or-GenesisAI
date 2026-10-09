@@ -32,6 +32,16 @@ describe("sanitization pipeline", () => {
     });
     expect(result.status).toBe("QUARANTINED");
     expect(result.secretsQuarantined).toBeGreaterThan(0);
+    expect(result.normalizedContent).not.toContain("AKIA1234567890ABCDEF");
+    expect(result.normalizedContent).toContain("CONTENT WITHHELD");
+    expect(JSON.stringify(result.findings)).not.toContain("AKIA1234567890ABCDEF");
+  });
+
+  it("rejects knowledge documents without declared provenance or license", () => {
+    const result = sanitizeDocument({ id: "doc-unlicensed", content: "Texto sin licencia ni procedencia." });
+    expect(result.status).toBe("REJECTED");
+    expect(result.findings.map((finding) => finding.kind)).toContain("missing_license");
+    expect(result.findings.map((finding) => finding.kind)).toContain("missing_provenance");
   });
 
   it("masks PII and classifies as personal", () => {
