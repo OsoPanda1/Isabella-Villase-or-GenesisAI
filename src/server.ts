@@ -2965,7 +2965,7 @@ app.get("/", (_req, res) => {
             </summary>
             <div class="mt-2.5 pt-2 border-t border-white/5 space-y-1.5 text-[11px] font-editorial leading-relaxed text-slate-300">
               <div>• <strong>AEGIS Guard:</strong> Decisión \${d.aegis.decision} (Puntaje de anomalía: \${d.aegis.score}). Salvaguarda contra inyección de prompt verificada.</div>
-              <div>• <strong>CROWN Intent:</strong> Categoría \${d.crown.intent.category} · Nivel de Riesgo \${d.crown.riskLevel} · Aprobación Humana: \${d.crown.requiresHumanApproval ? 'Requerida' : 'Exenta'}.</div>
+              <div>• <strong>CROWN Intent:</strong> Categoría \${escapeHtml(String(d.crown.intent.category ?? ""))} · Nivel de Riesgo \${escapeHtml(String(d.crown.riskLevel ?? ""))} · Aprobación Humana: \${d.crown.requiresHumanApproval ? 'Requerida' : 'Exenta'}.</div>
               <div>• <strong>Hypercore:</strong> Modo \${d.plan.hypercore.mode} · Invariante soberano verificado en Libro Mayor BookPI.</div>
               <div>• <strong>Memoria IKES:</strong> \${d.memory ? d.memory.length : 0} afirmaciones recuperadas con estado registrado; no se infiere E6 ni existe compromiso Merkle.</div>
             </div>
@@ -3012,18 +3012,18 @@ app.get("/", (_req, res) => {
           <div class="p-3 rounded-xl bg-slate-900/90 border border-white/5 space-y-1.5 font-mono text-[11px]">
             <div class="flex justify-between items-center pb-1.5 border-b border-white/5">
               <span class="text-slate-400">Respuesta:</span>
-              <span class="font-bold \${d.admitted ? 'text-emerald-400' : 'text-rose-400'}">\${d.crown.responseMode.toUpperCase()}</span>
+              <span class="font-bold \${d.admitted ? 'text-emerald-400' : 'text-rose-400'}">\${escapeHtml(String(d.crown.responseMode ?? "").toUpperCase())}</span>
             </div>
-            <div><span class="text-slate-500">Intento:</span> <span class="text-slate-200">\${d.crown.intent.category}</span></div>
-            <div><span class="text-slate-500">Nivel Riesgo:</span> <span class="text-amber-300">\${d.crown.riskLevel}</span></div>
-            <div><span class="text-slate-500">Ruta Autoridad:</span> <span class="text-indigo-300">\${d.plan.authorityPath}</span></div>
+            <div><span class="text-slate-500">Intento:</span> <span class="text-slate-200">\${escapeHtml(String(d.crown.intent.category ?? ""))}</span></div>
+            <div><span class="text-slate-500">Nivel Riesgo:</span> <span class="text-amber-300">\${escapeHtml(String(d.crown.riskLevel ?? ""))}</span></div>
+            <div><span class="text-slate-500">Ruta Autoridad:</span> <span class="text-indigo-300">\${escapeHtml(String(d.plan.authorityPath ?? ""))}</span></div>
           </div>
 
           <div class="p-3 rounded-xl bg-slate-900/90 border border-white/5 space-y-1 text-[10px] font-mono">
             <span class="text-slate-400 font-semibold block uppercase">Verificación Invariante:</span>
             \${d.crown.verification.checks.map(c => \`
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 truncate">\${c.name}</span>
+                <span class="text-slate-400 truncate">\${escapeHtml(String(c.name ?? ""))}</span>
                 <span class="\${c.passed ? 'text-emerald-400' : 'text-rose-400'} font-bold">\${c.passed ? 'PASS' : 'FAIL'}</span>
               </div>
             \`).join('')}
@@ -3104,11 +3104,11 @@ app.get("/", (_req, res) => {
           artEl.innerHTML = data.events.slice(-3).reverse().map(ev => \`
             <div class="p-2 rounded-xl bg-slate-900/80 border border-white/5 space-y-0.5">
               <div class="flex justify-between items-center text-[10px]">
-                <span class="text-amber-300 font-bold">\${ev.type}</span>
-                <span class="text-emerald-400">\${ev.status}</span>
+                <span class="text-amber-300 font-bold">\${escapeHtml(String(ev.type ?? ""))}</span>
+                <span class="text-emerald-400">\${escapeHtml(String(ev.status ?? ""))}</span>
               </div>
-              <div class="text-[9px] text-slate-500 truncate">\${ev.methodId}</div>
-              <div class="text-[9px] text-cyan-400 font-mono truncate">Hash: \${ev.hash}</div>
+              <div class="text-[9px] text-slate-500 truncate">\${escapeHtml(String(ev.methodId ?? ""))}</div>
+              <div class="text-[9px] text-cyan-400 font-mono truncate">Hash: \${escapeHtml(String(ev.hash ?? ""))}</div>
             </div>
           \`).join('');
         }
@@ -3120,17 +3120,17 @@ app.get("/", (_req, res) => {
             <div class="p-3.5 rounded-2xl bg-[#090e1c] border border-white/5 flex flex-wrap items-center justify-between gap-2 crystal-card">
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="font-bold text-amber-300">\${ev.type}</span>
+                  <span class="font-bold text-amber-300">\${escapeHtml(String(ev.type ?? ""))}</span>
                   <span class="text-slate-500">·</span>
-                  <span class="text-[11px] text-slate-300 font-mono">\${ev.principal}</span>
+                  <span class="text-[11px] text-slate-300 font-mono">REDACTED</span>
                   <span class="text-slate-500">·</span>
-                  <span class="text-cyan-400">\${ev.riskTier}</span>
+                  <span class="text-cyan-400">\${escapeHtml(String(ev.riskTier ?? ""))}</span>
                 </div>
-                <div class="text-[10px] text-slate-400 mt-1 font-mono">\${ev.methodId}</div>
+                <div class="text-[10px] text-slate-400 mt-1 font-mono">\${escapeHtml(String(ev.methodId ?? ""))}</div>
               </div>
               <div class="text-right">
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">\${ev.status}</span>
-                <div class="text-[9px] text-slate-500 mt-1 font-mono">\${ev.timestamp}</div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">\${escapeHtml(String(ev.status ?? ""))}</span>
+                <div class="text-[9px] text-slate-500 mt-1 font-mono">\${escapeHtml(String(ev.timestamp ?? ""))}</div>
               </div>
             </div>
           \`).join('');
@@ -3155,7 +3155,7 @@ app.get("/", (_req, res) => {
         resContainer.innerHTML = \`
           <span class="\${data.decision === 'PATTERN_MATCH' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}">
             \${data.decision === 'PATTERN_MATCH' ? 'PATRÓN DETECTADO — NO ES BLOQUEO DE EJECUCIÓN' : 'SIN PATRÓN DETECTADO — NO ES AUTORIZACIÓN'}
-          </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
+          </span> · Nivel 1: \${escapeHtml(String(data.blockadeEvaluation.nivel1_ontologico ?? ""))} · Nivel 2: \${escapeHtml(String(data.blockadeEvaluation.nivel2_semantico ?? ""))}
         \`;
       } catch (err) {
         resContainer.textContent = 'Error: ' + err.message;
@@ -3177,18 +3177,18 @@ app.get("/", (_req, res) => {
         resContainer.innerHTML = \`
           <div class="p-3.5 rounded-2xl bg-[#090e1c] border \${data.decision === 'PATTERN_MATCH' ? 'border-rose-800' : 'border-emerald-800'} mt-2 crystal-card">
             <div class="flex justify-between items-center mb-1">
-              <span class="font-bold \${data.decision === 'PATTERN_MATCH' ? 'text-rose-400' : 'text-emerald-400'}">Resultado del escaneo: \${data.decision}</span>
-              <span class="text-[10px] text-slate-500 font-mono">\${data.timestamp}</span>
+              <span class="font-bold \${data.decision === 'PATTERN_MATCH' ? 'text-rose-400' : 'text-emerald-400'}">Resultado del escaneo: \${escapeHtml(String(data.decision ?? ""))}</span>
+              <span class="text-[10px] text-slate-500 font-mono">\${escapeHtml(String(data.timestamp ?? ""))}</span>
             </div>
             <div class="text-[11px] space-y-0.5 text-slate-300">
-              <div>Nivel 1 (Ontológico): <strong class="\${data.blockadeEvaluation.nivel1_ontologico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel1_ontologico}</strong></div>
-              <div>Nivel 2 (Semántico - Prompt Guard): <strong class="\${data.blockadeEvaluation.nivel2_semantico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel2_semantico}</strong></div>
+              <div>Nivel 1 (Ontológico): <strong class="\${data.blockadeEvaluation.nivel1_ontologico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel1_ontologico ?? ""))}</strong></div>
+              <div>Nivel 2 (Semántico - Prompt Guard): <strong class="\${data.blockadeEvaluation.nivel2_semantico === 'VIOLATION' ? 'text-rose-400' : 'text-emerald-400'}">\${escapeHtml(String(data.blockadeEvaluation.nivel2_semantico ?? ""))}</strong></div>
               <div>Nivel 3 (Comportamental): <strong class="\${data.blockadeEvaluation.nivel3_comportamental === 'FLAGGED' ? 'text-amber-400' : 'text-emerald-400'}">\${data.blockadeEvaluation.nivel3_comportamental}</strong></div>
             </div>
           </div>
         \`;
       } catch (err) {
-        resContainer.innerHTML = \`<span class="text-rose-400">Error: \${err.message}</span>\`;
+        resContainer.innerHTML = \`<span class="text-rose-400">Error: \${escapeHtml(String(err?.message ?? "unknown error"))}</span>\`;
       }
     }
 
