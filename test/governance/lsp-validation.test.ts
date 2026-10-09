@@ -5,11 +5,17 @@ describe("LSP validation", () => {
   it("only FRESH_NO_DIAGNOSTICS is technically clean", () => {
     const lsp = new LspValidationAdapter();
     expect(lsp.openFile("a.ts", "const x = 1;")).toBe(0);
+    const unopened = lsp.diagnosticsFor("a.ts", 0);
+    expect(unopened.freshness).toBe("NO_FRESH_DATA");
+    expect(unopened.verdict).toBe("INCONCLUSIVE");
+
+    lsp.pushDiagnostics("a.ts", 0, []);
     const clean = lsp.diagnosticsFor("a.ts", 0);
     expect(clean.freshness).toBe("FRESH_NO_DIAGNOSTICS");
     expect(clean.verdict).toBe("TECHNICALLY_CLEAN");
 
     const v = lsp.saveFile("a.ts", "const x: number = 'bad';");
+    expect(lsp.diagnosticsFor("a.ts", v).verdict).toBe("INCONCLUSIVE");
     expect(v).toBe(1);
     lsp.pushDiagnostics("a.ts", v, [{ file: "a.ts", line: 1, character: 1, severity: "error", message: "type" }]);
     const dirty = lsp.diagnosticsFor("a.ts", v);
