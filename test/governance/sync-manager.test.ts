@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  Lock,
   Semaphore,
   BoundedSemaphore,
   Event,
@@ -23,6 +24,14 @@ describe("sync manager", () => {
     expect(sem.availablePermits).toBe(0);
     sem.release();
     expect(() => sem.release()).toThrow();
+  });
+
+  it("lock acquisition honors timeout and rejects a wrong owner", async () => {
+    const lock = new Lock();
+    const owner = await lock.acquire();
+    await expect(lock.acquire(5, "waiter")).rejects.toThrow(/timeout/);
+    expect(() => lock.release("wrong-owner")).toThrow(/owner mismatch/);
+    lock.release(owner);
   });
 
   it("semaphore times out when exhausted", async () => {
@@ -76,7 +85,7 @@ describe("sync manager", () => {
       manager.mutate(scope, "e1", async () => { order.push(3); }),
     ]);
     expect(order).toEqual([1, 2, 3]);
-    expect(scopeKey(scope)).toBe("t1/ws/ikes");
+    expect(scopeKey(scope)).toBe("2:t1|2:ws|4:ikes|");
     expect(() => manager.assertNoLocksHeld()).not.toThrow();
   });
 
@@ -88,6 +97,12 @@ describe("sync manager", () => {
     expect(tokenIsValid(token, new Date("2026-01-01T00:00:00.500Z"))).toBe(true);
     expect(tokenIsValid(token, new Date("2026-01-01T01:00:00Z"))).toBe(false);
     expect(tokenIsValid(revokeToken(token), new Date("2026-01-01T00:00:00.500Z"))).toBe(false);
+  });
+
+  it("does not reconcile empty markers or alias different scopes", () => {
+    expect(reconcileBeforeRelease({ git: "", index: "", bookpi: "" }).reconciled).toBe(false);
+    expect(scopeKey({ tenantId: "a/b", workspace: "c", service: "d" }))
+      .not.toBe(scopeKey({ tenantId: "a", workspace: "b/c", service: "d" }));
   });
 
   it("reconciles git/index/bookpi before release", () => {
