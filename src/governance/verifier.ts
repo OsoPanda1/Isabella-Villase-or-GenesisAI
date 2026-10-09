@@ -116,37 +116,4 @@ export function verifyAgentSdkApp(input: VerifierInput): VerifierReport {
     findings: Object.freeze(findings),
     scope: "revisión concreta; no es certificación universal de producción",
   };
-}}]),
-      scope: "revisión concreta; no es certificación universal de producción",
-    };
-  }
-
-  const findings: VerifierFinding[] = [];
-  const add = (check: VerifierCheck, state: VerifierState, detail: string) => findings.push({ check, state, detail });
-
-  add("sdk_version", input.sdkVersion ? "PASS" : "PASS_WITH_WARNINGS", input.sdkVersion ?? "SDK version not pinned");
-  add("python_version", input.pythonVersion ? "PASS" : "PASS_WITH_WARNINGS", input.pythonVersion ?? "Python version not pinned");
-  add("dependencies", input.hasRequirements ? "PASS" : "PASS_WITH_WARNINGS", input.hasRequirements ? "requirements present" : "no requirements file");
-  add("imports", (input.importErrors?.length ?? 0) === 0 ? "PASS" : "FAIL", `${input.importErrors?.length ?? 0} import errors`);
-  add("syntax", (input.syntaxErrors?.length ?? 0) === 0 ? "PASS" : "FAIL", `${input.syntaxErrors?.length ?? 0} syntax errors`);
-  add("secrets", (input.secretPatternsFound ?? 0) === 0 ? "PASS" : "FAIL", `${input.secretPatternsFound ?? 0} secret patterns`);
-  add("env_example", input.hasEnvExample ? "PASS" : "PASS_WITH_WARNINGS", input.hasEnvExample ? "present" : "missing .env.example");
-  add("gitignore", input.hasGitignore ? "PASS" : "PASS_WITH_WARNINGS", input.hasGitignore ? "present" : "missing .gitignore");
-  add("mcp", input.mcpConfigured === true ? "PASS" : "PASS_WITH_WARNINGS", input.mcpConfigured ? "configured" : "not configured");
-  add("subagents", (input.subagentsDeclared ?? 0) > 0 ? "PASS" : "PASS_WITH_WARNINGS", `${input.subagentsDeclared ?? 0} subagents`);
-  add("documentation", input.documentationPresent ? "PASS" : "PASS_WITH_WARNINGS", input.documentationPresent ? "present" : "missing documentation");
-  add("prompts", "PASS", "prompts reviewed");
-  add("models", "PASS", "models reviewed");
-  add("permissions", "PASS", "permissions reviewed");
-  add("errors", "PASS", "error handling reviewed");
-
-  const failed = findings.some((f) => f.state === "FAIL");
-  const warnings = findings.some((f) => f.state === "PASS_WITH_WARNINGS");
-  const overall: VerifierState = failed ? "FAIL" : warnings ? "PASS_WITH_WARNINGS" : "PASS";
-
-  return {
-    overall,
-    findings: Object.freeze(findings),
-    scope: "revisión concreta; no es certificación universal de producción",
-  };
 }
