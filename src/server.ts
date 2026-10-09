@@ -253,8 +253,10 @@ runtime.skills.register({
       skill: "territorial_digital_twin_sync",
       territory: "Real del Monte (Nodo Cero)",
       coordinates: [20.1417, -98.6722],
-      bioculturalArchiveSynced: true,
-      wormLedgerAnchor: "BOOKPI_BLOCK_SYNC_OK",
+      bioculturalArchiveSynced: false,
+      synchronizationStatus: "NOT_CONFIGURED",
+      wormLedgerAnchor: null,
+      limitation: "No live archive or BookPI synchronization adapter is configured.",
     };
   },
 });
