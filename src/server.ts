@@ -2818,12 +2818,12 @@ app.get("/", (_req, res) => {
             <span class="text-rose-400 font-semibold text-[10px]">esLatina</span>
             <span class="text-slate-600">·</span>
             <span class="text-[10px] font-mono \${isBlocked ? 'text-rose-400' : 'text-emerald-400'}">
-              \${isBlocked ? 'REFUSAL / FAIL-CLOSED' : 'ADMITTED · ' + d.crown.responseMode.toUpperCase()}
+              \${isBlocked ? 'REFUSAL / FAIL-CLOSED' : 'INTENT ADMITTED · ' + d.crown.responseMode.toUpperCase()}
             </span>
           </div>
 
           <div class="flex items-center gap-3">
-            <span class="text-[10px] font-mono text-slate-400">\${(durationMs / 1000).toFixed(2)}s · 88 tok/s</span>
+            <span class="text-[10px] font-mono text-slate-400">\${(durationMs / 1000).toFixed(2)}s · </span>
           </div>
         </div>
 
@@ -2833,8 +2833,8 @@ app.get("/", (_req, res) => {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-cyan-400 text-xs">📚</span>
-                <span class="text-xs font-bold text-slate-200 font-editorial tracking-tight">Fuentes Epistemológicas Consultadas</span>
-                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">4 Citas</span>
+                <span class="text-xs font-bold text-slate-200 font-editorial tracking-tight">Referencias declaradas (no consultadas)</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">4 Referencias no verificadas</span>
               </div>
               
               <!-- Source Category Filters -->
@@ -2861,7 +2861,7 @@ app.get("/", (_req, res) => {
                   Referencia declarada: registro Zenodo
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.
+                  Referencia declarada; no recuperada ni verificada por el runtime.
                 </p>
               </div>
 
@@ -2872,13 +2872,13 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">2</span>
                     <span class="truncate font-semibold">Referencia territorial declarada</span>
                   </div>
-                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">2,660 msnm</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Catálogo Territorial y Panteón Inglés
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  Mina de Acosta, Mina La Dificultad, tiro de 400m y chimenea de 39m.
+                  Referencia declarada; contenido no recuperado ni contrastado.
                 </p>
               </div>
 
@@ -2889,13 +2889,13 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">3</span>
                     <span class="truncate font-semibold">AGENTS.md</span>
                   </div>
-                  <span class="text-[9px] font-mono text-amber-400 font-semibold">CANON</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Constitución Operativa Invariante
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
-                  CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE.
+                  Referencia declarada; archivo no recuperado por esta ejecución.
                 </p>
               </div>
 
@@ -2906,7 +2906,7 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">4</span>
                     <span class="truncate font-semibold">Canon v40.0.0</span>
                   </div>
-                  <span class="text-[9px] font-mono text-amber-300 font-semibold">VOLATILE</span>
+                  <span class="text-[9px] font-mono text-amber-300 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
                   Pipeline P-R-P-D-A-A & BookPI
@@ -2950,7 +2950,7 @@ app.get("/", (_req, res) => {
         <div class="p-3 rounded-2xl bg-[#090e1c] border border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-400">
           <div class="flex items-center gap-2">
             <span class="text-emerald-400">✓</span>
-            <span>Certificado Canónico de Ejecución (TINA esLatina)</span>
+            <span>Registro de evaluación de intención (sin ejecución de acción externa)</span>
           </div>
           <span class="text-amber-300 truncate max-w-xs">\${d.plan.hypercore.governanceInvariant}</span>
         </div>
