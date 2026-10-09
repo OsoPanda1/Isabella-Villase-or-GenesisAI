@@ -138,26 +138,68 @@ export interface MemoryFabric {
   retrieve(query: string, namespace?: string, limit?: number): readonly MemoryRecord[];
 }
 
+function cloneMemoryRecord(record: MemoryRecord): MemoryRecord {
+  return Object.freeze({
+    ...record,
+    relations: Object.freeze([...record.relations]),
+    ...(record.metadata ? { metadata: Object.freeze({ ...record.metadata }) } : {}),
+  });
+}
+
 export class InMemoryMemoryFabric implements MemoryFabric {
   private readonly records: MemoryRecord[] = [];
+
   write(record: Omit<MemoryRecord, "id" | "createdAt" | "contentHash" | "version">): MemoryRecord {
-    const createdAt = new Date().toISOString();
-    const contentHash = createHash("sha3-256").update(JSON.stringify(record)).digest("hex");
-    const existing = this.records.find((r) => r.contentHash === contentHash);
-    if (existing) return existing;
-    const next = { ...record, id: randomUUID(), createdAt, contentHash, version: 1 };
+    if (!record || typeof record.text !== "string" || !record.text.trim() || record.text.length > 1_000_000) {
+      throw new Error("HSF_MEMORY_INVALID_TEXT");
+    }
+    if (typeof record.namespace !== "string" || !record.namespace.trim() || record.namespace.length > 128) {
+      throw new Error("HSF_MEMORY_INVALID_NAMESPACE");
+    }
+    if (!Array.isArray(record.relations) || record.relations.some((value) => typeof value !== "string" || !value.trim())) {
+      throw new Error("HSF_MEMORY_INVALID_RELATIONS");
+    }
+    const normalized = {
+      text: record.text.trim(),
+      namespace: record.namespace.trim(),
+      relations: [...record.relations].map((value) => value.trim()),
+      ...(record.metadata ? { metadata: { ...record.metadata } } : {}),
+    };
+    if (normalized.metadata && Object.entries(normalized.metadata).some(([key, value]) =>
+      !key.trim() || typeof value !== "string" || key.length > 128 || value.length > 2048)) {
+      throw new Error("HSF_MEMORY_INVALID_METADATA");
+    }
+    const contentHash = createHash("sha3-256").update(JSON.stringify(normalized)).digest("hex");
+    const existing = this.records.find((item) => item.contentHash === contentHash);
+    if (existing) return cloneMemoryRecord(existing);
+
+    const next: MemoryRecord = Object.freeze({
+      ...normalized,
+      id: randomUUID(),
+      createdAt: new Date().toISOString(),
+      contentHash,
+      version: 1,
+      relations: Object.freeze([...normalized.relations]),
+      ...(normalized.metadata ? { metadata: Object.freeze({ ...normalized.metadata }) } : {}),
+    });
     this.records.push(next);
-    return next;
+    return cloneMemoryRecord(next);
   }
+
   retrieve(query: string, namespace?: string, limit = 20): readonly MemoryRecord[] {
+    if (typeof query !== "string") throw new Error("HSF_MEMORY_QUERY_INVALID");
+    if (namespace !== undefined && (typeof namespace !== "string" || !namespace.trim())) {
+      throw new Error("HSF_MEMORY_NAMESPACE_INVALID");
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("HSF_MEMORY_LIMIT_OUT_OF_RANGE");
     const q = query.toLowerCase().trim();
     return this.records
-      .filter((r) => !namespace || r.namespace === namespace)
-      .map((r) => ({ r, score: q ? r.text.toLowerCase().split(q).length - 1 : 0 }))
+      .filter((record) => !namespace || record.namespace === namespace.trim())
+      .map((record) => ({ record, score: q ? record.text.toLowerCase().split(q).length - 1 : 0 }))
       .filter(({ score }) => !q || score > 0)
-      .sort((a, b) => b.score - a.score || b.r.createdAt.localeCompare(a.r.createdAt))
+      .sort((a, b) => b.score - a.score || b.record.createdAt.localeCompare(a.record.createdAt))
       .slice(0, limit)
-      .map(({ r }) => r);
+      .map(({ record }) => cloneMemoryRecord(record));
   }
 }
 
@@ -188,21 +230,49 @@ export interface KnowledgeArtifact {
   source: string;
   contentHash: string;
   ingestedAt: string;
-  status: "accepted" | "rejected";
+  status: "PENDING_REVIEW";
 }
 
+/**
+ * HSF ingestion is a proposal, not automatic epistemic admission.
+ * No license/provenance verifier is wired into this class; therefore it must
+ * never label newly supplied material "accepted".
+ */
 export class KnowledgeFabric {
   private readonly artifacts = new Map<string, KnowledgeArtifact>();
+
   ingest(input: { title: string; content: string; source: string }): KnowledgeArtifact {
-    if (!input.title.trim() || !input.content.trim() || !input.source.trim()) throw new Error("KNOWLEDGE_INVALID_ARTIFACT");
-    const contentHash = createHash("sha3-256").update(input.content).digest("hex");
+    if (!input || ![input.title, input.content, input.source].every(
+      (value) => typeof value === "string" && value.trim(),
+    )) throw new Error("KNOWLEDGE_INVALID_ARTIFACT");
+    if (input.title.length > 300 || input.content.length > 1_000_000 || input.source.length > 2048) {
+      throw new Error("KNOWLEDGE_ARTIFACT_SIZE_LIMIT_EXCEEDED");
+    }
+    const contentHash = createHash("sha3-256").update(input.content, "utf8").digest("hex");
     const id = `knowledge:${contentHash.slice(0, 24)}`;
-    const artifact: KnowledgeArtifact = { id, ...input, contentHash, ingestedAt: new Date().toISOString(), status: "accepted" };
+    const existing = this.artifacts.get(id);
+    if (existing) return Object.freeze({ ...existing });
+    const artifact: KnowledgeArtifact = Object.freeze({
+      id,
+      title: input.title.trim(),
+      content: input.content,
+      source: input.source.trim(),
+      contentHash,
+      ingestedAt: new Date().toISOString(),
+      status: "PENDING_REVIEW",
+    });
     this.artifacts.set(id, artifact);
-    return artifact;
+    return Object.freeze({ ...artifact });
   }
-  get(id: string): KnowledgeArtifact | undefined { return this.artifacts.get(id); }
-  list(): readonly KnowledgeArtifact[] { return [...this.artifacts.values()]; }
+
+  get(id: string): KnowledgeArtifact | undefined {
+    const artifact = this.artifacts.get(id);
+    return artifact ? Object.freeze({ ...artifact }) : undefined;
+  }
+
+  list(): readonly KnowledgeArtifact[] {
+    return [...this.artifacts.values()].map((artifact) => Object.freeze({ ...artifact }));
+  }
 }
 
 export interface ExpertAssessment {
@@ -214,24 +284,57 @@ export interface ExpertAssessment {
 
 export interface ConsensusResult {
   verdict: string;
+  /** Heuristic agreement score, not a calibrated probability. */
   confidence: number;
+  confidenceType: "HEURISTIC_AGREEMENT_SCORE";
   participants: number;
+  agreementRatio: number;
   dissent: readonly string[];
 }
 
 export function consensus(results: readonly ExpertAssessment[]): ConsensusResult {
-  if (results.length === 0) return { verdict: "NO_CONSENSUS", confidence: 0, participants: 0, dissent: [] };
+  if (results.length === 0) {
+    return { verdict: "NO_CONSENSUS", confidence: 0, confidenceType: "HEURISTIC_AGREEMENT_SCORE", participants: 0, agreementRatio: 0, dissent: [] };
+  }
+  for (const result of results) {
+    if (!result || typeof result.expertId !== "string" || !result.expertId.trim() ||
+      typeof result.verdict !== "string" || !result.verdict.trim() ||
+      !Number.isFinite(result.confidence) || result.confidence < 0 || result.confidence > 1 ||
+      !Array.isArray(result.evidence)) {
+      throw new Error("HSF_CONSENSUS_INVALID_ASSESSMENT");
+    }
+  }
   const buckets = new Map<string, ExpertAssessment[]>();
-  for (const result of results) buckets.set(result.verdict, [...(buckets.get(result.verdict) ?? []), result]);
-  const ranked = [...buckets.entries()].sort((a, b) => b[1].length - a[1].length);
+  for (const result of results) {
+    const group = buckets.get(result.verdict) ?? [];
+    group.push(result);
+    buckets.set(result.verdict, group);
+  }
+  const ranked = [...buckets.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
   const top = ranked[0];
-  if (!top) return { verdict: "NO_CONSENSUS", confidence: 0, participants: results.length, dissent: [] };
+  if (!top) {
+    return { verdict: "NO_CONSENSUS", confidence: 0, confidenceType: "HEURISTIC_AGREEMENT_SCORE", participants: results.length, agreementRatio: 0, dissent: results.map((r) => r.expertId) };
+  }
+  const tied = ranked.length > 1 && ranked[1]![1].length === top[1].length;
+  if (tied) {
+    return {
+      verdict: "NO_CONSENSUS",
+      confidence: 0,
+      confidenceType: "HEURISTIC_AGREEMENT_SCORE",
+      participants: results.length,
+      agreementRatio: top[1].length / results.length,
+      dissent: results.map((r) => r.expertId),
+    };
+  }
   const [verdict, group] = top;
-  const confidence = group.reduce((sum: number, r) => sum + Math.max(0, Math.min(1, r.confidence)), 0) / group.length;
+  const agreementRatio = group.length / results.length;
+  const meanReportedConfidence = group.reduce((sum, item) => sum + item.confidence, 0) / group.length;
   return {
     verdict,
-    confidence,
+    confidence: Math.round(meanReportedConfidence * agreementRatio * 100) / 100,
+    confidenceType: "HEURISTIC_AGREEMENT_SCORE",
     participants: results.length,
+    agreementRatio,
     dissent: results.filter((r) => r.verdict !== verdict).map((r) => r.expertId),
   };
 }
@@ -243,19 +346,31 @@ export interface VerificationClaim {
 }
 
 export interface VerificationResult {
+  /** Count-based signal only; never a probability or a truth verdict. */
   confidence: number;
+  scoreType: "HEURISTIC_NOT_PROBABILITY";
   evidenceCount: number;
   contradictionCount: number;
-  level: "VERY_HIGH" | "HIGH" | "MEDIUM" | "LOW" | "UNVERIFIED";
+  level: "SUPPORTIVE_SIGNAL" | "MIXED_SIGNAL" | "CONTRADICTED_SIGNAL" | "UNVERIFIED";
 }
 
 export function verifyClaim(input: VerificationClaim): VerificationResult {
-  const evidenceCount = input.evidence.length;
-  const contradictionCount = input.contradictions.length;
-  const raw = evidenceCount === 0 ? 0 : evidenceCount / (evidenceCount + contradictionCount * 2);
-  const confidence = Math.round(raw * 100);
-  const level = confidence >= 90 ? "VERY_HIGH" : confidence >= 75 ? "HIGH" : confidence >= 50 ? "MEDIUM" : confidence > 0 ? "LOW" : "UNVERIFIED";
-  return { confidence, evidenceCount, contradictionCount, level };
+  if (!input || typeof input.claim !== "string" || !input.claim.trim() ||
+    !Array.isArray(input.evidence) || !Array.isArray(input.contradictions)) {
+    throw new Error("HSF_VERIFICATION_INVALID_INPUT");
+  }
+  const evidenceCount = input.evidence.filter((item) => typeof item === "string" && item.trim()).length;
+  const contradictionCount = input.contradictions.filter((item) => typeof item === "string" && item.trim()).length;
+  const total = evidenceCount + contradictionCount;
+  const raw = total === 0 ? 0 : evidenceCount / total;
+  // A count-only heuristic cannot establish truth; cap it below "high confidence".
+  const confidence = Math.min(0.8, Math.round(raw * 100) / 100);
+  const level = evidenceCount === 0
+    ? "UNVERIFIED"
+    : contradictionCount > 0
+      ? "MIXED_SIGNAL"
+      : "SUPPORTIVE_SIGNAL";
+  return { confidence, scoreType: "HEURISTIC_NOT_PROBABILITY", evidenceCount, contradictionCount, level };
 }
 
 export interface ArchitectureAssessment {
