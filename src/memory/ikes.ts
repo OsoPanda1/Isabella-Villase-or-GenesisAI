@@ -56,6 +56,15 @@ function hash(value: unknown): string {
   return createHash("sha256").update((JSON.stringify(value) ?? ""), "utf8").digest("hex");
 }
 
+function freezeClaim(claim: KnowledgeClaim): KnowledgeClaim {
+  return Object.freeze({
+    ...claim,
+    sourceIds: Object.freeze([...claim.sourceIds]),
+    evidenceIds: Object.freeze([...claim.evidenceIds]),
+    provenance: Object.freeze({ ...claim.provenance }),
+  });
+}
+
 export class IKESEngine {
   private readonly sources = new Map<string, KnowledgeSource>();
   private readonly claims = new Map<string, KnowledgeClaim>();
@@ -74,12 +83,19 @@ export class IKESEngine {
   }
 
   propose(proposal: KnowledgeProposal): KnowledgeClaim {
-    const missing = proposal.evidenceIds.filter((id) => !this.sources.has(id));
-    if (missing.length > 0) throw new Error(`IKES: evidence not registered: ${missing.join(",")}`);
+    if (!proposal || !Array.isArray(proposal.evidenceIds) || proposal.evidenceIds.length === 0) {
+      throw new Error("IKES_EVIDENCE_REQUIRED");
+    }
+    if (!Array.isArray(proposal.claim.sourceIds)) throw new Error("IKES_SOURCE_IDS_REQUIRED");
+    const missingEvidence = proposal.evidenceIds.filter((id) => !this.sources.has(id));
+    if (missingEvidence.length > 0) throw new Error(`IKES: evidence not registered: ${missingEvidence.join(",")}`);
+    const missingSources = proposal.claim.sourceIds.filter((id) => !this.sources.has(id));
+    if (missingSources.length > 0) throw new Error(`IKES: source not registered: ${missingSources.join(",")}`);
     const base = {
       ...proposal.claim,
-      sourceIds: [...proposal.claim.sourceIds],
-      evidenceIds: [...proposal.evidenceIds],
+      sourceIds: [...new Set(proposal.claim.sourceIds)],
+      evidenceIds: [...new Set(proposal.evidenceIds)],
+      provenance: { ...proposal.claim.provenance },
       epistemicState: "E1_SOURCE_FOUND" as const,
     };
     const claimId = `clm_${hash(base).slice(0, 24)}`;
@@ -90,32 +106,39 @@ export class IKESEngine {
       contentHash: hash(base),
       version: existing ? existing.version + 1 : 1,
     };
-    this.claims.set(claimId, Object.freeze(record));
-    return record;
+    const frozen = freezeClaim(record);
+    this.claims.set(claimId, frozen);
+    return frozen;
   }
 
   corroborate(claimId: string, evidenceIds: readonly string[]): KnowledgeClaim {
     const claim = this.requireClaim(claimId);
+    if (!Array.isArray(evidenceIds) || evidenceIds.length === 0) {
+      throw new Error("IKES_CORROBORATION_EVIDENCE_REQUIRED");
+    }
     if (evidenceIds.some((id) => !this.sources.has(id))) {
       throw new Error("IKES: no se puede corroborar con evidencia inexistente.");
     }
     const next: KnowledgeClaim = {
       ...claim,
+      sourceIds: [...new Set([...claim.sourceIds, ...evidenceIds])],
       evidenceIds: [...new Set([...claim.evidenceIds, ...evidenceIds])],
       epistemicState: "E2_CORROBORATED",
       version: claim.version + 1,
     };
     next.contentHash = hash({ ...next, contentHash: undefined });
-    this.claims.set(claimId, Object.freeze(next));
-    return next;
+    const frozen = freezeClaim(next);
+    this.claims.set(claimId, frozen);
+    return frozen;
   }
 
   deprecate(claimId: string): KnowledgeClaim {
     const claim = this.requireClaim(claimId);
-    const next = { ...claim, temporalState: "superseded" as const, epistemicState: "DP_DEPRECATED" as const, version: claim.version + 1 };
+    const next: KnowledgeClaim = { ...claim, temporalState: "superseded", epistemicState: "DP_DEPRECATED", version: claim.version + 1 };
     next.contentHash = hash({ ...next, contentHash: undefined });
-    this.claims.set(claimId, Object.freeze(next));
-    return next;
+    const frozen = freezeClaim(next);
+    this.claims.set(claimId, frozen);
+    return frozen;
   }
 
   retrieve(query: string, opts: { temporal?: TemporalState; minEvidence?: EpistemicState } = {}): KnowledgeClaim[] {
