@@ -758,12 +758,11 @@ app.post("/api/v1/isabella/mediate", (req, res) => {
     }
 
     const started = Date.now();
+    // A request body must never be allowed to self-assign privileged roles or principal identity.
     const principal = createPrincipal({
-      id: typeof body.principalId === "string" ? body.principalId : "human:operator:active",
-      kind: body.principalKind === "machine" ? "machine" : "human",
-      roles: Array.isArray(body.roles)
-        ? body.roles.filter((v: unknown): v is string => typeof v === "string")
-        : ["operator"],
+      id: "service:hsf-api",
+      kind: "machine",
+      roles: ["operator"],
     });
     assertBalancedAuthority(principal);
 
@@ -842,6 +841,17 @@ app.get("/api/v1/hsf/status", async (_req, res) => {
 
 app.post("/api/v1/hsf/invoke", async (req, res) => {
   try {
+    const configuredToken = process.env.HSF_API_TOKEN;
+    const authorizationHeader = req.header("authorization") ?? "";
+    const suppliedToken = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.slice(7) : "";
+    if (!configuredToken) {
+      res.status(503).json({ success: false, error: "HSF_API_TOKEN_NOT_CONFIGURED" });
+      return;
+    }
+    if (!suppliedToken || suppliedToken !== configuredToken) {
+      res.status(401).json({ success: false, error: "HSF_AUTHENTICATION_REQUIRED" });
+      return;
+    }
     const body = req.body ?? {};
     const capabilityId = typeof body.capabilityId === "string" ? body.capabilityId : "";
     const input = body.input;
@@ -880,7 +890,7 @@ app.post("/api/v1/hsf/invoke", async (req, res) => {
       principalId: principal.id,
       role: principal.roles[0] ?? "operator",
       policyVersion: "genesis-hsf-v1",
-      metadata: { source: "api" },
+      metadata: { source: "api", authenticated: "true", genesisGovernanceAdmitted: "true" },
     });
     res.status(result.status === "executed" ? 200 : result.status === "rejected" ? 403 : result.status === "unavailable" ? 503 : 500)
       .json({ success: result.status === "executed", ...result, timestamp: new Date().toISOString() });
