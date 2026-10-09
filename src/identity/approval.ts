@@ -50,13 +50,17 @@ export interface ApprovalReplayRegistry {
   has(nonce: string): boolean;
 }
 
-export function createApprovalReplayRegistry(): ApprovalReplayRegistry {
+export function createApprovalReplayRegistry(maxEntries = 100_000): ApprovalReplayRegistry {
+  if (!Number.isInteger(maxEntries) || maxEntries < 1) throw new Error("APPROVAL: replay registry capacity must be positive.");
   const consumed = new Map<string, number>();
   return {
     consume(nonce, expiresAt) {
+      const now = Date.now();
       const expiry = Date.parse(expiresAt);
-      if (!Number.isFinite(expiry) || expiry <= Date.now()) throw new Error("APPROVAL: expired approval cannot be consumed.");
+      if (!Number.isFinite(expiry) || expiry <= now) throw new Error("APPROVAL: expired approval cannot be consumed.");
+      for (const [key, expires] of consumed) if (expires <= now) consumed.delete(key);
       if (consumed.has(nonce)) throw new Error("APPROVAL: replay detected.");
+      if (consumed.size >= maxEntries) throw new Error("APPROVAL: replay registry capacity exceeded.");
       consumed.set(nonce, expiry);
     },
     has(nonce) {
@@ -65,8 +69,8 @@ export function createApprovalReplayRegistry(): ApprovalReplayRegistry {
   };
 }
 
-function canonicalTarget(target: ApprovalTarget, decision: PdpEffect, approver: string, nonce: string, expiresAt: string): string {
-  return JSON.stringify({ approver, decision, expiresAt, methodId: target.methodId, action: target.action ?? "",
+function canonicalTarget(target: ApprovalTarget, decision: PdpEffect, approver: string, nonce: string, expiresAt: string, decidedAt: string): string {
+  return JSON.stringify({ approver, decision, decidedAt, expiresAt, methodId: target.methodId, action: target.action ?? "",
     principalId: target.principalId ?? null, resource: target.resource ?? null,
     contextHash: target.contextHash ?? null, policyVersion: target.policyVersion ?? null, nonce });
 }
@@ -142,7 +146,7 @@ export function issueHumanApproval(
   const nonce = randomUUID();
   const decidedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + ttlMs).toISOString();
-  const targetHash = hashTarget(canonicalTarget(target, decision, approver.id, nonce, expiresAt));
+  const targetHash = hashTarget(canonicalTarget(target, decision, approver.id, nonce, expiresAt, decidedAt));
   const payload = Buffer.from(`${evidenceId}.${targetHash}`, "utf8");
   const signature = sign(null, payload, createPrivateKey(activeSigner.privateKeyPem)).toString("base64url");
   // Ephemeral trust is test-only. Production verification must use a separately
@@ -164,7 +168,7 @@ export function verifyHumanApproval(ref: ApprovalRef, target: ApprovalTarget, re
   if (ref.approverKind !== "human" || ref.methodId !== target.methodId) return false;
   const canonical = canonicalTarget({ ...target, action: target.action ?? ref.action, resource: target.resource ?? ref.resource,
     principalId: target.principalId ?? ref.principalId, contextHash: target.contextHash ?? ref.contextHash,
-    policyVersion: target.policyVersion ?? ref.policyVersion }, ref.decision, ref.approver, ref.nonce, ref.expiresAt);
+    policyVersion: target.policyVersion ?? ref.policyVersion }, ref.decision, ref.approver, ref.nonce, ref.expiresAt, ref.decidedAt);
   if (hashTarget(canonical) !== ref.targetHash) return false;
   const expiry = Date.parse(ref.expiresAt);
   if (!Number.isFinite(expiry) || expiry < Date.now()) return false;
