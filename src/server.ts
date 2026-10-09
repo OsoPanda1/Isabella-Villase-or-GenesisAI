@@ -911,6 +911,7 @@ app.post("/api/v1/triple-blockade/scan", (req, res) => {
       nivel3_comportamental: blockLevel3,
     },
     aegisScore: isBlocked ? 0.96 : 0.02,
+    scoreType: "HEURISTIC_NOT_PROBABILITY",
     timestamp: new Date().toISOString(),
   });
 });
@@ -1640,7 +1641,7 @@ app.get("/", (_req, res) => {
                   <span class="truncate">Zenodo / CERN · TAMV</span>
                   <span class="text-[9px] font-mono text-purple-400">DOI</span>
                 </div>
-                <p class="text-[10px] text-slate-400 line-clamp-1">Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.</p>
+                <p class="text-[10px] text-slate-400 line-clamp-1">Referencia declarada; contenido no recuperado ni verificado por este runtime.</p>
               </div>
 
               <div onclick="selectContextDoc('agents')" id="doc-card-agents" class="doc-card p-2 rounded-xl bg-slate-900/70 border border-white/5 hover:border-cyan-400/50 cursor-pointer transition space-y-0.5">
@@ -2872,10 +2873,10 @@ app.get("/", (_req, res) => {
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">1</span>
                     <span class="truncate font-semibold">doi.org/10.5281/zenodo.20606361</span>
                   </div>
-                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">E6 Verified</span>
+                  <span class="text-[9px] font-mono text-emerald-400 font-semibold">E0 NOT FETCHED</span>
                 </div>
                 <div class="text-[11px] font-medium text-slate-200 group-hover:text-amber-200 transition truncate font-editorial">
-                  Registro Zenodo CERN · TAMV Online
+                  Referencia declarada: registro Zenodo
                 </div>
                 <p class="text-[10px] text-slate-400 line-clamp-1 italic font-editorial">
                   Edwin Oswaldo Castillo Trejo · ORCID 0009-0008-5050-1539.
@@ -2887,7 +2888,7 @@ app.get("/", (_req, res) => {
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-1.5 font-mono text-[10px] text-cyan-300">
                     <span class="w-4 h-4 rounded-full bg-cyan-950 flex items-center justify-center font-bold">2</span>
-                    <span class="truncate font-semibold">INAH / Real del Monte</span>
+                    <span class="truncate font-semibold">Referencia territorial declarada</span>
                   </div>
                   <span class="text-[9px] font-mono text-emerald-400 font-semibold">2,660 msnm</span>
                 </div>
@@ -3138,7 +3139,7 @@ app.get("/", (_req, res) => {
         const data = await res.json();
         resContainer.innerHTML = \`
           <span class="\${data.decision === 'BLOCK' ? 'text-rose-400 font-bold' : 'text-amber-300 font-bold'}">
-            \${data.decision === 'BLOCK' ? 'BLOQUEADO'  : 'SIN PATRÓN DETECTADO'}
+            \${data.decision === 'BLOCK' ? 'BLOQUEADO'  : 'SIN PATRÓN DETECTADO (NO ES AUTORIZACIÓN)'}
           </span> · Nivel 1: \${data.blockadeEvaluation.nivel1_ontologico} · Nivel 2: \${data.blockadeEvaluation.nivel2_semantico}
         \`;
       } catch (err) {
