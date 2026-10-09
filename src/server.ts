@@ -159,13 +159,11 @@ runtime.tools.register({
   description: "Verifica integridad criptográfica de la cadena de bloques WORM y commitments de BookPI",
   execute: async (input) => {
     return {
-      status: "VERIFIED",
-      merkleRoot: "0x4a8f9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
-      unbrokenChain: true,
-      blocksValidated: 42,
-      wormRuleEnforced: true,
-      verifiedAt: new Date().toISOString(),
+      status: "NOT_VERIFIED",
+      verificationPerformed: false,
+      reason: "NO_LIVE_BOOKPI_VERIFIER_CONFIGURED",
       payload: input,
+      checkedAt: new Date().toISOString(),
     };
   },
 });
@@ -196,11 +194,12 @@ runtime.skills.register({
   handler: async (ctx) => {
     return {
       skill: "sovereign_post_quantum_anchor",
-      suite: "FIPS-203 (ML-KEM-768) + FIPS-204 (ML-DSA-87)",
-      status: "ANCHORED",
+      suite: "FIPS-203 (ML-KEM) + FIPS-204 (ML-DSA) — algorithm labels only",
+      status: "NOT_CONFIGURED",
+      verificationPerformed: false,
       signals: ctx.signals,
-      commitmentHash: "0x8f2d1e0b5c9a4e3f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f",
-      anchoredAt: new Date().toISOString(),
+      reason: "NO_POST_QUANTUM_CRYPTOGRAPHY_PROVIDER_CONFIGURED",
+      checkedAt: new Date().toISOString(),
     };
   },
 });
