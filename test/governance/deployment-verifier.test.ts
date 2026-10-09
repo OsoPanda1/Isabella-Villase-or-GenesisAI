@@ -81,8 +81,16 @@ describe("file header schema", () => {
     expect(ok.valid).toBe(true);
   });
 
-  it("declares auto-generated state without human approval", () => {
+  it("does not trust a human_approved text marker as proof of approval", () => {
     expect(scanTransparency("state: auto_generated").effectiveState).toBe("auto_generated");
-    expect(scanTransparency("human_approved", "stable").effectiveState).toBe("stable");
+    expect(scanTransparency("human_approved", "stable").effectiveState).toBe("draft");
+    const approval = {
+      approverId: "reviewer-1",
+      evidenceId: "review-record-1",
+      approvedAt: "2026-10-08T12:00:00.000Z",
+      signature: "signature-placeholder-for-test",
+    };
+    expect(scanTransparency("human_approved", "stable", approval).effectiveState).toBe("draft");
+    expect(scanTransparency("human_approved", "stable", approval, () => true).effectiveState).toBe("stable");
   });
 });
