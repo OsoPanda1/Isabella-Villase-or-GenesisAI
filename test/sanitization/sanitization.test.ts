@@ -61,6 +61,17 @@ describe("sanitization pipeline", () => {
     expect(result.findings.some((finding) => finding.evidence === "[REDACTED]")).toBe(true);
   });
 
+  it("does not reflect secret-like encoding metadata into the report", () => {
+    const result = sanitizeDocument({ ...base, id: "doc-metadata", declaredEncoding: "Bearer secret-value-that-must-not-echo" });
+    expect(result.status).toBe("REJECTED");
+    expect(JSON.stringify(result.report)).not.toContain("secret-value-that-must-not-echo");
+    expect(JSON.stringify(result.findings)).not.toContain("secret-value-that-must-not-echo");
+  });
+
+  it("rejects unsafe document identifiers before producing output", () => {
+    expect(() => sanitizeDocument({ ...base, id: "<script>alert(1)</script>" })).toThrow(/safe 1-128 character identifier/);
+  });
+
   it("masks PII and classifies as personal", () => {
     const result = sanitizeDocument({
       ...base,
