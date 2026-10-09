@@ -499,8 +499,13 @@ app.get("/api/v1/bookpi/events/admin", (req, res) => {
 
 // Tool execution
 app.post("/api/v1/tools/execute", async (req, res) => {
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "public-tool")) return;
   try {
     const { toolId = "rdm_territory_query", input = {} } = req.body ?? {};
+    if (JSON.stringify(input).length > 16_000) {
+      res.status(413).json({ success: false, error: "TOOL_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
     if (toolId !== "rdm_territory_query") {
       res.status(403).json({ success: false, error: "PUBLIC_TOOL_NOT_ALLOWED" });
       return;
@@ -550,6 +555,14 @@ app.post("/api/v1/cognition/route", async (req, res) => {
     const body = req.body ?? {};
     if (body.modelEngine === "gemini" && !enforceRateLimit(req, res, publicModelLimiter, "public-model")) return;
     const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (input.length > 20_000) {
+      res.status(413).json({ success: false, error: "COGNITIVE_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
+    if (typeof body.memoryQuery === "string" && body.memoryQuery.trim()) {
+      res.status(403).json({ success: false, error: "PUBLIC_MEMORY_RETRIEVAL_DISABLED_UNSCOPED" });
+      return;
+    }
     if (!input) {
       res.status(400).json({ success: false, error: "input es requerido" });
       return;
@@ -559,7 +572,7 @@ app.post("/api/v1/cognition/route", async (req, res) => {
     const destructiveIntent = body.methodId === destructiveMethodId;
     const methodId = destructiveIntent ? destructiveMethodId : safeMethodId;
     const principal = createPrincipal({ id: "human:public-session", kind: "human", roles: ["viewer"] });
-    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery.slice(0, 300) : undefined;
+    const memoryQuery = undefined; // Public viewer has no tenant-scoped memory authorization.
     const decision = runtime.evaluate({
       input,
       methodId,
@@ -572,8 +585,8 @@ app.post("/api/v1/cognition/route", async (req, res) => {
       expectedOutputTokens: 256,
       pressure: 0.1,
       requiresTools: false,
-      requiresMemory: Boolean(memoryQuery),
-      memoryQuery,
+      requiresMemory: false,
+      memoryQuery: undefined,
     });
 
     bookPiLedger.append({
@@ -615,10 +628,19 @@ app.post("/api/v1/cognition/route", async (req, res) => {
 // Canonical public cognitive API. Only user intent is accepted; authority and policy inputs are server-owned.
 app.post("/api/v1/cognitive/request", async (req, res) => {
   const startedAt = new Date().toISOString();
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "cognitive-request")) return;
   try {
     const body = req.body ?? {};
     if (body.modelEngine === "gemini" && !enforceRateLimit(req, res, publicModelLimiter, "public-model")) return;
     const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (input.length > 20_000) {
+      res.status(413).json({ success: false, error: "COGNITIVE_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
+    if (typeof body.memoryQuery === "string" && body.memoryQuery.trim()) {
+      res.status(403).json({ success: false, error: "PUBLIC_MEMORY_RETRIEVAL_DISABLED_UNSCOPED" });
+      return;
+    }
     if (!input) {
       res.status(400).json({ success: false, error: "input es requerido" });
       return;
@@ -628,7 +650,7 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
     const action = "memory:recall";
     const resource = "memory";
     const riskTier = "LOW" as const;
-    const memoryQuery = typeof body.memoryQuery === "string" ? body.memoryQuery.slice(0, 300) : undefined;
+    const memoryQuery = undefined; // Public viewer has no tenant-scoped memory authorization.
     const decision = runtime.evaluate({
       input,
       methodId,
@@ -641,8 +663,8 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
       expectedOutputTokens: 512,
       pressure: 0,
       requiresTools: false,
-      requiresMemory: Boolean(memoryQuery),
-      memoryQuery,
+      requiresMemory: false,
+      memoryQuery: undefined,
     });
     const traceId = `trace-${randomUUID()}`;
     const snapshot = createCrownExperienceSnapshot(
@@ -688,9 +710,14 @@ app.post("/api/v1/cognitive/request", async (req, res) => {
 
 // Isabella cognitive mediation — executed only through the canonical Genesis runtime.
 app.post("/api/v1/isabella/mediate", (req, res) => {
+  if (!enforceRateLimit(req, res, publicCognitionLimiter, "isabella-mediate")) return;
   try {
     const body = req.body ?? {};
     const input = typeof body.input === "string" ? body.input.trim() : "";
+    if (input.length > 20_000) {
+      res.status(413).json({ success: false, error: "MEDIATION_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
     const allowedProfiles = new Set(["general", "contra-auditoria", "simulacion", "secretaria", "gobernanza"]);
     const profile = typeof body.profile === "string" && allowedProfiles.has(body.profile)
       ? body.profile as "general" | "contra-auditoria" | "simulacion" | "secretaria" | "gobernanza"
@@ -745,10 +772,15 @@ app.post("/api/v1/isabella/mediate", (req, res) => {
 });
 
 app.post("/api/v1/isabella/entropy", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "isabella-entropy")) return;
   try {
-    const probabilities = Array.isArray(req.body?.probabilities)
-      ? req.body.probabilities.filter((value: unknown): value is number => typeof value === "number")
-      : [];
+    const supplied = req.body?.probabilities;
+    if (!Array.isArray(supplied) || supplied.length === 0 || supplied.length > 4096 ||
+      supplied.some((value: unknown) => typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1)) {
+      res.status(400).json({ success: false, error: "PROBABILITIES_MUST_BE_1_TO_4096_FINITE_VALUES_IN_RANGE_0_1" });
+      return;
+    }
+    const probabilities = supplied as number[];
     const result = runtime.evaluateIsabellaEntropy(probabilities);
     res.json({ success: true, ...result, timestamp: new Date().toISOString() });
   } catch (error) {
@@ -781,6 +813,7 @@ app.get("/api/v1/hsf/status", async (_req, res) => {
 
 app.post("/api/v1/hsf/invoke", async (req, res) => {
   if (!authorizeApiToken(req, res, "HSF_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "hsf-invoke")) return;
   try {
     const body = req.body ?? {};
     const capabilityId = typeof body.capabilityId === "string" ? body.capabilityId : "";
@@ -791,6 +824,10 @@ app.post("/api/v1/hsf/invoke", async (req, res) => {
     const principal = createPrincipal({ id: "service:hsf-api", kind: "machine", roles: ["operator"] });
     assertBalancedAuthority(principal);
     const serialized = JSON.stringify({ capabilityId, input });
+    if (serialized.length > 100_000) {
+      res.status(413).json({ success: false, error: "HSF_INPUT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
     const governance = runtime.evaluate({
       input: serialized,
       methodId: "A.COGNITION.E19_CAPABILITY.invoke_hsf.v1.0.0.MEDIUM.INSTITUTIONAL",
@@ -839,10 +876,15 @@ app.get("/api/v1/quantum/pennylane/status", async (_req, res) => {
 
 app.post("/api/v1/quantum/pennylane/execute", async (req, res) => {
   if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "quantum-execute")) return;
   try {
     const body = req.body ?? {};
     const circuit = body.circuit;
     const input = JSON.stringify({ circuit, backend: body.backend, shots: body.shots });
+    if (input.length > 65_536) {
+      res.status(413).json({ success: false, error: "QUANTUM_CIRCUIT_SIZE_LIMIT_EXCEEDED" });
+      return;
+    }
     const principal = createPrincipal({ id: "service:quantum-api", kind: "machine", roles: ["operator"] });
     assertBalancedAuthority(principal);
 
@@ -1083,6 +1125,7 @@ app.post("/api/v1/sanitization/scan", (req, res) => {
 // Admit governed knowledge (IKES): sanitization → identity → evidence → policy gate → index.
 app.post("/api/v1/knowledge/admit", (req, res) => {
   if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "knowledge-admit")) return;
   try {
     const body = req.body ?? {};
     const claim = body.claim;
@@ -1093,6 +1136,12 @@ app.post("/api/v1/knowledge/admit", (req, res) => {
         typeof body.license !== "string" || !body.license.trim() ||
         !claim || typeof claim.subject !== "string" || !claim.subject.trim() || typeof claim.predicate !== "string" || !claim.predicate.trim() || typeof claim.object !== "string" || !claim.object.trim()) {
       res.status(400).json({ success: false, error: "entityId, provenanceId, content, sourceUri, license y claim {subject,predicate,object} son requeridos" });
+      return;
+    }
+    if (body.content.length > 1_000_000 || body.entityId.length > 256 || body.provenanceId.length > 256 ||
+      body.sourceUri.length > 2048 || body.license.length > 128 ||
+      claim.subject.length > 300 || claim.predicate.length > 160 || claim.object.length > 5000) {
+      res.status(413).json({ success: false, error: "KNOWLEDGE_ADMISSION_SIZE_LIMIT_EXCEEDED" });
       return;
     }
     let parsedUri: URL;
@@ -3386,12 +3435,24 @@ app.get("/", (_req, res) => {
 
 app.post("/api/v1/litle/attest", (req, res) => {
   if (!authorizeApiToken(req, res, "GENESIS_ADMIN_API_TOKEN")) return;
+  if (!enforceRateLimit(req, res, publicScanLimiter, "litle-attest")) return;
   try {
     const body = req.body ?? {};
     const evidence = Array.isArray(body.evidence) ? body.evidence : [];
-    if (!body.year || !body.namespace || !body.workType || evidence.length === 0) {
-      res.status(400).json({ success: false, error: "year, namespace, workType y evidence son requeridos" });
+    if (!Number.isInteger(Number(body.year)) || Number(body.year) < 2000 || Number(body.year) > 2100 ||
+      typeof body.namespace !== "string" || !/^[A-Za-z0-9._:-]{1,64}$/.test(body.namespace) ||
+      !["BK", "RQ", "DS", "PL", "AR", "MD", "SW", "EX", "DP"].includes(body.workType) ||
+      evidence.length === 0 || evidence.length > 100) {
+      res.status(400).json({ success: false, error: "LITLE_YEAR_NAMESPACE_WORKTYPE_OR_EVIDENCE_INVALID" });
       return;
+    }
+    for (const item of evidence) {
+      if (!item || typeof item !== "object" || typeof item.content !== "string" || !item.content.trim() ||
+        item.content.length > 256_000 || (item.id !== undefined && (typeof item.id !== "string" || item.id.length > 128)) ||
+        (item.parentIds !== undefined && (!Array.isArray(item.parentIds) || item.parentIds.some((id: unknown) => typeof id !== "string" || id.length > 128)))) {
+        res.status(400).json({ success: false, error: "LITLE_EVIDENCE_NODE_INVALID" });
+        return;
+      }
     }
     const fabric = new LitleTrustFabric(bookPiSecret());
     const result = fabric.attest({
@@ -3415,6 +3476,7 @@ app.post("/api/v1/litle/attest", (req, res) => {
 });
 
 app.post("/api/v1/litle/verify", (req, res) => {
+  if (!enforceRateLimit(req, res, publicScanLimiter, "litle-verify")) return;
   try {
     const body = req.body ?? {};
     if (!body.certificate) {
@@ -3424,7 +3486,15 @@ app.post("/api/v1/litle/verify", (req, res) => {
     const certificateValid = verifyCertificate(body.certificate, bookPiSecret());
     const evidenceValid = body.evidenceChain ? verifyEvidenceChain(body.evidenceChain) : null;
     const id = typeof body.certificate.litleId === "string" ? parseAny(body.certificate.litleId) : null;
-    res.json({ success: true, certificateValid, evidenceValid, id });
+    const valid = certificateValid && (evidenceValid === null || evidenceValid === true);
+    res.status(valid ? 200 : 422).json({
+      success: valid,
+      status: valid ? "VERIFIED_WITH_LOCAL_HMAC" : "INVALID",
+      certificateValid,
+      evidenceValid,
+      verificationScope: "local HMAC and supplied evidence-chain structure only; not third-party identity or legal certification",
+      id,
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
