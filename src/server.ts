@@ -1175,7 +1175,7 @@ app.post("/api/v1/knowledge/admit", (req, res) => {
       contentHash: hashSourceContent(body.content),
       license: body.license,
     });
-    const proposal = runtime.memory.propose({
+    const proposalInput = {
       proposedBy: "service:authenticated-knowledge-admission",
       evidenceIds: [sourceId],
       claim: {
@@ -1184,17 +1184,23 @@ app.post("/api/v1/knowledge/admit", (req, res) => {
         object: claim.object.trim(),
         sourceIds: [sourceId],
         evidenceIds: [sourceId],
-        temporalState: "current",
+        temporalState: "current" as const,
         provenance: { source: sourceId, verification: "USER_SUPPLIED_CONTENT_HASHED_NOT_REMOTE_VERIFIED" },
       },
-    });
+    };
+    // Prepare only: a blocked admission must not leak into canonical IKES retrieval.
+    const proposal = runtime.memory.prepareProposal(proposalInput);
     const result = runtime.admitKnowledge({
       raw,
       entityId: body.entityId,
       provenanceId: body.provenanceId,
       claims: [proposal],
-      policyGateGranted: true,
+      // No independent policy engine is connected; never self-assert a pass.
+      policyGateGranted: false,
     });
+    if (result.entry.released) {
+      runtime.memory.propose(proposalInput);
+    }
     const blockers = result.entry.stages.filter((stage) => !stage.ok);
     res.status(202).json({
       success: result.entry.released,
