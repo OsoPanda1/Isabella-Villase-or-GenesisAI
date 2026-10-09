@@ -8,6 +8,8 @@ describe("LSP validation", () => {
     const unopened = lsp.diagnosticsFor("a.ts", 0);
     expect(unopened.freshness).toBe("NO_FRESH_DATA");
     expect(unopened.verdict).toBe("INCONCLUSIVE");
+    expect(() => lsp.pushDiagnostics("a.ts", 99, [])).toThrow(/VERSION_AHEAD_OF_DOCUMENT/);
+    expect(lsp.diagnosticsFor("a.ts", 0).freshness).toBe("NO_FRESH_DATA");
 
     lsp.pushDiagnostics("a.ts", 0, []);
     const clean = lsp.diagnosticsFor("a.ts", 0);
