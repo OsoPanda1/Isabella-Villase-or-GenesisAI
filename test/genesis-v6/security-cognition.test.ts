@@ -34,6 +34,8 @@ describe("Genesis V6 security and cognition", () => {
     expect(verifyHumanApproval(approval, { methodId: "m", action: "admin:escale" })).toBe(true);
     const tampered = { ...approval, action: "delete:all" };
     expect(verifyHumanApproval(tampered, { methodId: "m", action: "delete:all" })).toBe(false);
+    const forgedTimestamp = { ...approval, decidedAt: new Date().toISOString() };
+    expect(verifyHumanApproval(forgedTimestamp, { methodId: "m", action: "admin:escale" })).toBe(false);
   });
 
   it("approval replay is rejected", () => {
