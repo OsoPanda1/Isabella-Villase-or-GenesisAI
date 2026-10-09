@@ -83,6 +83,41 @@ describe("Genesis V6 security and cognition", () => {
     expect(() => ikes.registerSource({ ...source, contentHash: hashSourceContent("source B") })).toThrow(/CONFLICT/);
   });
 
+  it("IKES freezes nested claim data and refuses evidence-free corroboration", () => {
+    const ikes = new IKESEngine();
+    ikes.registerSource({
+      sourceId: "immutable-source",
+      uri: "https://example.invalid/immutable-source",
+      title: "Immutable source",
+      retrievedAt: new Date().toISOString(),
+      contentHash: hashSourceContent("immutable source body"),
+    });
+    expect(() => ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: [],
+      claim: {
+        subject: "X", predicate: "status", object: "unknown",
+        sourceIds: ["immutable-source"], evidenceIds: [], temporalState: "current",
+        provenance: { source: "immutable-source" },
+      },
+    })).toThrow(/IKES_EVIDENCE_REQUIRED/);
+
+    const claim = ikes.propose({
+      proposedBy: "human:h1",
+      evidenceIds: ["immutable-source"],
+      claim: {
+        subject: "X", predicate: "status", object: "unknown",
+        sourceIds: ["immutable-source"], evidenceIds: ["immutable-source"], temporalState: "current",
+        provenance: { source: "immutable-source" },
+      },
+    });
+    expect(Object.isFrozen(claim)).toBe(true);
+    expect(Object.isFrozen(claim.sourceIds)).toBe(true);
+    expect(Object.isFrozen(claim.evidenceIds)).toBe(true);
+    expect(Object.isFrozen(claim.provenance)).toBe(true);
+    expect(() => ikes.corroborate(claim.claimId, [])).toThrow(/IKES_CORROBORATION_EVIDENCE_REQUIRED/);
+  });
+
   it("verified evolution requires independent evidence plus runtime/review evidence", () => {
     const control = generateControls().find((c) => c.state === "declared")!;
     const wired = { ...control, state: "wired" as const };
