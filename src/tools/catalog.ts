@@ -21,6 +21,9 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         node: "Nodo Cero (Real del Monte, Hidalgo)",
         altitude: "2,660 msnm",
         coordinates: [20.1417, -98.6722],
+        dataMode: "STATIC_REFERENCE_DATA",
+        liveData: false,
+        queryApplied: false,
         originHonored: "Orgullo esLatina · Ciencia y Biocultura de América Latina",
         results: [
           { name: "Panteón Inglés", category: "Patrimonio Histórico Mundial", founded: "1851", altitude: "2,660 msnm", status: "Preservado", note: "Todas las tumbas orientadas a Inglaterra, excepto la de Richard Bell." },
@@ -133,7 +136,7 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         secretsFound: count,
         sanitizedContent: redacted,
         scanStatus: count > 0 ? "MATCHES_REDACTED" : "NO_MATCHES_DETECTED",
-        coverage: "HEURISTIC_PATTERNS_ONLY_NOT_A_ZERO_LEAK_GUARANTEE",
+        coverage: "API_TOKEN_PATTERNS_ONLY_NOT_A_COMPREHENSIVE_PII_SCANNER",
         timestamp: new Date().toISOString(),
       };
     },
@@ -197,8 +200,10 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         kind: principal.kind,
         roles: [...principal.roles],
         attributes: { ...principal.attributes },
-        tenantScope: "tamv-node-zero",
-        resolvedAt: new Date().toISOString(),
+        tenantScope: "NOT_RESOLVED",
+        tenantResolutionPerformed: false,
+        status: "DECLARED_PRINCIPAL_CONTEXT_ONLY",
+        checkedAt: new Date().toISOString(),
       };
     },
   },
@@ -254,7 +259,6 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
     scopes: ["execute:approval", "write:ledger"],
     description: "Emisión y validación de aprobaciones humanas para acciones de riesgo HIGH/CRITICAL",
     execute: async (input: unknown, principal: Principal) => {
-      const decision = "ALLOW";
       return {
         approvalId: `appr-${Date.now()}`,
         issuer: principal.id,
@@ -262,7 +266,7 @@ export const CANONICAL_TOOLS: readonly ToolDescriptor[] = [
         approvalCreated: false,
         humanInTheLoopEnforced: false,
         reason: "NO_SIGNED_APPROVAL_SERVICE_CONFIGURED",
-        actionApproved: input,
+        requestedAction: input,
         issuedAt: new Date().toISOString(),
       };
     },
