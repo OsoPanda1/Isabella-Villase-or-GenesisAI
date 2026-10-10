@@ -13,7 +13,7 @@ Rust MVP integrado como sub-workspace del monorepo Isabella V6 · TINA. El lími
 - `services/gateway`: API Axum y migraciones SQLx.
 
 ## Arranque local
-Configura `.env` desde `.env.example`, usa un token aleatorio de al menos 32 caracteres y ejecuta `docker compose -f ige-omega/deployment/docker-compose.yml up --build`.
+Desde la raíz del repositorio, copia `ige-omega/.env.example` a `ige-omega/.env`, usa un token aleatorio de al menos 32 caracteres y ejecuta `docker compose --env-file ige-omega/.env -f ige-omega/deployment/docker-compose.yml up --build`.
 
 Rutas: `GET /health`, `GET /ready`, `POST /api/v1/infer`, `POST/GET /api/v1/memory`, `GET /api/v1/ops/audit/verify`. Todas salvo health/readiness requieren `Authorization: Bearer $IGE_API_TOKEN`.
 
