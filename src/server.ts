@@ -1413,25 +1413,52 @@ app.post("/api/v1/security/triangulate", (req, res) => {
   }
 });
 
-// Production readiness (fail-closed over required dependencies).
+// Dependency states remain degraded until real probes confirm durable/runtime health.
+// Configuration presence alone is not evidence that an external service is reachable.
+const currentOpsDependencies = () => [
+  { name: "bookpi-ledger", status: "degraded" as const, required: true },
+  { name: "ikes-memory", status: "degraded" as const, required: true },
+  { name: "observability", status: "degraded" as const, required: false },
+];
+
+const readinessEvidence = [
+  { dependency: "bookpi-ledger", status: "degraded", reason: "The configured process-local hash chain is not durable WORM storage; persistence/signature adapters are not runtime-verified." },
+  { dependency: "ikes-memory", status: "degraded", reason: "A durable memory provider may be configured, but connectivity and read/write health are not probed by this endpoint." },
+  { dependency: "observability", status: "degraded", reason: "No live telemetry exporter probe is wired into the readiness path." },
+];
+
+// Production readiness calculator. Caller-supplied dependencies are diagnostic input,
+// not an authoritative statement about this running deployment.
 app.post("/api/v1/ops/readiness", (req, res) => {
   try {
     const dependencies = Array.isArray(req.body?.dependencies) ? req.body.dependencies : [];
     const readiness = runtime.readiness(dependencies);
-    res.status(readiness.ready ? 200 : 503).json({ success: readiness.ready, readiness });
+    res.status(readiness.ready ? 200 : 503).json({ success: readiness.ready, readiness, evidence: "caller-supplied-diagnostic-input" });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
 });
 
+// Readiness endpoint: 503 until every required dependency is verified healthy.
+app.get("/api/v1/readyz", (_req, res) => {
+  const snapshot = runtime.opsSnapshot(currentOpsDependencies());
+  res.status(snapshot.readiness.ready ? 200 : 503).json({
+    success: snapshot.readiness.ready,
+    scope: "dependency-readiness",
+    readinessEvidence,
+    snapshot,
+  });
+});
+
 // Operational snapshot (readiness + maintenance windows + correlation).
+// A snapshot is still returned during degradation so operators can inspect blockers.
 app.get("/api/v1/ops/snapshot", (_req, res) => {
-  const snapshot = runtime.opsSnapshot([
-    { name: "bookpi-ledger", status: "healthy", required: true },
-    { name: "ikes-memory", status: "healthy", required: true },
-    { name: "observability", status: "healthy", required: false },
-  ]);
-  res.json({ success: true, snapshot });
+  const snapshot = runtime.opsSnapshot(currentOpsDependencies());
+  res.status(snapshot.readiness.ready ? 200 : 503).json({
+    success: snapshot.readiness.ready,
+    readinessEvidence,
+    snapshot,
+  });
 });
 
 // ISA-API v40 pipeline evaluation (12 stages, fail-closed).
