@@ -23,31 +23,60 @@ import { MemoryProposalQueue } from "./memory/proposals";
 import { AckOutcome, createIdempotencyRegistry, redactSecret } from "./commerce/webhook";
 import { handleConnectorEvent } from "./commerce/connector";
 import type { ProviderConfig, SignatureScheme, TenantMapping } from "./commerce/webhook";
+import { LatencyRegistry } from "./deployment/latency-metrics";
+import { TtlSingleFlight } from "./deployment/ttl-single-flight";
 
 const app = express();
+const latencyRegistry = new LatencyRegistry(100, 512);
+const atlasHealthCache = new TtlSingleFlight<{ healthy: boolean; reason: string }>(1_000);
 const port = 3000;
 const host = "0.0.0.0";
 
 const connectorRawBodies = new WeakMap<object, string>();
 
+app.use((req, res, next) => {
+  const startedAt = process.hrtime.bigint();
+  res.once("finish", () => {
+    const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    const routePath = req.route?.path;
+    const routeLabel = typeof routePath === "string"
+      ? `${req.method} ${req.baseUrl}${routePath}`
+      : `${req.method} unmatched`;
+    latencyRegistry.record(routeLabel, elapsedMs, res.statusCode);
+  });
+  next();
+});
+
 app.use(
   express.json({
     limit: "8mb",
     verify: (req, _res, buf) => {
-      connectorRawBodies.set(req, buf.toString("utf8"));
+      // Preserve raw bytes only for the signed webhook route; duplicating every
+      // request body adds avoidable allocations and GC pressure on the hot path.
+      if (req.originalUrl.split("?")[0] === "/api/v1/connectors/ingest") {
+        connectorRawBodies.set(req, buf.toString("utf8"));
+      }
     },
   }),
 );
 
-// Serve Crystal Clear CSS Module directly
+
+// Read the static stylesheet once at startup; avoid sync filesystem I/O per request.
+const cssPath = path.join(process.cwd(), "src", "styles", "crystal-clear.css");
+let crystalClearCss: string | null = null;
+try {
+  crystalClearCss = fs.readFileSync(cssPath, "utf-8");
+} catch {
+  console.warn("[Genesis] Crystal Clear CSS is unavailable at startup.");
+}
 app.get("/styles/crystal-clear.css", (_req, res) => {
-  res.setHeader("Content-Type", "text/css; charset=utf-8");
-  const cssPath = path.join(process.cwd(), "src", "styles", "crystal-clear.css");
-  if (fs.existsSync(cssPath)) {
-    res.send(fs.readFileSync(cssPath, "utf-8"));
-  } else {
-    res.status(404).send("/* CSS module not found */");
+  if (crystalClearCss === null) {
+    res.status(404).type("text/css").send("/* CSS module not found */");
+    return;
   }
+  res.setHeader("Content-Type", "text/css; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+  res.send(crystalClearCss);
 });
 
 // Initialize Genesis TINA Runtime with optional Atlas persistence.
@@ -92,81 +121,10 @@ function enforceRateLimit(req: Request, res: Response, limiter: FixedWindowRateL
   return true;
 }
 
-// Pre-seed canonical knowledge into IKES Epistemic Memory (TAMV & Real del Monte)
-runtime.memory.registerSource({
-  sourceId: "src-tamv-001",
-  uri: "https://tamv.network/canon/v40",
-  title: "Canon v40.0.0 — Ecosistema TAMV & Isabella TINA",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-rdm-002",
-  uri: "https://realdelmonte.hidalgo.gob.mx/patrimonio",
-  title: "Gemelo Digital & Archivo Biocultural — Real del Monte, Hidalgo (Nodo Cero)",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "7d8a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-agents-003",
-  uri: "https://github.com/OsoPanda1/isabella-ai-genesis/blob/main/AGENTS.md",
-  title: "Constitución Operativa AGENTS.md — Invariante Operativo Soberano",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "fa4b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-zenodo-004",
-  uri: "https://doi.org/10.5281/zenodo.20606361",
-  title: "Registro Canónico TAMV ONLINE v2.0.0 — Zenodo / CERN (ORCID 0009-0008-5050-1539)",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
-});
-
-// Seed Core Invariants & Claims
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-tamv-001", "src-agents-003"],
-  claim: {
-    subject: "ISABELLA_TINA",
-    predicate: "operationalInvariant",
-    object: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
-    sourceIds: ["src-tamv-001", "src-agents-003"],
-    evidenceIds: ["src-tamv-001"],
-    temporalState: "current",
-    provenance: { source: "src-agents-003" },
-  },
-});
-
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-tamv-001", "src-rdm-002"],
-  claim: {
-    subject: "TAMV_NODO_CERO",
-    predicate: "location",
-    object: "Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O, 2,660 msnm)",
-    sourceIds: ["src-tamv-001", "src-rdm-002"],
-    evidenceIds: ["src-rdm-002"],
-    temporalState: "current",
-    provenance: { source: "src-rdm-002" },
-  },
-});
-
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-zenodo-004"],
-  claim: {
-    subject: "TAMV_ECOSYSTEM",
-    predicate: "canonicalAuthor",
-    object: "Edwin Oswaldo Castillo Trejo (Anubis Villaseñor) · ORCID 0009-0008-5050-1539 · DOI 10.5281/zenodo.20606361",
-    sourceIds: ["src-zenodo-004"],
-    evidenceIds: ["src-zenodo-004"],
-    temporalState: "current",
-    provenance: { source: "src-zenodo-004" },
-  },
-});
+// Evidence hygiene: do not pre-register remote sources with placeholder hashes.
+// A syntactically valid SHA-256 string is not proof that referenced bytes were retrieved.
+// Register IKES sources only through ingestion that hashes actual content and records
+// retrieval metadata; no source-backed claims are pre-seeded without that evidence.
 
 // Los tools canónicos (rdm_territory_query, bookpi_integrity_verify, etc.) se
 // registran en el runtime desde CANONICAL_TOOLS. No se duplican aquí para evitar
@@ -258,11 +216,12 @@ runtime.skills.register({
     return {
       skill: "territorial_digital_twin_sync",
       territory: "Real del Monte (Nodo Cero)",
-      coordinates: [20.1417, -98.6722],
+      coordinates: null,
+      coordinatesStatus: "UNVERIFIED",
       bioculturalArchiveSynced: false,
       synchronizationStatus: "NOT_CONFIGURED",
       wormLedgerAnchor: null,
-      limitation: "No live archive or BookPI synchronization adapter is configured.",
+      limitation: "No authoritative coordinate source or live archive/BookPI synchronization adapter is configured; coordinates are intentionally omitted rather than guessed.",
     };
   },
 });
@@ -1413,25 +1372,92 @@ app.post("/api/v1/security/triangulate", (req, res) => {
   }
 });
 
-// Production readiness (fail-closed over required dependencies).
+// Configuration presence alone is not proof of provider health.
+async function currentOpsState() {
+  let atlasStatus: "healthy" | "degraded" | "unavailable" = "unavailable";
+  let atlasReason = "No Atlas persistence adapter is configured.";
+  if (runtime.persistence && typeof runtime.persistence.health === "function") {
+    const probe = await atlasHealthCache.get(async () => {
+      try {
+        const healthy = await runtime.persistence!.health!();
+        return {
+          healthy,
+          reason: healthy
+            ? "Read-only Atlas/Supabase query succeeded."
+            : "Atlas/Supabase health probe did not confirm a valid response.",
+        };
+      } catch {
+        // Cache the failed result briefly too; otherwise an outage can trigger a
+        // fresh 2-second database timeout on every readiness request.
+        return { healthy: false, reason: "Read-only Atlas/Supabase health probe failed or timed out." };
+      }
+    });
+    atlasStatus = probe.healthy ? "healthy" : "unavailable";
+    atlasReason = probe.reason;
+  } else if (runtime.persistence) {
+    atlasStatus = "degraded";
+    atlasReason = "Persistence adapter has no health probe; connectivity is unverified.";
+  }
+
+  const dependencies = [
+    { name: "bookpi-ledger", status: "degraded" as const, required: true },
+    { name: "atlas-persistence", status: atlasStatus, required: true },
+    { name: "ikes-memory", status: "degraded" as const, required: true },
+    { name: "observability", status: "degraded" as const, required: false },
+  ];
+  const readinessEvidence = [
+    { dependency: "bookpi-ledger", status: "degraded", reason: "The configured process-local hash chain is not durable WORM storage; persistence/signature adapters are not runtime-verified." },
+    { dependency: "atlas-persistence", status: atlasStatus, reason: atlasReason },
+    { dependency: "ikes-memory", status: "degraded", reason: "A live durable-memory probe is not wired into this readiness path." },
+    { dependency: "observability", status: "degraded", reason: "No live telemetry exporter probe is wired into the readiness path." },
+  ];
+  return { snapshot: runtime.opsSnapshot(dependencies), readinessEvidence };
+}
+
+// Production readiness calculator. Caller-supplied dependencies are diagnostic input,
+// not an authoritative statement about this running deployment.
 app.post("/api/v1/ops/readiness", (req, res) => {
   try {
     const dependencies = Array.isArray(req.body?.dependencies) ? req.body.dependencies : [];
     const readiness = runtime.readiness(dependencies);
-    res.status(readiness.ready ? 200 : 503).json({ success: readiness.ready, readiness });
+    res.status(readiness.ready ? 200 : 503).json({ success: readiness.ready, readiness, evidence: "caller-supplied-diagnostic-input" });
   } catch (err) {
     res.status(400).json({ success: false, error: err instanceof Error ? err.message : String(err) });
   }
 });
 
+// Readiness endpoint: 503 until every required dependency is verified healthy.
+app.get("/api/v1/readyz", async (_req, res) => {
+  const { snapshot, readinessEvidence } = await currentOpsState();
+  res.status(snapshot.readiness.ready ? 200 : 503).json({
+    success: snapshot.readiness.ready,
+    scope: "dependency-readiness",
+    readinessEvidence,
+    snapshot,
+  });
+});
+
 // Operational snapshot (readiness + maintenance windows + correlation).
-app.get("/api/v1/ops/snapshot", (_req, res) => {
-  const snapshot = runtime.opsSnapshot([
-    { name: "bookpi-ledger", status: "healthy", required: true },
-    { name: "ikes-memory", status: "healthy", required: true },
-    { name: "observability", status: "healthy", required: false },
-  ]);
-  res.json({ success: true, snapshot });
+// A snapshot is still returned during degradation so operators can inspect blockers.
+app.get("/api/v1/ops/snapshot", async (_req, res) => {
+  const { snapshot, readinessEvidence } = await currentOpsState();
+  res.status(snapshot.readiness.ready ? 200 : 503).json({
+    success: snapshot.readiness.ready,
+    readinessEvidence,
+    snapshot,
+  });
+});
+
+// Bounded latency diagnostics. Require a dedicated token; do not expose runtime metrics publicly.
+app.get("/api/v1/ops/latency", (req, res) => {
+  if (!authorizeApiToken(req, res, "OPS_API_TOKEN")) return;
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    success: true,
+    scope: "in-process-route-latency",
+    limitation: "Process-local rolling sample; not distributed tracing or a latency SLA.",
+    routes: latencyRegistry.snapshot(),
+  });
 });
 
 // ISA-API v40 pipeline evaluation (12 stages, fail-closed).
