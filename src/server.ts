@@ -23,8 +23,12 @@ import { MemoryProposalQueue } from "./memory/proposals";
 import { AckOutcome, createIdempotencyRegistry, redactSecret } from "./commerce/webhook";
 import { handleConnectorEvent } from "./commerce/connector";
 import type { ProviderConfig, SignatureScheme, TenantMapping } from "./commerce/webhook";
+import { LatencyRegistry } from "./deployment/latency-metrics";
+import { TtlSingleFlight } from "./deployment/ttl-single-flight";
 
 const app = express();
+const latencyRegistry = new LatencyRegistry(100, 512);
+const atlasHealthCache = new TtlSingleFlight<boolean>(1_000);
 const port = 3000;
 const host = "0.0.0.0";
 
@@ -38,6 +42,19 @@ app.use(
     },
   }),
 );
+
+app.use((req, res, next) => {
+  const startedAt = process.hrtime.bigint();
+  res.once("finish", () => {
+    const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    const routePath = req.route?.path;
+    const routeLabel = typeof routePath === "string"
+      ? `${req.method} ${req.baseUrl}${routePath}`
+      : `${req.method} unmatched`;
+    latencyRegistry.record(routeLabel, elapsedMs, res.statusCode);
+  });
+  next();
+});
 
 // Read the static stylesheet once at startup; avoid sync filesystem I/O per request.
 const cssPath = path.join(process.cwd(), "src", "styles", "crystal-clear.css");
@@ -1355,7 +1372,7 @@ async function currentOpsState() {
   let atlasReason = "No Atlas persistence adapter is configured.";
   if (runtime.persistence && typeof runtime.persistence.health === "function") {
     try {
-      atlasStatus = (await runtime.persistence.health()) ? "healthy" : "unavailable";
+      atlasStatus = (await atlasHealthCache.get(() => runtime.persistence!.health!())) ? "healthy" : "unavailable";
       atlasReason = atlasStatus === "healthy"
         ? "Read-only Atlas/Supabase query succeeded."
         : "Atlas/Supabase health probe did not confirm a valid response.";
@@ -1414,6 +1431,18 @@ app.get("/api/v1/ops/snapshot", async (_req, res) => {
     success: snapshot.readiness.ready,
     readinessEvidence,
     snapshot,
+  });
+});
+
+// Bounded latency diagnostics. Require a dedicated token; do not expose runtime metrics publicly.
+app.get("/api/v1/ops/latency", (req, res) => {
+  if (!authorizeApiToken(req, res, "OPS_API_TOKEN")) return;
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    success: true,
+    scope: "in-process-route-latency",
+    limitation: "Process-local rolling sample; not distributed tracing or a latency SLA.",
+    routes: latencyRegistry.snapshot(),
   });
 });
 
