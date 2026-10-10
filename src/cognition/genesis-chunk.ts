@@ -31,10 +31,22 @@ export interface GenesisChunk extends GenesisChunkDraft {
  * This is an application-specific canonicalizer, not RFC 8785 certification.
  */
 export function canonicalGenesisJson(value: unknown): string {
-  if (value === null || typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "string") {
+    assertWellFormedUnicode(value);
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) throw new TypeError("IGE: unable to serialize string");
+    return serialized;
+  }
+  if (value === null || typeof value === "boolean") {
+    const serialized = JSON.stringify(value);
+    if (serialized === undefined) throw new TypeError("IGE: unable to serialize primitive");
+    return serialized;
+  }
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new TypeError("IGE: canonical JSON rejects non-finite numbers");
-    return JSON.stringify(Object.is(value, -0) ? 0 : value);
+    const serialized = JSON.stringify(Object.is(value, -0) ? 0 : value);
+    if (serialized === undefined) throw new TypeError("IGE: unable to serialize number");
+    return serialized;
   }
   if (Array.isArray(value)) return "[" + value.map((item) => canonicalGenesisJson(item)).join(",") + "]";
   if (typeof value === "object") {
@@ -43,6 +55,7 @@ export function canonicalGenesisJson(value: unknown): string {
     const record = value as Record<string, unknown>;
     const keys = Object.keys(record).sort();
     return "{" + keys.map((key) => {
+      assertWellFormedUnicode(key);
       if (record[key] === undefined) throw new TypeError("IGE: canonical JSON rejects undefined values");
       return JSON.stringify(key) + ":" + canonicalGenesisJson(record[key]);
     }).join(",") + "}";
