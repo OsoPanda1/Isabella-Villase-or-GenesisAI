@@ -378,12 +378,21 @@ async fn infer(
     let trace_id = Uuid::now_v7();
     let plan_json =
         serde_json::to_value(&plan).map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    // Keep raw user objectives in the synchronous API response only. The
+    // long-lived audit ledger stores decision metadata and hashes, not prompts.
+    let audit_summary = serde_json::json!({
+        "plan_id": plan.plan_id,
+        "risk": risk_label(plan.risk),
+        "step_count": plan.steps.len(),
+        "probability_status": plan.probability_status,
+        "objective_length": text.chars().count()
+    });
     let payload = serde_json::json!({
         "request_id": request_id,
         "tenant_id": principal.tenant_id,
         "user_id": principal.user_id,
         "decision": decision,
-        "plan": plan_json
+        "plan": audit_summary
     });
     let reasoning_hash = format!(
         "{:x}",
@@ -416,7 +425,7 @@ async fn infer(
         payload,
         created_at: Utc::now(),
     };
-    let reasoning = serde_json::to_string(&plan)
+    let reasoning = serde_json::to_string(&audit_summary)
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
     let created_at = Utc::now();
     let mut tx = state.pool.begin().await.map_err(|error| {
