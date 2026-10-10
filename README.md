@@ -9,8 +9,8 @@
 **Repositorio:** [OsoPanda1/Isabella-V6-TINA](https://github.com/OsoPanda1/Isabella-V6-TINA)  
 **Lenguaje principal:** TypeScript · Node.js  
 **Estado de ingeniería:** evolución activa; no declarar listo para producción hasta superar los gates de validación y despliegue.  
-**Rama de auditoría/evolución:** `evolution/assurance-control-plane-2026-10`  
-**Pull request de trabajo:** [#17](https://github.com/OsoPanda1/Isabella-V6-TINA/pull/17)
+**Rama de integración IGE-Ω:** `feat/ige-omega-rust-mvp-2026-10`  
+**Pull request de integración:** [#18](https://github.com/OsoPanda1/Isabella-V6-TINA/pull/18)
 
 > **Contrato de veracidad:** `SPECIFIED ≠ IMPLEMENTED ≠ TESTED ≠ INTEGRATED ≠ VERIFIED ≠ DEPLOYED ≠ CERTIFIED`. Un contrato, fixture, simulación o adaptador sin configurar no demuestra una integración real. Los estados de salud deben derivarse de probes reales; no de valores fijos.
 
@@ -245,3 +245,15 @@ El repositorio declara licencia MIT mediante su archivo `LICENSE`. No importar c
 Isabella sólo debe promocionarse cuando exista evidencia reproducible de que el código del commit exacto compila, pasa sus pruebas, supera los controles de seguridad aplicables y satisface los requisitos operativos del entorno objetivo.
 
 **No se confunde una arquitectura ambiciosa con una implementación terminada. La evolución se mide por capacidades ejecutables, pruebas, integración real y evidencia verificable.**
+
+
+## IGE-Ω Rust MVP (v2.0.0)
+
+The repository now includes a separately versioned Rust workspace at [`ige-omega/`](ige-omega/README.md), integrated alongside the existing TypeScript runtime. It provides initial crates for NeuroKernel, Cognition, PostgreSQL Memory, World Model, ABX/CROWN, BookPI-X, and an Axum gateway. Its scope is pre-production: proposal-only, with no external action execution. Hash chaining is tamper-evident only and is not a digital signature or WORM storage.
+
+- [Canonical IGE-Ω specification](ige-omega/docs/IGE-OMEGA-v2.0.0.md)
+- [Cryptographic audit subsystem](ige-omega/docs/CRYPTOGRAPHIC-AUDIT.md)
+- [Simulation and arbitration](ige-omega/docs/SIMULATION-ARBITRATION.md)
+- [Kubernetes manifests and deployment notes](ige-omega/deployment/k8s/README.md)
+
+The Rust workspace must pass `cargo fmt`, `cargo clippy`, `cargo test` and a release build in CI, with `Cargo.lock` generated and committed, before being marked tested or production-ready.

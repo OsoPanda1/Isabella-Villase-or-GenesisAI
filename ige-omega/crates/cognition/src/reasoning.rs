@@ -1,0 +1,4 @@
+use crate::{alpha::AlphaEngine,beta::BetaEngine,planner::{Plan,Planner,RiskTier}};
+use shared::{IgeError,IgeResult};
+pub struct ReasoningEngine;
+impl ReasoningEngine {pub fn reason(input:&str)->IgeResult<Plan>{let s=input.trim();if s.is_empty(){return Err(IgeError::InvalidInput("text must not be empty".into()))}if s.chars().count()>12_000{return Err(IgeError::InvalidInput("text exceeds 12000 characters".into()))}if !AlphaEngine::hypotheses(s).iter().any(|h|BetaEngine::validate(h)){return Err(IgeError::InvalidInput("no valid hypothesis".into()))}let l=s.to_lowercase();let risk=if ["drop database","credential","payment","production secret"].iter().any(|x|l.contains(x)){RiskTier::Critical}else if ["delete","deploy","transfer","execute","production"].iter().any(|x|l.contains(x)){RiskTier::High}else if s.chars().count()>2000{RiskTier::Medium}else{RiskTier::Low};Ok(Planner::create_plan(s,risk))}}
