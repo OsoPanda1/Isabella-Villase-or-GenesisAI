@@ -54,6 +54,29 @@ for (const [id, file, description] of [
 ]) {
   add(id, "WARN", await exists(file), description, [file]);
 }
+const readme = await read("README.md");
+add("RA-016", "WARN",
+  !!readme && /Contrato de veracidad/i.test(readme) && /Bloqueo de instalación reproducible/i.test(readme) && /Fases de evolución/i.test(readme),
+  "README documenta límites de veracidad, reproducibilidad y fases de evolución.",
+  ["README.md"]);
+const server = await read("src/server.ts");
+add("RA-017", "BLOCKER",
+  !!server && /\/api\/v1\/readyz/.test(server) && /currentOpsState/.test(server) && /readinessEvidence/.test(server),
+  "Readiness HTTP se vincula a estado operativo evaluado y evidencia explícita.",
+  ["src/server.ts"]);
+const productionOps = await read("src/deployment/production-ops.ts");
+add("RA-018", "BLOCKER",
+  !!productionOps && /dependencies:not-configured/.test(productionOps) && /invalid-health-record/.test(productionOps),
+  "Readiness rechaza ausencia de dependencias y registros de salud inválidos.",
+  ["src/deployment/production-ops.ts"]);
+const genesisModule = await read("src/cognition/genesis-moe.ts");
+const genesisTests = await read("test/cognition/genesis-moe.test.ts");
+const chunkModule = await read("src/cognition/genesis-chunk.ts");
+const chunkTests = await read("test/cognition/genesis-chunk.test.ts");
+add("RA-019", "BLOCKER",
+  !!genesisModule && !!genesisTests && !!chunkModule && !!chunkTests,
+  "Los contratos Genesis/IGE y sus archivos de prueba existen en el árbol.",
+  ["src/cognition/genesis-moe.ts", "test/cognition/genesis-moe.test.ts", "src/cognition/genesis-chunk.ts", "test/cognition/genesis-chunk.test.ts"]);
 const report = {
   schemaVersion: "1.0.0",
   audit: "isabella-genesis-repository-assurance",
