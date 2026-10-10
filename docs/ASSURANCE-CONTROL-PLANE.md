@@ -33,4 +33,8 @@ The generated directory should be treated as a build artifact, not committed as 
 
 ## Initial findings to resolve
 
-The current manifest does not declare `packageManager`, although CI uses pnpm 10 and installs with a frozen lockfile. Pinning the intended package-manager version in a separately reviewed change will improve local/CI parity. Do not silently modify the lockfile or claim reproducibility without running the actual install and validation suite.
+1. **Lockfile blocker:** the repository file API did not find `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock` on this branch. The existing CI uses `pnpm install --frozen-lockfile`; that combination is not reproducible and is expected to fail until the intended lockfile is generated and committed. The new gate reports this as a blocker rather than silently weakening installation policy.
+2. **Package-manager pin:** `package.json` does not declare `packageManager`, although CI configures pnpm 10. Pin the exact approved pnpm version after generating and validating the lockfile.
+3. The GitHub workflow runs associated with this branch SHA reported `failure`; logs were not available through the connected API, so the precise failing step remains unconfirmed. Do not attribute the failure solely to the missing lockfile without retrieving the full job log.
+
+Do not silently modify the lockfile or claim reproducibility without running the actual install and validation suite.
