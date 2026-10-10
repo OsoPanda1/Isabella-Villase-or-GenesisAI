@@ -47,6 +47,25 @@ describe("Genesis chunk integrity", () => {
     expect(() => canonicalGenesisJson({ x: Number.NaN })).toThrow(/non-finite/);
   });
 
+  it("rejects accessors and hidden object properties without invoking getters", () => {
+    let getterInvoked = false;
+    const accessor = Object.defineProperty({}, "secret", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "not canonical";
+      },
+    });
+    expect(() => canonicalGenesisJson(accessor)).toThrow(/accessors/);
+    expect(getterInvoked).toBe(false);
+
+    const hidden = Object.defineProperty({ visible: 1 }, "hidden", {
+      enumerable: false,
+      value: 2,
+    });
+    expect(() => canonicalGenesisJson(hidden)).toThrow(/accessors and non-enumerable/);
+  });
+
   it("rejects sparse arrays and malformed routing metadata", () => {
     const sparse = new Array(2);
     expect(() => canonicalGenesisJson(sparse)).toThrow(/sparse arrays/);
