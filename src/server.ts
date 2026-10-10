@@ -1413,19 +1413,39 @@ app.post("/api/v1/security/triangulate", (req, res) => {
   }
 });
 
-// Dependency states remain degraded until real probes confirm durable/runtime health.
-// Configuration presence alone is not evidence that an external service is reachable.
-const currentOpsDependencies = () => [
-  { name: "bookpi-ledger", status: "degraded" as const, required: true },
-  { name: "ikes-memory", status: "degraded" as const, required: true },
-  { name: "observability", status: "degraded" as const, required: false },
-];
+// Configuration presence alone is not proof of provider health.
+async function currentOpsState() {
+  let atlasStatus: "healthy" | "degraded" | "unavailable" = "unavailable";
+  let atlasReason = "No Atlas persistence adapter is configured.";
+  if (runtime.persistence && typeof runtime.persistence.health === "function") {
+    try {
+      atlasStatus = (await runtime.persistence.health()) ? "healthy" : "unavailable";
+      atlasReason = atlasStatus === "healthy"
+        ? "Read-only Atlas/Supabase query succeeded."
+        : "Atlas/Supabase health probe did not confirm a valid response.";
+    } catch {
+      atlasStatus = "unavailable";
+      atlasReason = "Read-only Atlas/Supabase health probe failed or timed out.";
+    }
+  } else if (runtime.persistence) {
+    atlasStatus = "degraded";
+    atlasReason = "Persistence adapter has no health probe; connectivity is unverified.";
+  }
 
-const readinessEvidence = [
-  { dependency: "bookpi-ledger", status: "degraded", reason: "The configured process-local hash chain is not durable WORM storage; persistence/signature adapters are not runtime-verified." },
-  { dependency: "ikes-memory", status: "degraded", reason: "A durable memory provider may be configured, but connectivity and read/write health are not probed by this endpoint." },
-  { dependency: "observability", status: "degraded", reason: "No live telemetry exporter probe is wired into the readiness path." },
-];
+  const dependencies = [
+    { name: "bookpi-ledger", status: "degraded" as const, required: true },
+    { name: "atlas-persistence", status: atlasStatus, required: true },
+    { name: "ikes-memory", status: "degraded" as const, required: true },
+    { name: "observability", status: "degraded" as const, required: false },
+  ];
+  const readinessEvidence = [
+    { dependency: "bookpi-ledger", status: "degraded", reason: "The configured process-local hash chain is not durable WORM storage; persistence/signature adapters are not runtime-verified." },
+    { dependency: "atlas-persistence", status: atlasStatus, reason: atlasReason },
+    { dependency: "ikes-memory", status: "degraded", reason: "A live durable-memory probe is not wired into this readiness path." },
+    { dependency: "observability", status: "degraded", reason: "No live telemetry exporter probe is wired into the readiness path." },
+  ];
+  return { snapshot: runtime.opsSnapshot(dependencies), readinessEvidence };
+}
 
 // Production readiness calculator. Caller-supplied dependencies are diagnostic input,
 // not an authoritative statement about this running deployment.
@@ -1440,8 +1460,8 @@ app.post("/api/v1/ops/readiness", (req, res) => {
 });
 
 // Readiness endpoint: 503 until every required dependency is verified healthy.
-app.get("/api/v1/readyz", (_req, res) => {
-  const snapshot = runtime.opsSnapshot(currentOpsDependencies());
+app.get("/api/v1/readyz", async (_req, res) => {
+  const { snapshot, readinessEvidence } = await currentOpsState();
   res.status(snapshot.readiness.ready ? 200 : 503).json({
     success: snapshot.readiness.ready,
     scope: "dependency-readiness",
@@ -1452,8 +1472,8 @@ app.get("/api/v1/readyz", (_req, res) => {
 
 // Operational snapshot (readiness + maintenance windows + correlation).
 // A snapshot is still returned during degradation so operators can inspect blockers.
-app.get("/api/v1/ops/snapshot", (_req, res) => {
-  const snapshot = runtime.opsSnapshot(currentOpsDependencies());
+app.get("/api/v1/ops/snapshot", async (_req, res) => {
+  const { snapshot, readinessEvidence } = await currentOpsState();
   res.status(snapshot.readiness.ready ? 200 : 503).json({
     success: snapshot.readiness.ready,
     readinessEvidence,
