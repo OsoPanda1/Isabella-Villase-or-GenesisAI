@@ -22,7 +22,7 @@ Invariante: CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠
 
 src/deployment/production-ops.ts ya no considera un conjunto vacío de dependencias como saludable. Las dependencias obligatorias en estado degraded generan bloqueadores, y nombres duplicados o inválidos no pueden producir un estado listo.
 
-GET /api/v1/readyz y GET /api/v1/ops/snapshot dejan de declarar bookpi-ledger, ikes-memory y observabilidad como saludables sin prueba. La respuesta expone evidencia y devuelve HTTP 503 mientras no existan probes reales. GET /health es únicamente liveness del proceso y no demuestra que el sistema esté listo.
+GET /api/v1/readyz y GET /api/v1/ops/snapshot dejan de declarar bookpi-ledger, ikes-memory y observabilidad como saludables sin prueba. La respuesta expone evidencia y devuelve HTTP 503 mientras no existan probes reales. Se añadió un probe de solo lectura y con timeout máximo de 2 segundos para Atlas/Supabase, que comprueba la consulta de la tabla atlas_users; el probe no escribe datos. BookPI e IKES siguen degradados porque no tienen probes de persistencia durable conectados. GET /health es únicamente liveness del proceso y no demuestra que el sistema esté listo.
 
 Limitación deliberada: esta iteración no finge conectividad. Los adapters de probe para base de datos, BookPI durable, modelo, telemetría y memoria deben conectarse y probarse antes de poder marcar dependencias como healthy.
 
@@ -80,7 +80,7 @@ Cada chunk gobernado debería incluir request/session ID, secuencia, ruta de exp
 ## Próximos bloqueadores técnicos
 
 1. Generar y versionar el lockfile correcto con la versión aprobada de pnpm y fijar packageManager en package.json; mantener --frozen-lockfile.
-2. Implementar probes con timeout para persistencia Atlas/Supabase, memoria, modelo y telemetría; no inferir salud por presencia de variables de entorno.
+2. Completar probes con timeout para memoria IKES, modelo y telemetría; el probe Atlas/Supabase existe, pero su ejecución en el entorno de despliegue aún debe verificarse en CI/producción.
 3. Reconciliar BookPI de proceso con un adaptador durable y verificación de cadena; añadir pruebas de recuperación.
 4. Conectar puntuaciones reales del router a un adapter de inferencia; el postprocesador actual no reemplaza el modelo.
 5. Revisar procedencia y licencia de componentes antes de portar código desde otros repositorios del perfil.
