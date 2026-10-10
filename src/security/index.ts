@@ -6,6 +6,7 @@ export * from "./rate-limit";
 export * from "./nonce";
 export * from "./jwt-allowlist";
 export * from "./post-quantum";
+export * from "./isa-x";
 export {
   TRIANGULATED_ALGORITHMS,
   triangulateDigest,

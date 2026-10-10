@@ -55,6 +55,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run security suite
         run: pnpm run security:suite
+      - name: Upload security suite (same SHA, consumed by deploy-production.yml)
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-suite-${{ github.sha }}
+          path: evidence/security-suite.json
+          if-no-files-found: error
 
   production-evidence:
     runs-on: ubuntu-latest

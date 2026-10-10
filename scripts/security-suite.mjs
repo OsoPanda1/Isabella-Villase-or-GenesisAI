@@ -285,6 +285,33 @@ function checkAegisFailClosed() {
   );
 }
 
+function checkIsaXRealEd25519() {
+  const dir = path.join(SRC, "security", "isa-x");
+  const testsDir = path.join(REPO_ROOT, "test", "security");
+  const needed = ["protocol.ts", "keys.ts", "signer.ts", "challenge.ts", "revocation.ts"];
+  const present = needed.map((f) => path.join(dir, f)).every(exists);
+  if (!present) {
+    return result("SEC-14", "ISA-X: Ed25519 real, nonce anti-replay, PQC fail-closed", "not_applicable", "faltan módulos isa-x", "");
+  }
+  const signer = readText(path.join(dir, "signer.ts"));
+  const challenge = readText(path.join(dir, "challenge.ts"));
+  const protocol = readText(path.join(dir, "protocol.ts"));
+  const hasEd25519 = /verifyEd25519/.test(signer) && /Ed25519Signer/.test(signer);
+  const hasNonceRegistry = /createNonceRegistry/.test(challenge);
+  const hasVersion = /ISA_X_VERSION\s*=\s*["']1\.1["']/.test(protocol);
+  const blocksPqc = /ML-DSA|ML-KEM|SLH-DSA/.test(protocol) && /PqcBackendUnavailable|BLOCKED_ENVIRONMENT/.test(protocol);
+  const hasTests = listFiles(testsDir, (f) => f.includes("isa-x")).length >= 4;
+  const ok = hasEd25519 && hasNonceRegistry && hasVersion && blocksPqc && hasTests;
+  const hit = firstMatchLine(path.join(dir, "signer.ts"), /verifyEd25519/);
+  return result(
+    "SEC-14",
+    "ISA-X: Ed25519 real, nonce anti-replay, PQC fail-closed",
+    ok ? "passed" : "failed",
+    `${rel(path.join(dir, "signer.ts"))}:${hit ? hit.line : "?"} → ${hit ? hit.text : "sin coincidencia"} (ed25519=${hasEd25519}, nonceRegistry=${hasNonceRegistry}, v1.1=${hasVersion}, pqcBloqueado=${blocksPqc}, tests=${hasTests})`,
+    "ISA-X debe firmar/verificar con Ed25519 real de post-quantum.ts, reutilizar el NonceRegistry anti-replay de nonce.ts, declarar v1.1 y bloquear ML-DSA/ML-KEM/SLH-DSA en entornos sin HSM.",
+  );
+}
+
 function checkThreatModel() {
   const file = path.join(SECURITY_DOCS, "GENESIS-V6-THREAT-MODEL.md");
   const ok = exists(file) && readText(file).trim().length > 200;
@@ -347,6 +374,7 @@ function main() {
     checkAuthTimingSafe(),
     checkNonceAntireplay(),
     checkAegisFailClosed(),
+    checkIsaXRealEd25519(),
     checkThreatModel(),
   ];
   const observations = buildObservations();
