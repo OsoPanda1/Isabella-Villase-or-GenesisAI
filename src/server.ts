@@ -51,7 +51,11 @@ app.use(
   express.json({
     limit: "8mb",
     verify: (req, _res, buf) => {
-      connectorRawBodies.set(req, buf.toString("utf8"));
+      // Preserve raw bytes only for the signed webhook route; duplicating every
+      // request body adds avoidable allocations and GC pressure on the hot path.
+      if (req.originalUrl.split("?")[0] === "/api/v1/connectors/ingest") {
+        connectorRawBodies.set(req, buf.toString("utf8"));
+      }
     },
   }),
 );
@@ -212,11 +216,12 @@ runtime.skills.register({
     return {
       skill: "territorial_digital_twin_sync",
       territory: "Real del Monte (Nodo Cero)",
-      coordinates: [20.1417, -98.6722],
+      coordinates: null,
+      coordinatesStatus: "UNVERIFIED",
       bioculturalArchiveSynced: false,
       synchronizationStatus: "NOT_CONFIGURED",
       wormLedgerAnchor: null,
-      limitation: "No live archive or BookPI synchronization adapter is configured.",
+      limitation: "No authoritative coordinate source or live archive/BookPI synchronization adapter is configured; coordinates are intentionally omitted rather than guessed.",
     };
   },
 });
