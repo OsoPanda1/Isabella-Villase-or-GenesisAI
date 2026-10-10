@@ -92,6 +92,14 @@ add("RA-022", "BLOCKER",
   !!server && !/src-tamv-001|src-rdm-002|src-agents-003|src-zenodo-004/.test(server),
   "Startup does not seed IKES with the audited placeholder source IDs/hashes.",
   ["src/server.ts"]);
+add("RA-023", "BLOCKER",
+  !!server && /req\.originalUrl\.split\("\?"\)\[0\] === "\/api\/v1\/connectors\/ingest"/.test(server),
+  "Raw webhook bodies are retained only for the signed connector-ingestion route.",
+  ["src/server.ts"]);
+add("RA-024", "WARN",
+  !!server && /coordinates: null/.test(server) && /coordinatesStatus: "UNVERIFIED"/.test(server),
+  "Territorial skill does not present unverified coordinates as established facts.",
+  ["src/server.ts"]);
 const report = {
   schemaVersion: "1.0.0",
   audit: "isabella-genesis-repository-assurance",
