@@ -22,6 +22,7 @@ export * from "./companion/escalation";
 export * from "./cognition/explainability";
 export * from "./cognition/emotional-trace";
 export * from "./cognition/experts";
+export * from "./cognition/moe";
 export * from "./territory/context";
 export * from "./xr/safety";
 

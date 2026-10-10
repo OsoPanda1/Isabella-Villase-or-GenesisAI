@@ -6,4 +6,5 @@ export * from "./locks";
 export * from "./anti-fraud";
 export * from "./revenue";
 export * from "./webhook";
+export * from "./connector";
 export * from "./guards";

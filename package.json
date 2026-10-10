@@ -18,7 +18,9 @@
     "reconcile:pids": "tsx src/cli/reconcilePids.ts",
     "quantum:bridge": "python services/pennylane_bridge.py",
     "validate": "npm run typecheck && npm test && npm run build",
-    "ingest:atlas": "tsx scripts/atlas-ingest.ts"
+    "ingest:atlas": "tsx scripts/atlas-ingest.ts",
+    "security:suite": "node scripts/security-suite.mjs",
+    "production:evidence": "node scripts/production-evidence.mjs"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

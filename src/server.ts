@@ -19,12 +19,24 @@ import { bookPiLedger } from "./bookpi";
 import { createAtlasStoreFromEnv } from "./atlas";
 import { createDiffObservatory, sanitizeDiffSnapshot, snapshotMetadataHash } from "./plugins";
 import { MemoryProposalQueue } from "./memory/proposals";
+import { AckOutcome, createIdempotencyRegistry, redactSecret } from "./commerce/webhook";
+import { handleConnectorEvent } from "./commerce/connector";
+import type { ProviderConfig, SignatureScheme, TenantMapping } from "./commerce/webhook";
 
 const app = express();
 const port = 3000;
 const host = "0.0.0.0";
 
-app.use(express.json({ limit: "8mb" }));
+const connectorRawBodies = new WeakMap<object, string>();
+
+app.use(
+  express.json({
+    limit: "8mb",
+    verify: (req, _res, buf) => {
+      connectorRawBodies.set(req, buf.toString("utf8"));
+    },
+  }),
+);
 
 // Serve Crystal Clear CSS Module directly
 app.get("/styles/crystal-clear.css", (_req, res) => {
@@ -3668,6 +3680,108 @@ app.post("/api/v1/litle/verify", (req, res) => {
     });
   } catch {
     res.status(400).json({ success: false, error: "LITLE_VERIFICATION_INPUT_INVALID" });
+  }
+});
+
+const connectorRegistry = createIdempotencyRegistry();
+
+function connectorProvidersFromEnv(): ProviderConfig[] {
+  const secret = process.env.CONNECTOR_WEBHOOK_SECRET || "";
+  if (!secret) return [];
+  const names = (process.env.CONNECTOR_PROVIDERS || "stripe,github,slack,linear")
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter((name) => name.length > 0);
+  return names.map((provider) => {
+    const scheme: SignatureScheme = provider === "slack" ? "timestamped-hmac-sha256" : "raw-hmac-sha256";
+    return { provider, scheme, secret };
+  });
+}
+
+function connectorTenantMappings(): TenantMapping[] {
+  const raw = process.env.CONNECTOR_TENANT_MAP || "";
+  if (!raw) return [];
+  const mappings: TenantMapping[] = [];
+  for (const pair of raw.split(",")) {
+    const trimmed = pair.trim();
+    if (trimmed.length === 0) continue;
+    const separator = trimmed.indexOf(":");
+    if (separator <= 0) continue;
+    const provider = trimmed.slice(0, separator).trim().toLowerCase();
+    const tenantId = trimmed.slice(separator + 1).trim();
+    if (provider.length > 0 && tenantId.length > 0) mappings.push({ provider, tenantId });
+  }
+  return mappings;
+}
+
+function connectorFirstString(
+  req: Request,
+  body: Record<string, unknown>,
+  headerNames: readonly string[],
+  bodyKeys: readonly string[],
+): string | undefined {
+  for (const name of headerNames) {
+    const value = req.get(name);
+    if (value && value.length > 0) return value.slice(0, 256);
+  }
+  for (const key of bodyKeys) {
+    const value = body[key];
+    if (typeof value === "string" && value.length > 0) return value.slice(0, 256);
+  }
+  return undefined;
+}
+
+app.post("/api/v1/connectors/ingest", async (req, res) => {
+  try {
+    const provider = (req.get("x-connector-provider") || req.get("x-webhook-provider") || "").toLowerCase();
+    const signature =
+      req.get("x-connector-signature") ||
+      req.get("x-hub-signature-256") ||
+      req.get("linear-signature") ||
+      req.get("x-slack-signature");
+    const rawBody = connectorRawBodies.get(req) ?? "";
+    if (!provider || rawBody.length === 0) {
+      res.status(400).json({ success: false, error: "CONNECTOR_PROVIDER_OR_BODY_MISSING" });
+      return;
+    }
+    const providers = connectorProvidersFromEnv();
+    if (providers.length === 0) {
+      res.status(503).json({ success: false, error: "CONNECTOR_NOT_CONFIGURED" });
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const externalEventId = connectorFirstString(
+      req,
+      body,
+      ["x-connector-event-id", "x-webhook-id", "x-github-delivery"],
+      ["id", "event_id", "externalEventId"],
+    );
+    const eventType =
+      connectorFirstString(req, body, ["x-connector-event-type", "x-github-event"], ["type", "event_type", "eventType"]) ??
+      "unknown";
+    if (!externalEventId) {
+      res.status(400).json({ success: false, error: "CONNECTOR_EVENT_ID_MISSING" });
+      return;
+    }
+    const decision = await handleConnectorEvent(
+      { provider, externalEventId, eventType, rawBody, signature },
+      {
+        providers,
+        registry: connectorRegistry,
+        mappings: connectorTenantMappings(),
+        now: () => Math.floor(Date.now() / 1000),
+      },
+    );
+    res.status(decision.status).json({
+      success: decision.code === AckOutcome.ACCEPTED || decision.code === AckOutcome.DUPLICATE,
+      code: decision.code,
+      retryable: decision.retryable,
+      tenant_id: decision.tenantId ?? null,
+      event_id: decision.dedupeKey ?? null,
+    });
+  } catch (err) {
+    console.error("[Connectors] ingest failed:", redactSecret(err instanceof Error ? err.message : String(err)));
+    res.status(400).json({ success: false, error: "CONNECTOR_INGEST_INPUT_INVALID" });
   }
 });
 

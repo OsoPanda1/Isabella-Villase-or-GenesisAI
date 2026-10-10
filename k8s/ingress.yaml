@@ -1,0 +1,34 @@
+# state: draft | auto_generated — Cluster E
+# REQUIERE_VERIFICACION: host, ingressClassName y proveedor reales.
+#   - host real del cliente y certificado TLS quedan BLOCKED_ENVIRONMENT.
+#   - El secret TLS se referencia por nombre; NUNCA se incluyen certificados/claves.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: isabella-genesis
+  namespace: isabella-genesis
+  labels:
+    app.kubernetes.io/name: isabella-genesisai
+    app.kubernetes.io/component: runtime
+  annotations:
+    # Coincide con express.json({ limit: "8mb" }) en src/server.ts.
+    nginx.ingress.kubernetes.io/proxy-body-size: 8m
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.isabella.tamv.network
+      # Referencia al Secret TLS externo (cert-manager / KMS). Nunca en el repo.
+      secretName: isabella-genesis-tls
+  rules:
+    - host: api.isabella.tamv.network
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: isabella-genesis
+                port:
+                  name: http
