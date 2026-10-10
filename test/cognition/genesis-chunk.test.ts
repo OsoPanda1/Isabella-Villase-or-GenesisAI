@@ -46,4 +46,12 @@ describe("Genesis chunk integrity", () => {
     expect(canonicalGenesisJson([2, 1])).toBe("[2,1]");
     expect(() => canonicalGenesisJson({ x: Number.NaN })).toThrow(/non-finite/);
   });
+
+  it("rejects sparse arrays and malformed routing metadata", () => {
+    const sparse = new Array(2);
+    expect(() => canonicalGenesisJson(sparse)).toThrow(/sparse arrays/);
+    const chunk = buildGenesisChunk(draft());
+    const badRouting = { ...chunk, routing: { ...chunk.routing, weights: [1] } };
+    expect(verifyGenesisChunk(badRouting as typeof chunk)).toBe(false);
+  });
 });
