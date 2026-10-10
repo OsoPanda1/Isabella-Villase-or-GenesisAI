@@ -48,7 +48,7 @@ jobs:
         with:
           workspaces: ige-omega -> target
       - name: Format Rust sources
-        run: cargo fmt --all
+        run: cargo fmt --all -- --check
       - name: Compile and lint
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Unit, contract, and PostgreSQL integration tests
