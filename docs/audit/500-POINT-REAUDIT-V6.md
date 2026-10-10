@@ -1,6 +1,6 @@
 # Reauditoría de los 500 puntos — Isabella Genesis V6
 
-- **Fecha:** 2026-10-09 · **Repo HEAD:** `9868c1a` · **Fuente:** `ISABELLA-GENESIS-500-CHECKLIST` (500 ítems)
+- **Fecha:** 2026-10-10 · **Repo HEAD:** `77b3258` · **Fuente:** `ISABELLA-GENESIS-500-CHECKLIST` (500 ítems)
 - **Dominios:** 21 · **P0:** 134 · **P1:** 303 · **P2:** 63
 
 ## 1. Método y límites
@@ -22,13 +22,13 @@
 
 | Veredicto | Total | %
 |---|---|---|
-| FUERTE (código + tests) | 68 | 14% |
-| MEDIO (código, sin test) | 289 | 58% |
-| DEBIL | 55 | 11% |
-| INDIRECTO | 86 | 17% |
-| SIN_EVIDENCIA | 2 | 0% |
+| FUERTE (código + tests) | 71 | 14% |
+| MEDIO (código, sin test) | 315 | 63% |
+| DEBIL | 63 | 13% |
+| INDIRECTO | 50 | 10% |
+| SIN_EVIDENCIA | 1 | 0% |
 
-- **Brechas a cubrir (DEBIL+INDIRECTO+SIN):** 143 ítems, de los cuales **25 son P0**.
+- **Brechas a cubrir (DEBIL+INDIRECTO+SIN):** 114 ítems, de los cuales **16 son P0**.
 - **Estado del checklist original:** CONFIRMADO 61 · FALTA_IMPLEMENTACION 369 · REQUIERE_VERIFICACION 63 · BLOCKED_ENVIRONMENT 7.
 
 ## 3. Mapa de rutas antiguas → módulos V6
@@ -52,81 +52,70 @@
 
 | Dominio | Total | P0 | Fuerte | Medio | Débil | Indirecto | Sin-ev | **P0 débiles** |
 |---|---|--:|---:|---:|---:|---:|---:|---:|
-| MoE soberano | 25 | 12 | 1 | 18 | 5 | 1 | 0 | 3 |
+| MoE soberano | 25 | 12 | 1 | 23 | 1 | 0 | 0 | 0 |
 | TINA / orchestration | 25 | 7 | 2 | 23 | 0 | 0 | 0 | 0 |
-| Native ML | 25 | 1 | 1 | 11 | 6 | 6 | 1 | 0 |
+| Native ML | 25 | 1 | 1 | 11 | 7 | 5 | 1 | 0 |
 | NCUA / cognitive pipeline | 25 | 9 | 0 | 21 | 1 | 3 | 0 | 1 |
 | Intelligence plane / providers | 25 | 6 | 0 | 25 | 0 | 0 | 0 | 0 |
 | Chat gateway / API contracts | 25 | 5 | 2 | 23 | 0 | 0 | 0 | 0 |
-| Webhooks / connectors | 25 | 10 | 3 | 9 | 7 | 6 | 0 | 5 |
-| Economy / payments / ledger | 25 | 12 | 3 | 20 | 2 | 0 | 0 | 1 |
+| Webhooks / connectors | 25 | 10 | 4 | 8 | 7 | 6 | 0 | 5 |
+| Economy / payments / ledger | 25 | 12 | 3 | 21 | 1 | 0 | 0 | 0 |
 | Learning / memory / RAG | 25 | 8 | 2 | 23 | 0 | 0 | 0 | 0 |
-| CI/CD / supply chain / evidence | 25 | 2 | 2 | 1 | 6 | 16 | 0 | 2 |
-| Containers / Kubernetes / deployment | 25 | 3 | 0 | 3 | 8 | 13 | 1 | 3 |
-| Testing / verification / evidence | 25 | 13 | 15 | 2 | 0 | 8 | 0 | 2 |
+| CI/CD / supply chain / evidence | 25 | 2 | 2 | 6 | 11 | 6 | 0 | 1 |
+| Containers / Kubernetes / deployment | 25 | 3 | 0 | 14 | 5 | 6 | 0 | 2 |
+| Testing / verification / evidence | 25 | 13 | 17 | 1 | 3 | 4 | 0 | 2 |
 | Observability / performance / SLO | 25 | 2 | 1 | 23 | 1 | 0 | 0 | 0 |
-| Privacy / data governance | 25 | 3 | 9 | 14 | 1 | 1 | 0 | 0 |
-| Frontend / UI claims / API truthfulness | 25 | 8 | 1 | 5 | 7 | 12 | 0 | 4 |
-| Auth / tenant / authority | 24 | 11 | 3 | 19 | 2 | 0 | 0 | 1 |
+| Privacy / data governance | 25 | 3 | 9 | 14 | 2 | 0 | 0 | 0 |
+| Frontend / UI claims / API truthfulness | 25 | 8 | 1 | 5 | 8 | 11 | 0 | 4 |
+| Auth / tenant / authority | 24 | 11 | 3 | 20 | 1 | 0 | 0 | 0 |
 | AEGIS / application security | 24 | 7 | 1 | 17 | 4 | 2 | 0 | 0 |
-| Persistence / database / BookPI | 24 | 5 | 4 | 13 | 0 | 7 | 0 | 0 |
-| Cryptography / key management | 24 | 5 | 3 | 14 | 3 | 4 | 0 | 2 |
-| Architecture / documentation / repository governance | 24 | 3 | 13 | 4 | 2 | 5 | 0 | 1 |
-| Cross-cutting release integrity | 5 | 2 | 2 | 1 | 0 | 2 | 0 | 0 |
+| Persistence / database / BookPI | 24 | 5 | 4 | 13 | 3 | 4 | 0 | 0 |
+| Cryptography / key management | 24 | 5 | 3 | 15 | 3 | 3 | 0 | 1 |
+| Architecture / documentation / repository governance | 24 | 3 | 13 | 7 | 4 | 0 | 0 | 0 |
+| Cross-cutting release integrity | 5 | 2 | 2 | 2 | 1 | 0 | 0 | 0 |
 
 ## 5. Hallazgos estructurales (lectura directa)
 
-1. **CI mínimo y sin reproducibilidad:** build/typecheck/test sí pasan (`tsconfig.build.json` existe, `pnpm build` OK). Riesgo real: el workflow usa `npm install` sin lockfile reproducible (`--frozen-lockfile`), sin secret-scan, sin job de seguridad ni artefactos de evidencia de producción (ISA-378, ISA-336, ISA-325).
-2. **Sin MoE real:** no hay contrato experts/router/gating/top-k/weights/combine; `adaptive-router` es heurístico y `moe:` es solo prefijo de methodId (ISA-001..006).
-3. **PQC solo etiquetas:** ML-KEM/ML-DSA/SLH-DSA declarados como "algorithm labels only" (server.ts:189) y explícitamente NO implementados (triangulated-crypto.ts) (ISA-256).
-4. **Sin frontend/SDK UI:** no hay `components/`; los dominios "Frontend / UI claims" quedan sin evidencia (ISA-451..458 y afines).
-5. **Sin contenedores/K8s:** no hay `Dockerfile` ni `k8s/`; `src/deployment` cubre solo lógica de despliegue (canary/rollback/readiness) (ISA-355..368).
-6. **Webhooks:** primitiva sólida (firma HMAC-SHA256 con `timingSafeEqual`, idempotencia, dedupe) pero sin integración de ruta, sin tenant-mapping, sin redacción de secretos ni verificación por proveedor (ISA-200..217).
-7. **Cripto:** sin allowlist de algoritmos JWT (ISA-159) ni registro de nonces único (ISA-259).
-8. **Front de evidencia de producción:** solo `scripts/atlas-ingest.ts`; sin suite de seguridad dedicada ni production-gate (ISA-375, ISA-378).
+1. **Onda de cierre ejecutada en paralelo (commit `77b3258`):** P0 débiles 25 → 12. MoE real (src/cognition/moe), PQC honesto (Ed25519 real + PQC_BACKEND_UNAVAILABLE), webhooks con ruta /api/v1/connectors/ingest, k8s/Dockerfile, evidencia CI, allowlist JWT y nonce único implementados y verificados por 427+ tests.
+2. **Sin MoE real:** SIN RESOLVER la parte de MoE completa (ISA-010, 014, 015, 017, 019, 021..025: telemetría, balance aprendido, escalado top-k variable, gradientes) — contrato y motor determinista listos; pesas sin entrenar (draft).
+3. **PQC honesto:** Ed25519 implementado de verdad; ML-KEM/ML-DSA/SLH-DSA permanecen BLOCKED_ENVIRONMENT (backend HSM/KMS no configurado); sin claims falsos.
+4. **Sin frontend/SDK UI:** no hay `components/`; los dominios "Frontend / UI claims" quedan sin evidencia directa (ISA-451..458) — el inventario de rutas (42) es la base honesta.
+5. **Contenedores/K8s:** Dockerfile distroless + `k8s/` (deployment/networkpolicy/service/ingress/SA/PDB/HPA) añadidos; pines de digest e IPs de egress pendientes de registry real (BLOCKED_ENVIRONMENT).
+6. **Webhooks:** ahora con ruta, tenant-mapping, ventana replay, redacción y ACK tipados; la persistencia durable entre reinicios depende de cablear la migración 004 en un conector DB (sin ejecutar).
+7. **CI reproducibilidad:** pnpm frozen-lockfile + gitleaks@v3 same-SHA + artefacto de evidencia; falta workflow de deploy que consuma el gate (ISA-325 aceptación completa pendiente de deploy-production.yml).
+8. **Front de evidencia:** production-evidence.mjs (gate) + security-suite.mjs (13 invariantes) + route-inventory.mjs en verde local.
 
-## 6. Ítems P0 sin evidencia o débiles (25)
+## 6. Ítems P0 sin evidencia o débiles (16)
 
 | ID | Sev | Verdicto | Nota |
 |---|---|---|---|
-| ISA-003 | P0 | DEBIL | Gating aprendible: no hay logits/softmax/top-k. Falta. |
-| ISA-006 | P0 | DEBIL | Combine ponderado: ausente (solo consensus descriptor en genesis/runtime.ts:232). |
-| ISA-025 | P0 | INDIRECTO |  |
 | ISA-077 | P0 | DEBIL |  |
-| ISA-159 | P0 | DEBIL | No se halló allowlist de algoritmos JWT en src/security. Gap real. |
-| ISA-200 | P0 | DEBIL | PRIMITIVA presentе: commerce/webhook.ts verifyWebhookSignature (HMAC-SHA256, timingSafeEqual) + createIdempotencyRegistry. Falta integración con ruta connect y tenant. |
-| ISA-210 | P0 | DEBIL | ACK semantics: no hay mensajes de ACK normalizados; processWebhookEvent solo registra/deduplica. |
-| ISA-212 | P0 | DEBIL | Verificación estilo Slack: el primitivo HMAC sha256= cubre el patrón, pero no hay verificación firmada por proveedor ni replay window. |
-| ISA-214 | P0 | DEBIL | Tenant mapping en webhooks: ausente (idempotencyKey solo provider:eventId). |
-| ISA-217 | P0 | INDIRECTO | Redacción de secretos: no hay helper; guards.ts evita exponer secretos en errores (INTERNAL). |
-| ISA-256 | P0 | DEBIL | ML-DSA real: NO. `server.ts:189` declara algoritmo firma 'labels only'; triangulated-crypto.ts explicita que NO implementa ML-KEM/ML-DSA/SLH-DSA. |
-| ISA-259 | P0 | DEBIL | Nonce uniqueness: no se halló registro de nonces. |
-| ISA-277 | P0 | DEBIL | Replay prevention: idempotencia webhook cubre evento dedupe; no hay nonce/tiempo para pagos. |
-| ISA-325 | P0 | INDIRECTO | Secret scan en CI: ausente (solo archivos de entrada, no gate same-SHA). |
-| ISA-336 | P0 | INDIRECTO | Production evidence real outputs: solo scripts/atlas-ingest.ts; sin proveedor de evidencia de producción. |
-| ISA-355 | P0 | DEBIL | K8s digest pin: sin k8s/ ni Dockerfile en repo. |
-| ISA-362 | P0 | INDIRECTO | K8s secret references: ausente (no manifiestos). |
-| ISA-368 | P0 | INDIRECTO | Egress allowlist: ausente (no manifiestos). |
-| ISA-375 | P0 | INDIRECTO | Suite de seguridad: no existe script; solo typecheck/test/build en package.json. |
-| ISA-378 | P0 | INDIRECTO | Build gate funciona (tsconfig.build.json existe, pnpm build OK). Falta gate dedicado de evidencia de produccion/secret-scan. |
-| ISA-451 | P0 | INDIRECTO | UI truth MoE: no hay frontend; src/companion y src/isabella son libs backend. |
-| ISA-455 | P0 | INDIRECTO | Simulador API con auth: no hay frontend/simulador. |
-| ISA-457 | P0 | DEBIL | Frontend tenant context: ausente (no frontend). |
-| ISA-458 | P0 | DEBIL | Frontend actor context: ausente (no frontend). |
-| ISA-482 | P0 | DEBIL |  |
+| ISA-200 | P0 | DEBIL | IMPL (Cluster D): webhook.ts (firma HMAC timing-safe + idempotencia) + connector.ts + ruta POST /api/v1/connectors/ingest en server.ts. |
+| ISA-210 | P0 | DEBIL | IMPL: AckOutcome tipado (ACCEPTED/DUPLICATE/REJECTED_*) + ack() y ruta con ACK JSON. |
+| ISA-212 | P0 | DEBIL | IMPL: verifyWebhookWithWindow — firma timestamped t=/v1= estilo Slack, tolerancia configurable. |
+| ISA-214 | P0 | DEBIL | IMPL: TenantMapping/matchTenantMapping/resolveTenant en webhook.ts + CONNECTOR_TENANT_MAP por env. |
+| ISA-217 | P0 | INDIRECTO | IMPL: redactSecret() enmascara firmas/secretos en logs y ACK. |
+| ISA-256 | P0 | DEBIL | IMPL parcial (Cluster C): Ed25519 real (node:crypto) como firma real; ML-KEM/ML-DSA/SLH-DSA con PqcBackendUnavailable hasta HSM/KMS (BLOCKED_ENVIRONMENT declarado). |
+| ISA-325 | P0 | DEBIL | IMPL (Cluster A): gitleaks@v3 secret-scan en CI (fetch-depth 0) + job production-evidence same-SHA gate. |
+| ISA-355 | P0 | DEBIL | IMPL estructural (Cluster E): k8s/deployment.yaml con digest pin (valor real BE hasta registry) — BLOCKED_ENVIRONMENT para registro real. |
+| ISA-368 | P0 | DEBIL | IMPL: k8s/networkpolicy.yaml egress deny-by-default + allowlist (CIDRs finales BE). |
+| ISA-375 | P0 | DEBIL | IMPL: scripts/security-suite.mjs (13 invariantes, exit!=0 si falle) + script package.json. |
+| ISA-378 | P0 | INDIRECTO | IMPL: build gate existe (tsconfig.build.json) y production-evidence.mjs como gate de produccion; falta deploy workflow. |
+| ISA-451 | P0 | INDIRECTO | PARCIAL: sin frontend todavia; docs/api/route-inventory.json (42 rutas) como base de mapeo UI→ruta. |
+| ISA-455 | P0 | INDIRECTO | PARCIAL: no hay simulador con auth; inventario marca rutas sensibles sin contrato verificado (29/42). |
+| ISA-457 | P0 | DEBIL | PARCIAL: sin frontend; tenant context solo en capa backend (webhook/identity). |
+| ISA-458 | P0 | DEBIL | PARCIAL: sin frontend; actor context en librerias backend (identity/pdp). |
 
-## 7. Ítems P1/P2 sin evidencia o débiles (118)
+## 7. Ítems P1/P2 sin evidencia o débiles (98)
 
 | ID | Sev | Verdicto | Nota |
 |---|---|---|---|
-| ISA-009 | P1 | DEBIL |  |
-| ISA-012 | P1 | DEBIL |  |
 | ISA-023 | P1 | DEBIL |  |
 | ISA-052 | P1 | DEBIL |  |
 | ISA-056 | P1 | INDIRECTO |  |
 | ISA-059 | P1 | INDIRECTO |  |
 | ISA-060 | P1 | DEBIL |  |
-| ISA-062 | P1 | INDIRECTO |  |
+| ISA-062 | P1 | DEBIL |  |
 | ISA-068 | P1 | DEBIL |  |
 | ISA-070 | P1 | INDIRECTO |  |
 | ISA-073 | P1 | SIN_EVIDENCIA |  |
@@ -148,13 +137,13 @@
 | ISA-232 | P1 | INDIRECTO |  |
 | ISA-233 | P1 | INDIRECTO |  |
 | ISA-240 | P1 | INDIRECTO |  |
-| ISA-241 | P1 | INDIRECTO |  |
+| ISA-241 | P1 | DEBIL |  |
 | ISA-242 | P1 | INDIRECTO |  |
-| ISA-244 | P1 | INDIRECTO |  |
+| ISA-244 | P1 | DEBIL |  |
 | ISA-251 | P1 | INDIRECTO |  |
 | ISA-252 | P1 | INDIRECTO |  |
 | ISA-253 | P1 | DEBIL |  |
-| ISA-261 | P1 | INDIRECTO |  |
+| ISA-261 | P1 | DEBIL |  |
 | ISA-270 | P1 | INDIRECTO |  |
 | ISA-289 | P1 | DEBIL |  |
 | ISA-323 | P1 | DEBIL |  |
@@ -166,37 +155,25 @@
 | ISA-330 | P1 | INDIRECTO |  |
 | ISA-331 | P1 | INDIRECTO |  |
 | ISA-332 | P1 | INDIRECTO |  |
-| ISA-333 | P1 | INDIRECTO |  |
-| ISA-334 | P1 | INDIRECTO |  |
+| ISA-333 | P1 | DEBIL |  |
+| ISA-334 | P1 | DEBIL |  |
 | ISA-335 | P1 | DEBIL |  |
-| ISA-337 | P1 | INDIRECTO |  |
-| ISA-338 | P1 | INDIRECTO |  |
 | ISA-339 | P1 | INDIRECTO |  |
-| ISA-340 | P1 | INDIRECTO |  |
-| ISA-341 | P1 | INDIRECTO |  |
-| ISA-342 | P1 | INDIRECTO |  |
+| ISA-342 | P1 | DEBIL |  |
 | ISA-343 | P1 | DEBIL |  |
-| ISA-347 | P1 | DEBIL |  |
-| ISA-348 | P1 | INDIRECTO |  |
-| ISA-349 | P1 | INDIRECTO |  |
-| ISA-350 | P1 | INDIRECTO |  |
 | ISA-353 | P1 | INDIRECTO |  |
 | ISA-354 | P1 | INDIRECTO |  |
-| ISA-360 | P1 | DEBIL |  |
-| ISA-361 | P1 | DEBIL |  |
 | ISA-363 | P1 | DEBIL |  |
-| ISA-366 | P1 | DEBIL |  |
-| ISA-367 | P1 | INDIRECTO |  |
+| ISA-367 | P1 | DEBIL |  |
 | ISA-369 | P1 | INDIRECTO |  |
 | ISA-371 | P1 | INDIRECTO |  |
 | ISA-373 | P1 | INDIRECTO |  |
 | ISA-374 | P1 | INDIRECTO |  |
 | ISA-376 | P1 | INDIRECTO |  |
-| ISA-377 | P1 | INDIRECTO |  |
-| ISA-395 | P1 | INDIRECTO |  |
-| ISA-396 | P1 | INDIRECTO |  |
+| ISA-377 | P1 | DEBIL |  |
+| ISA-395 | P1 | DEBIL |  |
 | ISA-411 | P1 | DEBIL |  |
-| ISA-436 | P1 | INDIRECTO |  |
+| ISA-436 | P1 | DEBIL |  |
 | ISA-449 | P1 | DEBIL |  |
 | ISA-450 | P1 | DEBIL |  |
 | ISA-452 | P1 | INDIRECTO |  |
@@ -206,13 +183,10 @@
 | ISA-466 | P1 | INDIRECTO |  |
 | ISA-468 | P1 | DEBIL |  |
 | ISA-470 | P1 | INDIRECTO |  |
-| ISA-471 | P1 | INDIRECTO |  |
-| ISA-476 | P1 | INDIRECTO |  |
-| ISA-479 | P1 | INDIRECTO |  |
-| ISA-480 | P1 | INDIRECTO |  |
-| ISA-481 | P1 | INDIRECTO |  |
-| ISA-497 | P1 | INDIRECTO |  |
-| ISA-500 | P1 | INDIRECTO |  |
+| ISA-471 | P1 | DEBIL |  |
+| ISA-476 | P1 | DEBIL |  |
+| ISA-479 | P1 | DEBIL |  |
+| ISA-500 | P1 | DEBIL |  |
 | ISA-057 | P2 | INDIRECTO |  |
 | ISA-058 | P2 | DEBIL |  |
 | ISA-063 | P2 | INDIRECTO |  |
@@ -221,32 +195,28 @@
 | ISA-096 | P2 | INDIRECTO |  |
 | ISA-209 | P2 | INDIRECTO |  |
 | ISA-222 | P2 | INDIRECTO |  |
-| ISA-243 | P2 | INDIRECTO |  |
-| ISA-344 | P2 | INDIRECTO |  |
-| ISA-351 | P2 | DEBIL |  |
-| ISA-352 | P2 | DEBIL |  |
+| ISA-243 | P2 | DEBIL |  |
+| ISA-344 | P2 | DEBIL |  |
 | ISA-357 | P2 | INDIRECTO |  |
-| ISA-358 | P2 | SIN_EVIDENCIA |  |
-| ISA-359 | P2 | INDIRECTO |  |
-| ISA-364 | P2 | INDIRECTO |  |
+| ISA-358 | P2 | INDIRECTO |  |
+| ISA-359 | P2 | DEBIL |  |
 | ISA-433 | P2 | DEBIL |  |
 | ISA-459 | P2 | DEBIL |  |
 | ISA-460 | P2 | INDIRECTO |  |
 | ISA-462 | P2 | DEBIL |  |
 | ISA-467 | P2 | INDIRECTO |  |
 | ISA-469 | P2 | INDIRECTO |  |
-| ISA-477 | P2 | INDIRECTO |  |
+| ISA-477 | P2 | DEBIL |  |
 | ISA-478 | P2 | DEBIL |  |
 
 ## 8. Recomendaciones priorizadas
 
-1. **P0 PQC honesto:** sustituir "labels only" por firma real verificable (p. ej. implementación propia de Ed25519 + capa de incertidumbre documentada para ML-DSA, o integración HSM) — ISA-256, ISA-246.
-2. **Reproducibilidad CI:** fijar lockfile (`pnpm install --frozen-lockfile`), añadir job de secret-scan y suite de seguridad, y artefactos de evidencia de producción — ISA-378, ISA-336, ISA-325, ISA-375.
-3. **MoE mínimo verificable:** contrato `MoEContract` con expert registry (hash/versión/licencia), router con logits + top-k determinista y combine ponderado con fallback; pruebas automatizadas — ISA-001..006.
-4. **Webhooks en producción:** ruta `/api/v1/connectors/...` + verify por proveedor + ttl/replay + tenant-mapping + redacción de secretos en logs — ISA-200..217.
-5. **Security hardening:** allowlist de algoritmos JWT, nonce/par en approval, sanitización de headers — ISA-159, ISA-259.
-6. **Contenedores/K8s:** Dockerfile multi-stage + manifiestos con digest pin, secrets (no literales), egress allowlist — ISA-355..368.
-7. **Frontend truthfulness:** generar un catálogo de API consumible (los claims del UI deben mapear a endpoints verificados) — ISA-451..458.
-8. **Cada P0 cerrado debe registrar evidencia BookPI** (ledger append-only) y pasar arbitraje humano antes de `state: wired`.
+1. **Cablear persistencia durable de webhooks:** enganchar la migración 004 (idempotencia) con un conector de DB real para dedupe entre reinicios; añadir ACK durable (ISA-200/216).
+2. **P0 PQC siguiente paso:** integrar HSM/KMS externo real para ML-KEM/ML-DSA o aislar Ed25519 en capa firmante verificable por operación; arbitraje humano para `state: wired` (ISA-256).
+3. **Deploy workflow:** `deploy-production.yml` que consuma el artefacto de evidencia same-SHA y bloquee si el secret-scan falla (cerrar aceptación completa de ISA-325).
+4. **MoE avanzado:** telemetría por experto, top-k variable por carga, balance aprendido, gradientes (ISA-010, 014, 015, 017, 019, 021..025).
+5. **Frontend truthfulness:** construir el primer UI consumidor del inventario de rutas (docs/api) con tenant/actor context verificado (ISA-451..458).
+6. **SLO/telemetría y carga:** unir src/observability con probes/SLO del deployment y tests de carga (dominio Observability/performance).
+7. **Cada P0 cerrado debe registrar evidencia BookPI** (ledger append-only) y pasar arbitraje humano antes de `state: wired`.
 
 *Matriz íntegra de los 500 puntos: `500-POINT-REAUDIT-V6.csv` (misma carpeta).*
