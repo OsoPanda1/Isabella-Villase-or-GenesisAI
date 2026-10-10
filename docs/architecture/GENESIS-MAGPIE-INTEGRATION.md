@@ -36,9 +36,15 @@ src/cognition/genesis-moe.ts implementa un postprocesador determinista para punt
 - rechaza valores no finitos, vectores incorrectos y parámetros fuera de rango;
 - resuelve empates por índice para reproducibilidad.
 
-Esto es un contrato de routing ejecutable, no un modelo neuronal, entrenamiento, embedding ni integración vLLM. Las puntuaciones deben proceder de un modelo o adapter real; el módulo no inventa una inferencia.
+Esto es un contrato de routing ejecutable, no un modelo neuronal, entrenamiento, embedding ni integración vLLM. El módulo de chunks agrega integridad local verificable, pero todavía no conecta esa evidencia a un BookPI durable ni a una firma CROWN. Las puntuaciones deben proceder de un modelo o adapter real; el módulo no inventa una inferencia.
 
-### 3. Unicode y texto de entrada
+### 3. Integridad de chunks y Unicode
+
+src/cognition/genesis-chunk.ts añade un contrato de chunk versionado con trazas de routing y arbitraje ético, canonicalización de JSON específica de la aplicación y digest SHA-256 que incluye el enlace al chunk anterior. La verificación detecta mutaciones del chunk; no verifica una firma, no demuestra autoría y no persiste el ledger. La canonicalización incluida no se declara conforme a RFC 8785.
+
+El módulo rechaza sustitutos Unicode aislados y valores no serializables/no finitos para evitar ambigüedad en el texto y el digest. No normaliza silenciosamente el texto a NFC, porque esa transformación debe definirse en el contrato de entrada y aplicarse antes de firmar o calcular evidencia. Se añadieron pruebas para caracteres españoles, emoji, marcas combinantes, manipulación posterior al digest y enlace entre chunks.
+
+### 4. Unicode y texto de entrada
 
 ISABELLAUNICODE.txt se conserva como material de referencia separado. Su contenido visible incluye pares de puntos/códigos de caracteres y material de configuración empaquetada, pero no aporta por sí solo un contrato de normalización de texto ni una licencia/procedencia verificable. No debe importarse como tabla de codificación de producción sin identificar formato, origen, versión y pruebas de ida/vuelta.
 
