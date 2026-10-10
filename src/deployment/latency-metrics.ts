@@ -44,13 +44,15 @@ export class LatencyRegistry {
     const normalized = route.trim().slice(0, 160) || "unknown";
     let bucket = this.routes.get(normalized);
     if (!bucket) {
-      const key = this.routes.size < this.maxRoutes ? normalized : "__other__";
+      // Reserve one bounded bucket for high-cardinality/unmatched routes.
+      const key = this.routes.size < this.maxRoutes - 1 ? normalized : "__other__";
       bucket = this.routes.get(key);
-      if (!bucket) {
+      if (!bucket && this.routes.size < this.maxRoutes) {
         bucket = { samples: new Array(this.samplesPerRoute), cursor: 0, total: 0, serverErrors: 0 };
         this.routes.set(key, bucket);
       }
     }
+    if (!bucket) return;
     bucket.samples[bucket.cursor] = { durationMs, statusCode };
     bucket.cursor = (bucket.cursor + 1) % this.samplesPerRoute;
     bucket.total += 1;
