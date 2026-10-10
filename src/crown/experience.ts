@@ -13,6 +13,7 @@
 
 import type { CrownVerdict } from "./index";
 import type { Principal } from "../identity/principal";
+import { evaluateEpistemicState, type EpistemicEvaluation } from "../cognition/epistemic-evaluator";
 
 export const GENESIS_CROWN_CONVERGENCE_VERSION = "1.0.0";
 
@@ -61,6 +62,25 @@ export interface CrownExperienceSnapshot {
     level: "E0" | "E1" | "E2" | "E3" | "E4" | "E5" | "E6";
     verified: boolean;
     sourceCount: number;
+    epistemicState?: string;
+    epistemicLabel?: string;
+    epistemicShortLabel?: string;
+    epistemicTagline?: string;
+    epistemicDescription?: string;
+    epistemicTechnicalCriteria?: string;
+    epistemicRank?: number;
+    epistemicIcon?: string;
+    epistemicColor?: {
+      text: string;
+      bg: string;
+      border: string;
+      glow: string;
+      ring: string;
+    };
+    epistemicLadder?: Array<unknown>;
+    criteriaMet?: string[];
+    criteriaNext?: string[];
+    evaluation?: EpistemicEvaluation;
   };
   governance: {
     status: "ALLOW" | "REVIEW" | "DENY";
@@ -193,6 +213,14 @@ export function createCrownExperienceSnapshot(
         ? "REVIEW"
         : "ALLOW";
 
+  const epistemicEval = evaluateEpistemicState({
+    input: request.input,
+    evidenceSourceCount: sourceCount,
+    admitted: verdict.responseMode !== "refuse",
+    requiresHumanApproval: verdict.requiresHumanApproval,
+    governancePassed: verdict.verification.allPassed,
+  });
+
   return {
     requestId,
     traceId,
@@ -202,9 +230,22 @@ export function createCrownExperienceSnapshot(
     responseMode: verdict.responseMode,
     humanApprovalRequired: verdict.requiresHumanApproval,
     evidence: {
-      level: sourceCount > 0 ? "E2" : "E0",
-      verified: verdict.verification.allPassed && sourceCount > 0,
+      level: epistemicEval.level,
+      verified: verdict.verification.allPassed && (sourceCount > 0 || epistemicEval.rank >= 3),
       sourceCount,
+      epistemicState: epistemicEval.state,
+      epistemicLabel: epistemicEval.name,
+      epistemicShortLabel: epistemicEval.shortLabel,
+      epistemicTagline: epistemicEval.tagline,
+      epistemicDescription: epistemicEval.description,
+      epistemicTechnicalCriteria: epistemicEval.technicalCriteria,
+      epistemicRank: epistemicEval.rank,
+      epistemicIcon: epistemicEval.icon,
+      epistemicColor: epistemicEval.color,
+      epistemicLadder: epistemicEval.ladder,
+      criteriaMet: epistemicEval.criteriaMet,
+      criteriaNext: epistemicEval.criteriaNext,
+      evaluation: epistemicEval,
     },
     governance: {
       status: governance,

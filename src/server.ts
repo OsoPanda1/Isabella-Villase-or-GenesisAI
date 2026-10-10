@@ -16,6 +16,7 @@ import { verifyBearerToken } from "./security/api-token";
 import { FixedWindowRateLimiter } from "./security/rate-limit";
 import { hashSourceContent } from "./memory/ikes";
 import { bookPiLedger } from "./bookpi";
+import { evaluateEpistemicState, EPISTEMIC_LADDER_SPEC } from "./cognition/epistemic-evaluator";
 import { createAtlasStoreFromEnv } from "./atlas";
 import { createDiffObservatory, sanitizeDiffSnapshot, snapshotMetadataHash } from "./plugins";
 import { MemoryProposalQueue } from "./memory/proposals";
@@ -1481,8 +1482,10 @@ app.get("/", (_req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Isabella Villaseñor AI — Genesis TINA V6 (esLatina)</title>
+  <title>Isabella Villaseñor AI — Genesis TINA V6</title>
   <meta name="description" content="Trusted Intelligence, Native & Adaptive — Governed Cognitive Runtime & Civilizational Memory OS">
+  <meta property="og:title" content="Isabella Villaseñor AI — Genesis TINA V6">
+  <meta property="og:description" content="Trusted Intelligence, Native & Adaptive — Governed Cognitive Runtime & Civilizational Memory OS">
   <link rel="stylesheet" href="/styles/crystal-clear.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
