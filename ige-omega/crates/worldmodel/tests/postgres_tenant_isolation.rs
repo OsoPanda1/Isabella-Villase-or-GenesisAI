@@ -1,4 +1,5 @@
 use sqlx::{postgres::PgPoolOptions, Row};
+use shared::IgeError;
 use uuid::Uuid;
 use worldmodel::{Entity, Relation, WorldModelRepository};
 
@@ -30,6 +31,16 @@ async fn graph_repository_and_database_reject_cross_tenant_edges(
     let repository = WorldModelRepository::new(pool.clone());
     repository.add_entity(tenant_a, &source).await?;
     repository.add_entity(tenant_b, &foreign).await?;
+
+    // A foreign-tenant entity must be indistinguishable from a missing entity.
+    assert!(matches!(
+        repository.get_entity(tenant_a, foreign.entity_id).await,
+        Err(IgeError::WorldEntityNotFound(_))
+    ));
+    assert!(matches!(
+        repository.causes_of(tenant_a, foreign.entity_id).await,
+        Err(IgeError::WorldEntityNotFound(_))
+    ));
 
     let relation = Relation {
         source: source.entity_id,
