@@ -380,13 +380,7 @@ async fn infer(
         serde_json::to_value(&plan).map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
     // Keep raw user objectives in the synchronous API response only. The
     // long-lived audit ledger stores decision metadata and hashes, not prompts.
-    let audit_summary = serde_json::json!({
-        "plan_id": plan.plan_id,
-        "risk": risk_label(plan.risk),
-        "step_count": plan.steps.len(),
-        "probability_status": plan.probability_status,
-        "objective_length": text.chars().count()
-    });
+    let audit_summary = plan_audit_summary(&plan, text.chars().count());
     let payload = serde_json::json!({
         "request_id": request_id,
         "tenant_id": principal.tenant_id,
@@ -726,6 +720,16 @@ async fn append_audit_in_transaction(
     Ok(())
 }
 
+fn plan_audit_summary(plan: &cognition::planner::Plan, objective_length: usize) -> Value {
+    serde_json::json!({
+        "plan_id": plan.plan_id,
+        "risk": risk_label(plan.risk),
+        "step_count": plan.steps.len(),
+        "probability_status": plan.probability_status,
+        "objective_length": objective_length
+    })
+}
+
 fn risk_label(risk: RiskTier) -> &'static str {
     match risk {
         RiskTier::Low => "LOW",
@@ -964,6 +968,16 @@ mod tests {
         let token = "f".repeat(64);
         let entry = format!("{}|{}|{}", token, tenant, user);
         assert!(parse_api_tokens(&format!("{};{}", entry, entry)).is_err());
+    }
+
+    #[test]
+    fn audit_summary_does_not_persist_raw_objective() {
+        let objective = "sensitive customer objective phrase";
+        let plan = ReasoningEngine::reason(objective).unwrap();
+        let summary = plan_audit_summary(&plan, objective.chars().count());
+        let serialized = summary.to_string();
+        assert!(!serialized.contains(objective));
+        assert_eq!(summary["objective_length"], objective.chars().count());
     }
 
     #[test]
