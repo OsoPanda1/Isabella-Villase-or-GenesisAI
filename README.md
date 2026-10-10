@@ -9,8 +9,8 @@
 **Repositorio:** [OsoPanda1/Isabella-V6-TINA](https://github.com/OsoPanda1/Isabella-V6-TINA)  
 **Lenguaje principal:** TypeScript · Node.js  
 **Estado de ingeniería:** evolución activa; no declarar listo para producción hasta superar los gates de validación y despliegue.  
-**Rama de auditoría/evolución:** `evolution/assurance-control-plane-2026-10`  
-**Pull request de trabajo:** [#17](https://github.com/OsoPanda1/Isabella-V6-TINA/pull/17)
+**Rama de integración IGE-Ω:** `feat/ige-omega-rust-mvp-2026-10`  
+**Pull request de integración:** [#18](https://github.com/OsoPanda1/Isabella-V6-TINA/pull/18)
 
 > **Contrato de veracidad:** `SPECIFIED ≠ IMPLEMENTED ≠ TESTED ≠ INTEGRATED ≠ VERIFIED ≠ DEPLOYED ≠ CERTIFIED`. Un contrato, fixture, simulación o adaptador sin configurar no demuestra una integración real. Los estados de salud deben derivarse de probes reales; no de valores fijos.
 
