@@ -39,15 +39,22 @@ app.use(
   }),
 );
 
-// Serve Crystal Clear CSS Module directly
+// Read the static stylesheet once at startup; avoid sync filesystem I/O per request.
+const cssPath = path.join(process.cwd(), "src", "styles", "crystal-clear.css");
+let crystalClearCss: string | null = null;
+try {
+  crystalClearCss = fs.readFileSync(cssPath, "utf-8");
+} catch {
+  console.warn("[Genesis] Crystal Clear CSS is unavailable at startup.");
+}
 app.get("/styles/crystal-clear.css", (_req, res) => {
-  res.setHeader("Content-Type", "text/css; charset=utf-8");
-  const cssPath = path.join(process.cwd(), "src", "styles", "crystal-clear.css");
-  if (fs.existsSync(cssPath)) {
-    res.send(fs.readFileSync(cssPath, "utf-8"));
-  } else {
-    res.status(404).send("/* CSS module not found */");
+  if (crystalClearCss === null) {
+    res.status(404).type("text/css").send("/* CSS module not found */");
+    return;
   }
+  res.setHeader("Content-Type", "text/css; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+  res.send(crystalClearCss);
 });
 
 // Initialize Genesis TINA Runtime with optional Atlas persistence.
@@ -92,81 +99,10 @@ function enforceRateLimit(req: Request, res: Response, limiter: FixedWindowRateL
   return true;
 }
 
-// Pre-seed canonical knowledge into IKES Epistemic Memory (TAMV & Real del Monte)
-runtime.memory.registerSource({
-  sourceId: "src-tamv-001",
-  uri: "https://tamv.network/canon/v40",
-  title: "Canon v40.0.0 — Ecosistema TAMV & Isabella TINA",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-rdm-002",
-  uri: "https://realdelmonte.hidalgo.gob.mx/patrimonio",
-  title: "Gemelo Digital & Archivo Biocultural — Real del Monte, Hidalgo (Nodo Cero)",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "7d8a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-agents-003",
-  uri: "https://github.com/OsoPanda1/isabella-ai-genesis/blob/main/AGENTS.md",
-  title: "Constitución Operativa AGENTS.md — Invariante Operativo Soberano",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "fa4b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b",
-});
-
-runtime.memory.registerSource({
-  sourceId: "src-zenodo-004",
-  uri: "https://doi.org/10.5281/zenodo.20606361",
-  title: "Registro Canónico TAMV ONLINE v2.0.0 — Zenodo / CERN (ORCID 0009-0008-5050-1539)",
-  retrievedAt: new Date().toISOString(),
-  contentHash: "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
-});
-
-// Seed Core Invariants & Claims
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-tamv-001", "src-agents-003"],
-  claim: {
-    subject: "ISABELLA_TINA",
-    predicate: "operationalInvariant",
-    object: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION",
-    sourceIds: ["src-tamv-001", "src-agents-003"],
-    evidenceIds: ["src-tamv-001"],
-    temporalState: "current",
-    provenance: { source: "src-agents-003" },
-  },
-});
-
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-tamv-001", "src-rdm-002"],
-  claim: {
-    subject: "TAMV_NODO_CERO",
-    predicate: "location",
-    object: "Mineral del Monte (Real del Monte), Hidalgo, México (20.3833° N, 98.8500° O, 2,660 msnm)",
-    sourceIds: ["src-tamv-001", "src-rdm-002"],
-    evidenceIds: ["src-rdm-002"],
-    temporalState: "current",
-    provenance: { source: "src-rdm-002" },
-  },
-});
-
-runtime.memory.propose({
-  proposedBy: "human:founder:anubis-villasenor",
-  evidenceIds: ["src-zenodo-004"],
-  claim: {
-    subject: "TAMV_ECOSYSTEM",
-    predicate: "canonicalAuthor",
-    object: "Edwin Oswaldo Castillo Trejo (Anubis Villaseñor) · ORCID 0009-0008-5050-1539 · DOI 10.5281/zenodo.20606361",
-    sourceIds: ["src-zenodo-004"],
-    evidenceIds: ["src-zenodo-004"],
-    temporalState: "current",
-    provenance: { source: "src-zenodo-004" },
-  },
-});
+// Evidence hygiene: do not pre-register remote sources with placeholder hashes.
+// A syntactically valid SHA-256 string is not proof that referenced bytes were retrieved.
+// Register IKES sources only through ingestion that hashes actual content and records
+// retrieval metadata; no source-backed claims are pre-seeded without that evidence.
 
 // Los tools canónicos (rdm_territory_query, bookpi_integrity_verify, etc.) se
 // registran en el runtime desde CANONICAL_TOOLS. No se duplican aquí para evitar
