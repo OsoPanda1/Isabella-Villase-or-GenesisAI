@@ -34,15 +34,6 @@ const host = "0.0.0.0";
 
 const connectorRawBodies = new WeakMap<object, string>();
 
-app.use(
-  express.json({
-    limit: "8mb",
-    verify: (req, _res, buf) => {
-      connectorRawBodies.set(req, buf.toString("utf8"));
-    },
-  }),
-);
-
 app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
   res.once("finish", () => {
@@ -55,6 +46,16 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+app.use(
+  express.json({
+    limit: "8mb",
+    verify: (req, _res, buf) => {
+      connectorRawBodies.set(req, buf.toString("utf8"));
+    },
+  }),
+);
+
 
 // Read the static stylesheet once at startup; avoid sync filesystem I/O per request.
 const cssPath = path.join(process.cwd(), "src", "styles", "crystal-clear.css");
