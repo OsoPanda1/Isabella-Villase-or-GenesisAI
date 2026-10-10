@@ -5,6 +5,10 @@
 **Nodo Cero declarado:** Real del Monte / Mineral del Monte, Hidalgo, México  
 **DOI declarado:** 10.5281/zenodo.20606361  
 **OSF declarado:** 10.17605/OSF.IO/T3WMY  
+**Autoría legal y territorial declarada:** Edwin Oswaldo Castillo Trejo  
+**Firma técnica y operativa declarada:** Anubis Villaseñor  
+**ORCID declarado:** 0009-0008-5050-1539  
+**Ecosistema declarado:** TAMV Online Network · Isabella Villaseñor AI Genesis · RDM Digital Hub · UTAMV · CROWN Framework  
 **Clasificación:** COGNITIVE_OPERATING_SYSTEM_BLUEPRINT + RUST_MVP_IMPLEMENTABLE + POSTGRES_PERSISTENT + PRE_PRODUCTION
 
 > CONTRACT ≠ IMPLEMENTED ≠ TESTED ≠ INTEGRATED ≠ VERIFIED ≠ DEPLOYED ≠ CERTIFIED
