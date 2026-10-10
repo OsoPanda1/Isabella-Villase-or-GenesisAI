@@ -54,6 +54,14 @@ export function assessProductionReadiness(dependencies: readonly DependencyHealt
       continue;
     }
     seen.add(name);
+    if (
+      (dep.status !== "healthy" && dep.status !== "degraded" && dep.status !== "unavailable") ||
+      typeof dep.required !== "boolean"
+    ) {
+      status = "unavailable";
+      blockers.push(`${name}:invalid-health-record`);
+      continue;
+    }
 
     if (dep.status === "unavailable") {
       if (dep.required) {
