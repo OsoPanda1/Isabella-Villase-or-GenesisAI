@@ -48,6 +48,26 @@ FROM memory_records;
 
 If any count is nonzero, inspect and repair/quarantine those records before running `ALTER TABLE memory_records VALIDATE CONSTRAINT ...` for each of the four migration 0009 constraints. Treat this as a data migration with a backup and a rollback/recovery plan, not as an automatic cleanup.
 
+Migration 0010 adds `NOT VALID` constraints for World Model entity names/types/provenance, relation labels and causal evidence array shape/size. Audit legacy rows before validation:
+
+```sql
+SELECT
+  (SELECT count(*) FROM world_entities
+   WHERE char_length(btrim(name)) NOT BETWEEN 1 AND 500
+      OR char_length(btrim(entity_type)) NOT BETWEEN 1 AND 100
+      OR char_length(btrim(provenance)) NOT BETWEEN 1 AND 2000) AS invalid_entities,
+  (SELECT count(*) FROM world_relations
+   WHERE char_length(btrim(relation)) NOT BETWEEN 1 AND 200) AS invalid_relations,
+  (SELECT count(*) FROM causal_edges
+   WHERE CASE
+     WHEN jsonb_typeof(evidence) = 'array'
+       THEN jsonb_array_length(evidence) > 64
+     ELSE TRUE
+   END) AS invalid_causal_evidence;
+```
+
+Inspect and repair/quarantine incompatible records before validating each constraint from migration 0010. Do not silently delete historical graph data.
+
 ## Release decision
 
 Do not promote while any of the following is true:
