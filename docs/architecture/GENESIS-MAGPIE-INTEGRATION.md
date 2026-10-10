@@ -42,7 +42,7 @@ Esto es un contrato de routing ejecutable, no un modelo neuronal, entrenamiento,
 
 src/cognition/genesis-chunk.ts añade un contrato de chunk versionado con trazas de routing y arbitraje ético, canonicalización de JSON específica de la aplicación y digest SHA-256 que incluye el enlace al chunk anterior. La verificación detecta mutaciones del chunk; no verifica una firma, no demuestra autoría y no persiste el ledger. La canonicalización incluida no se declara conforme a RFC 8785.
 
-El módulo rechaza sustitutos Unicode aislados y valores no serializables/no finitos para evitar ambigüedad en el texto y el digest. No normaliza silenciosamente el texto a NFC, porque esa transformación debe definirse en el contrato de entrada y aplicarse antes de firmar o calcular evidencia. Se añadieron pruebas para caracteres españoles, emoji, marcas combinantes, manipulación posterior al digest y enlace entre chunks.
+El módulo rechaza sustitutos Unicode aislados, valores no serializables/no finitos, propiedades accesoras y propiedades propias no enumerables; los getters no se ejecutan durante la canonicalización. Esto reduce ambigüedad y evita efectos laterales al producir el digest. No normaliza silenciosamente el texto a NFC, porque esa transformación debe definirse en el contrato de entrada y aplicarse antes de firmar o calcular evidencia. Se añadieron pruebas para caracteres españoles, emoji, marcas combinantes, manipulación posterior al digest y enlace entre chunks.
 
 ### 4. Unicode y texto de entrada
 
