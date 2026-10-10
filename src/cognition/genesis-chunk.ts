@@ -59,13 +59,17 @@ export function canonicalGenesisJson(value: unknown): string {
   if (typeof value === "object") {
     const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) throw new TypeError("IGE: canonical JSON accepts plain objects only");
-    if (Object.getOwnPropertySymbols(value).length > 0) throw new TypeError("IGE: canonical JSON rejects symbol keys");
-    const record = value as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key === "symbol")) throw new TypeError("IGE: canonical JSON rejects symbol keys");
+    const keys = (ownKeys as string[]).sort();
     return "{" + keys.map((key) => {
       assertWellFormedUnicode(key);
-      if (record[key] === undefined) throw new TypeError("IGE: canonical JSON rejects undefined values");
-      return JSON.stringify(key) + ":" + canonicalGenesisJson(record[key]);
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !descriptor.enumerable || !Object.prototype.hasOwnProperty.call(descriptor, "value")) {
+        throw new TypeError("IGE: canonical JSON rejects accessors and non-enumerable properties");
+      }
+      if (descriptor.value === undefined) throw new TypeError("IGE: canonical JSON rejects undefined values");
+      return JSON.stringify(key) + ":" + canonicalGenesisJson(descriptor.value);
     }).join(",") + "}";
   }
   throw new TypeError("IGE: unsupported value in canonical JSON");
