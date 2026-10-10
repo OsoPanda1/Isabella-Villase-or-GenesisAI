@@ -8,3 +8,4 @@ export { createTraceContext, beginSpan, propagateTrace, isTraceWellFormed, type 
 export { evaluateAdmission, DENY_ALL, type AdmissionContext, type AdmissionEffect, type AdmissionRule, type AdmissionVerdict } from "./admission";
 
 export * from "./isa-api";
+export * from "./unified-gateway";

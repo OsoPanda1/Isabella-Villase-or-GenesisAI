@@ -1,0 +1,713 @@
+openapi: 3.1.0
+info:
+  title: Isabella Villaseñor AI — Genesis TINA Native API (Governed Cognitive Mesh)
+  description: |
+    API unificada y endurecida de la infraestructura cognitiva territorial Isabella Villaseñor AI
+    (Nodo Cero — Real del Monte / Mineral del Monte, Hidalgo, México · Ecosistema TAMV Online Network).
+    Implementa arquitectura de gobernanza constitucional estricta de siete capas:
+    Perceive → Remember → Policy Gate → Decide → Act → Audit → Verify.
+    
+    Invariante Operativo Fundamental:
+    CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION
+    
+    Autoría Técnica y Soberana: Edwin Oswaldo Castillo Trejo (Anubis Villaseñor)
+    ORCID: 0009-0008-5050-1539 · DOI Zenodo: 10.5281/zenodo.20606361 · OSF: 10.17605/OSF.IO/T3WMY
+  version: "60.0.0-Hardened"
+  contact:
+    name: TAMV Online Network / RDM Digital Hub — Sovereign Security Operations
+    url: https://tamv.network
+    email: ecastillotrejo1983@gmail.com
+  license:
+    name: Apache License 2.0 (Code) / CC BY 4.0 (Docs) / ISCL-1.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://ais-dev-55cyeky5ipqlihjrmfbpqw-223897458933.us-east1.run.app
+    description: Entorno de Desarrollo y Despliegue Soberano AI Studio
+  - url: http://localhost:3000
+    description: Nodo Local de Operación (0.0.0.0:3000)
+
+security:
+  - OAuth2Bearer: []
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    OAuth2Bearer:
+      type: oauth2
+      description: Protocolo OAuth2 / OIDC apoyado en WebAuthn, credenciales soberanas y HSM.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://tamv.network/oauth/authorize
+          tokenUrl: https://tamv.network/oauth/token
+          scopes:
+            cognitive:read: Lectura e inspección del estado cognitivo.
+            cognitive:execute: Invocación de inferencia y mediación gobernada.
+            cognitive:stream: Flujo en tiempo real mediante Server-Sent Events (SSE).
+            memory:read: Consulta de memoria semántica y epistémica (IKES).
+            memory:write: Propuesta e ingestión de memoria gobernada.
+            memory:delete: Petición de olvido y purga criptográfica.
+            tools:execute: Invocación de herramientas en sandbox aislado (ORION).
+            admin:killswitch: Control de emergencia y detención del runtime (SEV-1 a SEV-4).
+            epistemic:evaluate: Evaluación de afirmaciones y análisis de radar de claims.
+            quantum:execute: Envío de circuitos al puente híbrido PennyLane.
+            quantum:read: Consulta de estado y telemetría de la malla cuántica.
+            audit:read: Lectura y verificación de la cadena hash BookPI.
+            governance:admin: Gestión de políticas CROWN y arbitraje de capacidades.
+            hsf:invoke: Invocación del Hyper Skill Fabric (HSF) bajo balance de autoridad.
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Clave de autenticación soberana con prefijo isa_live_v1_.
+    BearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token Bearer para autenticación de servicio o rol de operador.
+
+  headers:
+    X-Crown-Trace-ID:
+      schema:
+        type: string
+      description: Identificador de trazabilidad distribuida generado por CROWN.
+    X-Crown-Request-ID:
+      schema:
+        type: string
+        format: uuid
+      description: Identificador único de solicitud para correlación e idempotencia.
+    X-Crown-Status:
+      schema:
+        type: string
+        enum: [ALLOW, DENY, REVIEW, BLOCK]
+      description: Veredicto de la política constitucional CROWN evaluado en el servidor.
+    X-Crown-Risk:
+      schema:
+        type: string
+        enum: [LOW, MEDIUM, HIGH, CRITICAL]
+      description: Nivel de riesgo operativo determinado de forma determinista.
+    X-Crown-Module:
+      schema:
+        type: string
+      description: Módulo o nodo cognitivo principal seleccionado para la resolución.
+    X-Tenant-ID:
+      schema:
+        type: string
+        pattern: "^[a-z0-9-_]{3,64}$"
+      description: Identificador del tenant propietario de la consulta o sesión.
+
+  schemas:
+    StandardResponseMeta:
+      type: object
+      required:
+        - api_version
+        - server_time
+        - execution_mode
+        - degraded
+        - retryable
+      properties:
+        api_version:
+          type: string
+          example: "v1"
+        server_time:
+          type: string
+          format: date-time
+        execution_mode:
+          type: string
+          enum: [standard, degraded, fallback, sandbox]
+          example: "standard"
+        degraded:
+          type: boolean
+          example: false
+        retryable:
+          type: boolean
+          example: false
+
+    StandardSuccessEnvelope:
+      type: object
+      required:
+        - success
+        - request_id
+        - trace_id
+        - data
+        - error
+        - meta
+      properties:
+        success:
+          type: boolean
+          const: true
+        request_id:
+          type: string
+          example: "req-01JCX45"
+        trace_id:
+          type: string
+          example: "trace-91aa717f"
+        data:
+          type: object
+          description: Carga útil de respuesta del dominio específico.
+        error:
+          type: "null"
+        meta:
+          $ref: "#/components/schemas/StandardResponseMeta"
+
+    StandardErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+        - retryable
+        - failure_class
+      properties:
+        code:
+          type: string
+          example: "CROWN_POLICY_DENIED"
+        message:
+          type: string
+          example: "Operación denegada por la política constitucional activa."
+        retryable:
+          type: boolean
+          example: false
+        failure_class:
+          type: string
+          enum: [policy, validation, security, provider, system]
+          example: "policy"
+        details:
+          type: object
+          nullable: true
+          description: Metadatos adicionales sobre la causa del rechazo.
+
+    StandardErrorEnvelope:
+      type: object
+      required:
+        - success
+        - request_id
+        - trace_id
+        - data
+        - error
+        - meta
+      properties:
+        success:
+          type: boolean
+          const: false
+        request_id:
+          type: string
+          example: "req-01JCX45"
+        trace_id:
+          type: string
+          example: "trace-91aa717f"
+        data:
+          type: "null"
+        error:
+          $ref: "#/components/schemas/StandardErrorDetail"
+        meta:
+          type: object
+          required:
+            - api_version
+          properties:
+            api_version:
+              type: string
+              example: "v1"
+
+    CognitiveRequestInput:
+      type: object
+      required:
+        - input
+      properties:
+        input:
+          type: string
+          minLength: 1
+          maxLength: 20000
+          description: Intención o consulta textual del operador.
+        modelEngine:
+          type: string
+          enum: [sovereign, gemini]
+          default: sovereign
+          description: Motor de inferencia seleccionado (sovereign local o Gemini asistido).
+        focusLens:
+          type: string
+          enum: [general, territorial, epistemic, security, governance]
+          default: general
+          description: Lente analítico de enfoque cognitivo.
+        sessionId:
+          type: string
+          maxLength: 128
+          description: Identificador opcional de la sesión.
+
+    CognitiveDecisionRecord:
+      type: object
+      required:
+        - admitted
+        - crown
+        - invariants
+      properties:
+        admitted:
+          type: boolean
+          description: Indica si la política CROWN admitió la solicitud.
+        crown:
+          type: object
+          description: Desglose de pesos y arbitraje de los 12 nodos de la red CROWN.
+        invariants:
+          type: object
+          description: Comprobación de separación de capacidad vs autoridad.
+        generativeNarrative:
+          type: string
+          nullable: true
+          description: Síntesis narrativa generada si el motor asistido fue activado.
+
+    BookPiEventRecord:
+      type: object
+      required:
+        - id
+        - timestamp
+        - type
+        - methodId
+        - riskTier
+        - status
+        - previousHash
+        - hash
+      properties:
+        id:
+          type: string
+          example: "evt-91aa717f-001"
+        timestamp:
+          type: string
+          format: date-time
+        type:
+          type: string
+          example: "COGNITIVE_EVALUATION"
+        methodId:
+          type: string
+          example: "A.TWINS.E15_MEMORY.recall.synthesize.v1.0.0.LOW.AUTONOMOUS"
+        riskTier:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        status:
+          type: string
+          enum: [ADMITTED, BLOCKED_BY_POLICY, EXECUTED, COMMITTED]
+        previousHash:
+          type: string
+          description: Hash SHA-256 del bloque precedente en la cadena inmutable.
+        hash:
+          type: string
+          description: Hash SHA-256 del bloque actual calculado canónicamente.
+
+    QuantumExecutionPayload:
+      type: object
+      required:
+        - circuit
+      properties:
+        circuit:
+          type: object
+          required:
+            - wires
+          properties:
+            wires:
+              type: integer
+              minimum: 1
+              maximum: 32
+            operations:
+              type: array
+              items:
+                type: object
+                required:
+                  - name
+                  - wires
+                properties:
+                  name:
+                    type: string
+                  wires:
+                    type: array
+                    items:
+                      type: integer
+                  parameters:
+                    type: array
+                    items:
+                      type: number
+            measurements:
+              type: array
+              items:
+                type: string
+        backend:
+          type: string
+          enum: [pennylane, pennylane-lightning, catalyst, qiskit]
+          default: pennylane-lightning
+        shots:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 500000
+
+    TripleBlockadeScanInput:
+      type: object
+      required:
+        - input
+      properties:
+        input:
+          type: string
+          maxLength: 10000
+          description: Texto a evaluar contra las heurísticas del Triple Blockade.
+
+    TripleBlockadeResult:
+      type: object
+      required:
+        - input
+        - decision
+        - patternMatchDetected
+        - assessmentMode
+        - blockadeEvaluation
+        - aegisScore
+      properties:
+        input:
+          type: string
+        decision:
+          type: string
+          enum: [PATTERN_MATCH, NO_PATTERN_MATCH]
+        patternMatchDetected:
+          type: boolean
+        actionBlocked:
+          type: boolean
+        authorizationGranted:
+          type: boolean
+        assessmentMode:
+          type: string
+          example: "HEURISTIC_PATTERN_SCAN"
+        blockadeEvaluation:
+          type: object
+          properties:
+            nivel1_ontologico:
+              type: string
+            nivel2_semantico:
+              type: string
+            nivel3_comportamental:
+              type: string
+        aegisScore:
+          type: number
+          format: float
+
+paths:
+  /health:
+    get:
+      summary: Health check básico del proceso
+      description: Comprueba que el servidor HTTP está vivo y respondiendo.
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Proceso activo y saludable
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - runtime
+                  - version
+                  - invariant
+                  - timestamp
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  runtime:
+                    type: string
+                    example: "Isabella Genesis TINA V6"
+                  version:
+                    type: string
+                    example: "v40.0.0"
+                  invariant:
+                    type: string
+                    example: "CAPABILITY ≠ AUTHORITY ≠ EXECUTION ≠ EVIDENCE ≠ LEARNING ≠ PRODUCTION"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/v1/health:
+    get:
+      summary: Diagnóstico de salud canónico v1
+      description: Reporta el estado operacional del Nodo Cero y los motores activos.
+      operationId: getV1Health
+      security: []
+      responses:
+        "200":
+          description: Diagnóstico de subsistemas del nodo
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - app
+                  - version
+                  - node
+                  - invariants
+                  - hasGeminiKey
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  app:
+                    type: string
+                    example: "Isabella Villaseñor AI — Genesis TINA V6"
+                  version:
+                    type: string
+                    example: "v40.0.0"
+                  node:
+                    type: string
+                    example: "Nodo Cero (Real del Monte, Hidalgo, México)"
+                  invariants:
+                    type: object
+                  hasGeminiKey:
+                    type: boolean
+
+  /api/v1/status:
+    get:
+      summary: Estado detallado de motores y federaciones
+      description: Expone metadatos de los motores CROWN, AEGIS, IKES, Veritas, BookPI y PennyLane.
+      operationId: getV1Status
+      security: []
+      responses:
+        "200":
+          description: Estado completo de la infraestructura cognitiva
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - runtime
+                  - version
+                  - founder
+                  - engines
+                  - experts
+                  - crownNodesCount
+                  - invariant
+                properties:
+                  runtime:
+                    type: string
+                  version:
+                    type: string
+                  founder:
+                    type: object
+                  engines:
+                    type: object
+                  experts:
+                    type: object
+                  crownNodesCount:
+                    type: integer
+                  toolsCount:
+                    type: integer
+                  skillsCount:
+                    type: integer
+                  invariant:
+                    type: string
+
+  /api/v1/cognitive/request:
+    post:
+      summary: Petición cognitiva canónica
+      description: Invocación protegida por el pipeline CROWN que separa intención de autoridad.
+      operationId: postCognitiveRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CognitiveRequestInput"
+      responses:
+        "200":
+          description: Decisión cognitiva admitida y sintetizada
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - requestId
+                  - traceId
+                  - decision
+                  - snapshot
+                  - publicAuthority
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  requestId:
+                    type: string
+                  traceId:
+                    type: string
+                  decision:
+                    $ref: "#/components/schemas/CognitiveDecisionRecord"
+                  snapshot:
+                    type: object
+                  systemPromptApplied:
+                    type: boolean
+                  generativeNarrative:
+                    type: string
+                    nullable: true
+                  publicAuthority:
+                    type: string
+                    example: "VIEWER_ONLY"
+        "400":
+          description: Payload inválido o faltante
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StandardErrorEnvelope"
+        "403":
+          description: Solicitud denegada por política CROWN
+        "413":
+          description: Carga útil excede límite de tamaño
+        "429":
+          description: Límite de tasa alcanzado
+
+  /api/v1/cognition/route:
+    post:
+      summary: Enrutamiento cognitivo con lente especializado
+      description: Evalúa la intención contra los 12 nodos de la red CROWN y produce veredicto de política.
+      operationId: postCognitionRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CognitiveRequestInput"
+      responses:
+        "200":
+          description: Enrutamiento completado exitosamente
+        "400":
+          description: Error en entrada
+        "403":
+          description: Denegado por política
+        "429":
+          description: Límite de tasa alcanzado
+
+  /api/v1/bookpi/events:
+    get:
+      summary: Eventos de auditoría de BookPI (vista pública redactada)
+      description: Retorna la cadena hash de eventos en memoria sin exponer identidades de principales.
+      operationId: getBookPiEvents
+      responses:
+        "200":
+          description: Lista de eventos verificables en la cadena hash
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - events
+                  - count
+                  - visibility
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BookPiEventRecord"
+                  count:
+                    type: integer
+                  visibility:
+                    type: string
+                    example: "PUBLIC_REDACTED_AUDIT"
+        "429":
+          description: Límite de tasa excedido
+
+  /api/v1/bookpi/events/admin:
+    get:
+      summary: Eventos de auditoría completos de BookPI (modo administrador)
+      description: Consulta no redactada de la cadena de eventos; requiere token administrativo.
+      operationId: getBookPiEventsAdmin
+      security:
+        - BearerToken: []
+      responses:
+        "200":
+          description: Cadena hash de auditoría completa con identidades
+        "401":
+          description: Token no provisto o inválido
+        "503":
+          description: Token administrativo no configurado en el entorno
+
+  /api/v1/tools/execute:
+    post:
+      summary: Ejecución de herramientas en sandbox gobernado
+      description: Invoca herramientas autorizadas bajo verificación de rol y registro de evento en BookPI.
+      operationId: executeTool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - toolId
+              properties:
+                toolId:
+                  type: string
+                  example: "rdm_territory_query"
+                input:
+                  type: object
+      responses:
+        "200":
+          description: Resultado de la ejecución de la herramienta
+        "403":
+          description: Herramienta no autorizada para el rol
+        "413":
+          description: Carga útil excede límites
+
+  /api/v1/triple-blockade/scan:
+    post:
+      summary: Escáner heurístico Triple Blockade (AEGIS)
+      description: Analiza el texto contra patrones ontológicos, semánticos y comportamentales de bypass.
+      operationId: scanTripleBlockade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripleBlockadeScanInput"
+      responses:
+        "200":
+          description: Evaluación de las tres barreras de escaneo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripleBlockadeResult"
+
+  /api/v1/quantum/pennylane/status:
+    get:
+      summary: Estado del puente cuántico PennyLane
+      description: Consulta el descriptor del puente y la disponibilidad de módulos cuánticos.
+      operationId: getQuantumPennyLaneStatus
+      responses:
+        "200":
+          description: Estado del puente y repositorios registrados
+
+  /api/v1/quantum/pennylane/execute:
+    post:
+      summary: Ejecución de circuito en puente cuántico
+      description: Despacho gobernado de circuitos cuánticos; requiere autorización de token de operador.
+      operationId: executeQuantumPennyLane
+      security:
+        - BearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuantumExecutionPayload"
+      responses:
+        "200":
+          description: Circuito ejecutado exitosamente
+        "400":
+          description: Circuito malformado o error de backend
+        "401":
+          description: No autorizado
+        "403":
+          description: Rechazado por gobernanza CROWN
+        "503":
+          description: Puente cuántico no configurado o no disponible
+
+  /api/v1/territory/rdm:
+    get:
+      summary: Gemelo Digital de Real del Monte (Nodo Cero)
+      description: Datos bioculturales, coordenadas y sitios patrimoniales de Mineral del Monte.
+      operationId: getTerritoryRdm
+      responses:
+        "200":
+          description: Datos territoriales del Nodo Cero
