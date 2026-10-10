@@ -34,19 +34,40 @@ export interface ProductionReadinessReport {
 export function assessProductionReadiness(dependencies: readonly DependencyHealth[], now = new Date()): ProductionReadinessReport {
   const blockers: string[] = [];
   let status: HealthStatus = "healthy";
+
+  // An empty dependency set is missing evidence, not proof of readiness.
+  if (dependencies.length === 0) {
+    return {
+      status: "unavailable",
+      ready: false,
+      blockers: ["dependencies:not-configured"],
+      checkedAt: now.toISOString(),
+    };
+  }
+
+  const seen = new Set<string>();
   for (const dep of dependencies) {
+    const name = typeof dep?.name === "string" ? dep.name.trim() : "";
+    if (!name || seen.has(name)) {
+      status = "unavailable";
+      blockers.push(!name ? "dependency:invalid-name" : `dependency:duplicate:${name}`);
+      continue;
+    }
+    seen.add(name);
+
     if (dep.status === "unavailable") {
       if (dep.required) {
         status = "unavailable";
-        blockers.push(`${dep.name}:unavailable`);
+        blockers.push(`${name}:unavailable`);
       } else if (status === "healthy") {
         status = "degraded";
       }
     } else if (dep.status === "degraded") {
+      if (dep.required) blockers.push(`${name}:degraded`);
       if (status === "healthy") status = "degraded";
     }
   }
-  return { status, ready: status === "healthy", blockers, checkedAt: now.toISOString() };
+  return { status, ready: status === "healthy" && blockers.length === 0, blockers, checkedAt: now.toISOString() };
 }
 
 /* ------------------------------------------------------------------ */
