@@ -28,7 +28,7 @@ import { TtlSingleFlight } from "./deployment/ttl-single-flight";
 
 const app = express();
 const latencyRegistry = new LatencyRegistry(100, 512);
-const atlasHealthCache = new TtlSingleFlight<boolean>(1_000);
+const atlasHealthCache = new TtlSingleFlight<{ healthy: boolean; reason: string }>(1_000);
 const port = 3000;
 const host = "0.0.0.0";
 
@@ -1371,15 +1371,23 @@ async function currentOpsState() {
   let atlasStatus: "healthy" | "degraded" | "unavailable" = "unavailable";
   let atlasReason = "No Atlas persistence adapter is configured.";
   if (runtime.persistence && typeof runtime.persistence.health === "function") {
-    try {
-      atlasStatus = (await atlasHealthCache.get(() => runtime.persistence!.health!())) ? "healthy" : "unavailable";
-      atlasReason = atlasStatus === "healthy"
-        ? "Read-only Atlas/Supabase query succeeded."
-        : "Atlas/Supabase health probe did not confirm a valid response.";
-    } catch {
-      atlasStatus = "unavailable";
-      atlasReason = "Read-only Atlas/Supabase health probe failed or timed out.";
-    }
+    const probe = await atlasHealthCache.get(async () => {
+      try {
+        const healthy = await runtime.persistence!.health!();
+        return {
+          healthy,
+          reason: healthy
+            ? "Read-only Atlas/Supabase query succeeded."
+            : "Atlas/Supabase health probe did not confirm a valid response.",
+        };
+      } catch {
+        // Cache the failed result briefly too; otherwise an outage can trigger a
+        // fresh 2-second database timeout on every readiness request.
+        return { healthy: false, reason: "Read-only Atlas/Supabase health probe failed or timed out." };
+      }
+    });
+    atlasStatus = probe.healthy ? "healthy" : "unavailable";
+    atlasReason = probe.reason;
   } else if (runtime.persistence) {
     atlasStatus = "degraded";
     atlasReason = "Persistence adapter has no health probe; connectivity is unverified.";
