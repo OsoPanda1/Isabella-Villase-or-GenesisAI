@@ -577,7 +577,6 @@ async fn create_relation(
         .await
         .map_err(map_world_error)?;
     append_audit_in_transaction(
-        &state,
         &mut tx,
         &principal,
         "WORLD_RELATION_CREATED",
@@ -612,7 +611,6 @@ async fn create_causal_edge(
         .await
         .map_err(map_world_error)?;
     append_audit_in_transaction(
-        &state,
         &mut tx,
         &principal,
         "WORLD_CAUSAL_EDGE_CREATED",
