@@ -195,10 +195,10 @@ Una vez disponible la red de paquetes y elegido el gestor de dependencias:
 3. Ejecutar `npm test`.
 4. Ejecutar `npm run build`.
 5. Ejecutar `npm run security:suite`.
-6. Revisar `test/performance/critical-latency.test.ts`: reporta p50/p95/p99/max para routing IGE, canonicalización/hash de chunks y readiness sin red ni inferencia de modelo.
-7. Consultar `GET /api/v1/ops/latency` en el proceso desplegado para identificar rutas con mayor p95 y errores 5xx; correlacionar con métricas del proveedor de base de datos y del modelo.
 6. Revisar los artefactos y resultados de CI para el mismo SHA.
-7. No desplegar si una dependencia obligatoria aparece `degraded` o `unavailable`.
+7. Revisar `test/performance/critical-latency.test.ts`: reporta p50/p95/p99/max para routing IGE, canonicalización/hash de chunks y readiness sin red ni inferencia de modelo.
+8. Consultar `GET /api/v1/ops/latency` en el proceso desplegado para identificar rutas con mayor p95 y errores 5xx; correlacionar con métricas del proveedor de base de datos y del modelo.
+9. No desplegar si una dependencia obligatoria aparece `degraded` o `unavailable`.
 
 Para una validación integral:
 
