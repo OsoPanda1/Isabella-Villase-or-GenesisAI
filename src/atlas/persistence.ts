@@ -91,6 +91,8 @@ async function supabaseRequest<T>(
 
 export interface AtlasPersistencePort {
   init?(): Promise<void>;
+  /** Read-only provider probe. Returns true only after a successful database query. */
+  health?(): Promise<boolean>;
   createUser(input: CreateUserInput): Promise<AtlasUser>;
   listUsers(): Promise<AtlasUser[]>;
   recordProtocolExecution(input: RecordProtocolExecutionInput): Promise<AtlasProtocolExecution>;
@@ -132,7 +134,15 @@ export class AtlasStore implements AtlasPersistencePort {
   }
 
   async init(): Promise<void> {
-    // Reservado para health-check, warmup o migraciones controladas.
+    // Reserved for controlled warmup or migrations; readiness uses health().
+  }
+
+  async health(): Promise<boolean> {
+    // Read-only probe with a bounded timeout; never mutates application data.
+    const configuredTimeout = this.config.requestTimeoutMs ?? 10_000;
+    const probeConfig = { ...this.config, requestTimeoutMs: Math.min(configuredTimeout, 2_000) };
+    const rows = await supabaseRequest<unknown[]>(probeConfig, "atlas_users?select=id&limit=1");
+    return Array.isArray(rows);
   }
 
   async createUser(input: CreateUserInput): Promise<AtlasUser> {
