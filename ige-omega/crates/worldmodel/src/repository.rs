@@ -168,6 +168,18 @@ impl WorldModelRepository {
         tenant_id: Uuid,
         effect: Uuid,
     ) -> IgeResult<Vec<CausalEdge>> {
+        let effect_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM world_entities WHERE tenant_id=$1 AND entity_id=$2)",
+        )
+        .bind(tenant_id)
+        .bind(effect)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(db)?;
+        if !effect_exists {
+            return Err(IgeError::WorldEntityNotFound(effect.to_string()));
+        }
+
         let rows = sqlx::query(
             "SELECT cause,effect,probability,evidence FROM causal_edges WHERE tenant_id=$1 AND effect=$2 ORDER BY causal_id",
         )
@@ -255,9 +267,8 @@ async fn ensure_entity_in_tenant(
     .await
     .map_err(db)?;
     if !exists {
-        return Err(IgeError::InvalidInput(format!(
-            "entity {entity_id} does not exist in tenant {tenant_id}"
-        )));
+        // Do not reveal whether an entity exists under another tenant.
+        return Err(IgeError::WorldEntityNotFound(entity_id.to_string()));
     }
     Ok(())
 }
