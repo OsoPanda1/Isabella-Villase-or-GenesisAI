@@ -46,6 +46,13 @@ describe("production readiness", () => {
     expect(result.ready).toBe(false);
     expect(result.blockers).toContain("dependency:duplicate:database");
   });
+
+  it("rejects unknown runtime health states", () => {
+    const malformed = [{ name: "database", status: "unknown", required: true }] as unknown as Parameters<typeof assessProductionReadiness>[0];
+    const result = assessProductionReadiness(malformed);
+    expect(result.ready).toBe(false);
+    expect(result.blockers).toContain("database:invalid-health-record");
+  });
 });
 
 describe("token bucket rate limiting", () => {
