@@ -23,6 +23,29 @@ describe("production readiness", () => {
     expect(down.status).toBe("unavailable");
     expect(down.blockers).toContain("a:unavailable");
   });
+
+  it("fails closed when no dependency evidence is supplied", () => {
+    const result = assessProductionReadiness([]);
+    expect(result.status).toBe("unavailable");
+    expect(result.ready).toBe(false);
+    expect(result.blockers).toContain("dependencies:not-configured");
+  });
+
+  it("reports required degraded dependencies as blockers", () => {
+    const result = assessProductionReadiness([{ name: "bookpi", status: "degraded", required: true }]);
+    expect(result.status).toBe("degraded");
+    expect(result.ready).toBe(false);
+    expect(result.blockers).toContain("bookpi:degraded");
+  });
+
+  it("rejects ambiguous duplicate dependency names", () => {
+    const result = assessProductionReadiness([
+      { name: "database", status: "healthy", required: true },
+      { name: "database", status: "healthy", required: true },
+    ]);
+    expect(result.ready).toBe(false);
+    expect(result.blockers).toContain("dependency:duplicate:database");
+  });
 });
 
 describe("token bucket rate limiting", () => {
