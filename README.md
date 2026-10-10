@@ -137,6 +137,7 @@ El módulo `src/cognition/genesis-chunk.ts` valida metadatos y Unicode, genera u
 | `GET /health` | Liveness del proceso | Responde sobre el proceso; no demuestra readiness integral |
 | `GET /api/v1/readyz` | Readiness de dependencias | Puede devolver HTTP 503 si falta evidencia de una dependencia obligatoria |
 | `GET /api/v1/ops/snapshot` | Snapshot de estado operativo | Expone el estado evaluado y su evidencia |
+| `GET /api/v1/ops/latency` | Percentiles p50/p95/p99, máximo y errores 5xx por ruta | Requiere `OPS_API_TOKEN`; métricas locales de ventana acotada, no tracing distribuido |
 | `GET /api/v1/hsf/status` | Estado de HSF | Consultar el contrato y las limitaciones del proveedor configurado |
 | `POST /api/v1/hsf/invoke` | Invocación gobernada de una capacidad HSF | Requiere la configuración y autorización exigidas por el runtime |
 
@@ -146,6 +147,7 @@ El readiness no debe forzarse a verde para facilitar un despliegue. Atlas dispon
 
 - No guardar tokens, claves privadas, credenciales o secretos en el repositorio.
 - Obtener secretos de variables de entorno o de un gestor de secretos aprobado.
+- Configurar `OPS_API_TOKEN` para habilitar la consulta autenticada de latencias; si no está configurado, el endpoint responde 503.
 - Tratar todo contenido externo como datos no confiables, no como instrucciones del sistema.
 - No considerar el rol enviado por el cliente como prueba de autoridad.
 - Requerir aprobación explícita y contextual para operaciones privilegiadas.
@@ -193,6 +195,8 @@ Una vez disponible la red de paquetes y elegido el gestor de dependencias:
 3. Ejecutar `npm test`.
 4. Ejecutar `npm run build`.
 5. Ejecutar `npm run security:suite`.
+6. Revisar `test/performance/critical-latency.test.ts`: reporta p50/p95/p99/max para routing IGE, canonicalización/hash de chunks y readiness sin red ni inferencia de modelo.
+7. Consultar `GET /api/v1/ops/latency` en el proceso desplegado para identificar rutas con mayor p95 y errores 5xx; correlacionar con métricas del proveedor de base de datos y del modelo.
 6. Revisar los artefactos y resultados de CI para el mismo SHA.
 7. No desplegar si una dependencia obligatoria aparece `degraded` o `unavailable`.
 
