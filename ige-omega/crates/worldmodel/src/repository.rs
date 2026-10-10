@@ -197,6 +197,18 @@ impl WorldModelRepository {
         tenant_id: Uuid,
         start: Uuid,
     ) -> IgeResult<Vec<Uuid>> {
+        let exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM world_entities WHERE tenant_id=$1 AND entity_id=$2)",
+        )
+        .bind(tenant_id)
+        .bind(start)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(db)?;
+        if !exists {
+            return Err(IgeError::WorldEntityNotFound(start.to_string()));
+        }
+
         let rows = sqlx::query_scalar::<_, Uuid>(
             r#"
             WITH RECURSIVE connected(entity_id) AS (
