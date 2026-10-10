@@ -28,6 +28,26 @@ For PostgreSQL integration coverage, use a disposable PostgreSQL 16 database and
 
 Migrations run on gateway startup. Apply them first against a disposable copy of representative data. Migration 0009 creates memory validation constraints as `NOT VALID`: new writes are constrained immediately, while pre-existing rows are not certified until each constraint is validated. Before validating, query for blank/oversized content or provenance, out-of-range importance, and non-array/oversized embeddings; repair or quarantine incompatible records.
 
+Before validating migration 0009 constraints, run this audit query against the target database:
+
+```sql
+SELECT
+  count(*) FILTER (WHERE char_length(btrim(content)) NOT BETWEEN 1 AND 20000) AS invalid_content,
+  count(*) FILTER (WHERE char_length(btrim(provenance)) NOT BETWEEN 1 AND 2000) AS invalid_provenance,
+  count(*) FILTER (WHERE NOT (importance >= 0 AND importance <= 1)) AS invalid_importance,
+  count(*) FILTER (
+    WHERE embedding IS NOT NULL
+      AND CASE
+        WHEN jsonb_typeof(embedding) = 'array'
+          THEN jsonb_array_length(embedding) > 16384
+        ELSE TRUE
+      END
+  ) AS invalid_embedding
+FROM memory_records;
+```
+
+If any count is nonzero, inspect and repair/quarantine those records before running `ALTER TABLE memory_records VALIDATE CONSTRAINT ...` for each of the four migration 0009 constraints. Treat this as a data migration with a backup and a rollback/recovery plan, not as an automatic cleanup.
+
 ## Release decision
 
 Do not promote while any of the following is true:
