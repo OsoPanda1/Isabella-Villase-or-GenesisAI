@@ -200,6 +200,17 @@ mod tests {
     }
 
     #[test]
+    fn accepts_valid_user_and_session_records() {
+        let user_record = valid_record();
+        assert!(validate_record(&user_record).is_ok());
+
+        let mut session_record = valid_record();
+        session_record.scope = MemoryScope::Session;
+        session_record.session_id = Some(Uuid::now_v7());
+        assert!(validate_record(&session_record).is_ok());
+    }
+
+    #[test]
     fn rejects_empty_content_and_provenance() {
         let mut record = valid_record();
         record.content = "  ".into();
