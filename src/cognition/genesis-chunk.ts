@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { GenesisRoutingDecision } from "./genesis-moe";
+import { expertFamily, type GenesisRoutingDecision } from "./genesis-moe";
 
 export const IGE_CHUNK_SCHEMA = "ige-chunk/v1" as const;
 export type ArbitrationResult = "ALLOW" | "BLOCK" | "MODIFY";
@@ -48,10 +48,18 @@ export function canonicalGenesisJson(value: unknown): string {
     if (serialized === undefined) throw new TypeError("IGE: unable to serialize number");
     return serialized;
   }
-  if (Array.isArray(value)) return "[" + value.map((item) => canonicalGenesisJson(item)).join(",") + "]";
+  if (Array.isArray(value)) {
+    const items: string[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      if (!Object.prototype.hasOwnProperty.call(value, index)) throw new TypeError("IGE: canonical JSON rejects sparse arrays");
+      items.push(canonicalGenesisJson(value[index]));
+    }
+    return "[" + items.join(",") + "]";
+  }
   if (typeof value === "object") {
     const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) throw new TypeError("IGE: canonical JSON accepts plain objects only");
+    if (Object.getOwnPropertySymbols(value).length > 0) throw new TypeError("IGE: canonical JSON rejects symbol keys");
     const record = value as Record<string, unknown>;
     const keys = Object.keys(record).sort();
     return "{" + keys.map((key) => {
@@ -85,9 +93,33 @@ function validateDraft(draft: GenesisChunkDraft): void {
   if (typeof draft.latencyMs !== "number" || !Number.isFinite(draft.latencyMs) || draft.latencyMs < 0) throw new RangeError("IGE: latencyMs must be finite and non-negative");
   if (typeof draft.text !== "string") throw new TypeError("IGE: text must be a string");
   assertWellFormedUnicode(draft.text);
-  if (!draft.routing || draft.routing.requestId !== draft.requestId) throw new TypeError("IGE: routing requestId must match chunk requestId");
-  if (!draft.ethicsTrace || !Array.isArray(draft.ethicsTrace.guardiansInvoked) || !Array.isArray(draft.ethicsTrace.flags)) {
-    throw new TypeError("IGE: ethicsTrace must include guardiansInvoked and flags arrays");
+  const routing = draft.routing;
+  if (!routing || routing.requestId !== draft.requestId) throw new TypeError("IGE: routing requestId must match chunk requestId");
+  if (!Array.isArray(routing.activeHeads) || routing.activeHeads.length < 1 || routing.activeHeads.length > 12 ||
+      routing.activeHeads.some((index) => !Number.isInteger(index) || index < 0 || index >= 12) ||
+      new Set(routing.activeHeads).size !== routing.activeHeads.length) {
+    throw new TypeError("IGE: routing activeHeads must be unique integer indexes in [0, 11]");
+  }
+  if (!Array.isArray(routing.activeExperts) || routing.activeExperts.length < 2 || routing.activeExperts.length > 4 ||
+      routing.activeExperts.some((index) => !Number.isInteger(index) || index < 0 || index >= 24) ||
+      new Set(routing.activeExperts).size !== routing.activeExperts.length) {
+    throw new TypeError("IGE: routing activeExperts must contain 2–4 unique indexes in [0, 23]");
+  }
+  if (!Array.isArray(routing.weights) || routing.weights.length !== routing.activeExperts.length ||
+      routing.weights.some((weight) => !Number.isFinite(weight) || weight < 0 || weight > 1) ||
+      Math.abs(routing.weights.reduce((sum, weight) => sum + weight, 0) - 1) > 1e-6) {
+    throw new TypeError("IGE: routing weights must be finite, aligned and normalized");
+  }
+  if (!Number.isFinite(routing.confidence) || Math.abs(routing.confidence - Math.max(...routing.weights)) > 1e-6) {
+    throw new TypeError("IGE: routing confidence must match the maximum routing weight");
+  }
+  if (!Array.isArray(routing.expertFamilies) || routing.expertFamilies.length !== routing.activeExperts.length ||
+      routing.expertFamilies.some((family, index) => family !== expertFamily(routing.activeExperts[index]!))) {
+    throw new TypeError("IGE: routing expert families must match expert indexes");
+  }
+  if (!draft.ethicsTrace || !Array.isArray(draft.ethicsTrace.guardiansInvoked) || !Array.isArray(draft.ethicsTrace.flags) ||
+      [...draft.ethicsTrace.guardiansInvoked, ...draft.ethicsTrace.flags].some((value) => typeof value !== "string")) {
+    throw new TypeError("IGE: ethicsTrace must include string guardiansInvoked and flags arrays");
   }
   if (!["ALLOW", "BLOCK", "MODIFY"].includes(draft.ethicsTrace.arbitrationResult)) throw new TypeError("IGE: invalid arbitration result");
   if (draft.sequence === 0 && draft.previousChunkHash !== undefined) throw new TypeError("IGE: sequence zero cannot reference a previous chunk");
