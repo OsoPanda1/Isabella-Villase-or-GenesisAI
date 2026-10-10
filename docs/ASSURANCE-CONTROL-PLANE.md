@@ -9,6 +9,7 @@
 1. `scripts/repository-assurance.mjs` performs dependency-free, read-only checks for package metadata, required scripts, lockfile ambiguity, pull-request CI coverage, frozen installs, and key security/evidence artifacts.
 2. `.github/workflows/repository-assurance.yml` runs the audit on pull requests, pushes to main/evolution branches, and manual dispatch.
 3. The workflow publishes JSON and Markdown reports named with the full Git SHA. Warnings remain visible without being misrepresented as blockers.
+4. The audit also guards against structural regression of the README's veracity/reproducibility contract, the evidence-backed readiness endpoint, fail-closed dependency checks, and the presence of Genesis/IGE modules plus their tests.
 4. Structural blockers fail the job. The audit deliberately does not claim that a route is secure, a provider is connected, cryptography is post-quantum, or a deployment is healthy merely because a file exists.
 
 ## Reproduction
