@@ -77,6 +77,21 @@ add("RA-019", "BLOCKER",
   !!genesisModule && !!genesisTests && !!chunkModule && !!chunkTests,
   "Los contratos Genesis/IGE y sus archivos de prueba existen en el árbol.",
   ["src/cognition/genesis-moe.ts", "test/cognition/genesis-moe.test.ts", "src/cognition/genesis-chunk.ts", "test/cognition/genesis-chunk.test.ts"]);
+const latencyModule = await read("src/deployment/latency-metrics.ts");
+const latencyTests = await read("test/deployment/latency-metrics.test.ts");
+const perfTests = await read("test/performance/critical-latency.test.ts");
+add("RA-020", "BLOCKER",
+  !!latencyModule && !!latencyTests && !!perfTests,
+  "Bounded latency telemetry and CPU-only critical-path percentile benchmarks exist.",
+  ["src/deployment/latency-metrics.ts", "test/deployment/latency-metrics.test.ts", "test/performance/critical-latency.test.ts"]);
+add("RA-021", "BLOCKER",
+  !!server && /\/api\/v1\/ops\/latency/.test(server) && /OPS_API_TOKEN/.test(server) && /latencyRegistry\.record/.test(server),
+  "Route latency endpoint is instrumented and token-gated.",
+  ["src/server.ts"]);
+add("RA-022", "BLOCKER",
+  !!server && !/src-tamv-001|src-rdm-002|src-agents-003|src-zenodo-004/.test(server),
+  "Startup does not seed IKES with the audited placeholder source IDs/hashes.",
+  ["src/server.ts"]);
 const report = {
   schemaVersion: "1.0.0",
   audit: "isabella-genesis-repository-assurance",
